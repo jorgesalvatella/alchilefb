@@ -3,7 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Flame } from 'lucide-react';
+import { Flame, Phone, Pizza, CreditCard } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
@@ -12,7 +12,6 @@ import type { MenuItem } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { SeedDatabase } from '@/components/dev/seed-database';
 
 export default function Home() {
   const heroMeatballsImage = {
@@ -43,7 +42,6 @@ export default function Home() {
 
   return (
     <div className="flex flex-col">
-      <SeedDatabase />
       {/* New Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-20">
         <div className="absolute inset-0 bg-black"></div>
@@ -93,66 +91,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Items Section */}
-      <section className="py-16 md:py-24 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="font-headline text-4xl md:text-5xl text-primary mb-2">Platillos Destacados</h2>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">Favoritos seleccionados que capturan el alma de nuestra cocina.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {isLoading && Array.from({ length: 3 }).map((_, i) => (
-                <Card key={i} className="overflow-hidden h-full">
-                    <CardHeader className="p-0">
-                        <Skeleton className="h-64 w-full" />
-                    </CardHeader>
-                    <CardContent className="p-6">
-                        <Skeleton className="h-6 w-3/4 mb-2" />
-                        <Skeleton className="h-4 w-full mb-4" />
-                        <div className="flex justify-between items-center">
-                            <Skeleton className="h-6 w-1/4" />
-                            <Skeleton className="h-4 w-1/4" />
-                        </div>
-                    </CardContent>
-                </Card>
-            ))}
-            {featuredItems && featuredItems.map((item) => {
-              const itemImage = PlaceHolderImages.find((img) => img.id === item.image);
-              const imageUrl = item.imageUrl || itemImage?.imageUrl || 'https://placehold.co/600x400';
-              const imageHint = item.imageUrl ? item.name : itemImage?.imageHint;
-              return (
-              <Link href={`/menu/${item.id}`} key={item.id} className="group">
-                <Card className="overflow-hidden h-full transform transition-all duration-300 hover:scale-105 hover:shadow-primary/20 shadow-lg">
-                  <CardHeader className="p-0">
-                    <div className="relative h-64 w-full">
-                        <Image
-                          src={imageUrl}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                           data-ai-hint={imageHint}
-                        />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <CardTitle className="font-headline text-2xl mb-2">{item.name}</CardTitle>
-                    <p className="text-muted-foreground mb-4 line-clamp-2">{item.description}</p>
-                    <div className="flex justify-between items-center">
-                       <p className="text-xl font-bold text-primary">${item.price.toFixed(2)}</p>
-                       <div className="flex items-center gap-1 text-sm text-amber-400">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Flame key={i} size={16} className={i < item.spiceRating ? 'fill-current' : 'text-muted-foreground/30'}/>
-                          ))}
-                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            )})}
-          </div>
-        </div>
-      </section>
-      
       {/* Call to Action Section */}
       <section id="cta" className="pb-20 bg-white dark:bg-black">
         <div className="container mx-auto px-6 text-center">
@@ -166,6 +104,69 @@ export default function Home() {
               Ver en Instagram
             </Link>
           </div>
+        </div>
+      </section>
+      
+      {/* Challenge Section */}
+      <section id="challenge" className="pb-20 md:pb-32 bg-gradient-to-b from-white to-gray-50 dark:from-black dark:to-black relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-chile-red/5 rounded-full filter blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-fresh-green/5 rounded-full filter blur-3xl"></div>
+        <div className="container mx-auto px-6 relative z-10">
+            <div className="text-center mb-16 fade-in-up">
+                <h2 className="text-5xl md:text-6xl font-black text-dark-charcoal dark:text-gray-100 mb-4">
+                ¿Te Atreves o Prefieres?
+                </h2>
+                <div className="w-24 h-1.5 bg-gradient-to-r from-chile-red to-fresh-green mx-auto mb-6 rounded-full"></div>
+                <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+                Elige tu nivel de picante y déjate seducir por el sabor auténtico
+                </p>
+            </div>
+            <div className="grid md:grid-cols-2 gap-12 lg:gap-16 max-w-6xl mx-auto">
+                <div className="group relative bg-black rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 hover:shadow-chile-red/30 hover:scale-105 border-2 border-transparent hover:border-chile-red/50 fade-in-up" style={{animationDelay: '0.2s'}}>
+                <Image src="https://imagenes.nobbora.com/Dise%C3%B1o%20sin%20t%C3%ADtulo%20(1).png" alt="Spicy Meatballs" width={600} height={400} className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110"/>
+                <div className="p-8">
+                    <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-4xl font-black text-white">Picante Extremo</h3>
+                    <div className="w-16 h-16 bg-chile-red/20 rounded-2xl flex items-center justify-center">
+                        <svg className="w-10 h-10 text-chile-red" fill="currentColor" viewBox="0 0 24 24"><path d="M12.82,2.29A2.4,2.4,0,0,0,11.18,2.29C10.59,2.88,10.59,3.84,11.18,4.43L12,5.25l.82-.82c.59-.59.59-1.55,0-2.14M12,7.25a2.24,2.24,0,0,1-2.24,2.24h-1.5A4.74,4.74,0,0,0,13,5V3.5A2.5,2.5,0,0,0,10.5,1,2.5,2.5,0,0,0,8,3.5V5a4.74,4.74,0,0,0,4.74,4.74h-1.5A2.24,2.24,0,0,1,9,7.25a2.24,2.24,0,0,1,2.24-2.24A2.24,2.24,0,0,1,13.5,7.25,2.24,2.24,0,0,1,12,9.49H12A2.24,2.24,0,0,1,9.75,7.25a2.24,2.24,0,0,1,2.25-2.24A2.24,2.24,0,0,1,14.25,7.25,2.24,2.24,0,0,1,12,9.49h0a2.24,2.24,0,0,1-2.24-2.24A2.24,2.24,0,0,1,12,5a2.24,2.24,0,0,1,2.24,2.25,2.24,2.24,0,0,1-2.24,2.24H12a2.24,2.24,0,0,1-2.24-2.24A2.24,2.24,0,0,1,12,5a2.24,2.24,0,0,1,2.24,2.25Z"/><path d="M18,11H6a3,3,0,0,0-3,3v6a3,3,0,0,0,3,3H18a3,3,0,0,0,3-3V14A3,3,0,0,0,18,11Zm-6,8a1,1,0,1,1,1-1A1,1,0,0,1,12,19Zm3-3H9a1,1,0,0,1,0-2h6a1,1,0,0,1,0,2Z"/></svg>
+                    </div>
+                    </div>
+                    <p className="text-gray-300 text-lg mb-6 leading-relaxed">
+                    Para los valientes que buscan una explosión de sabor y picor. Preparado con chiles frescos y especias secretas.
+                    </p>
+                    <ul className="space-y-4 mb-8">
+                    <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-chile-red mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Chile habanero y serrano</li>
+                    <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-chile-red mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Nivel de picor: <span className="font-bold ml-1">Alto 🔥🔥🔥</span></li>
+                    <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-chile-red mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Salsa roja artesanal</li>
+                    </ul>
+                    <Button className="w-full bg-gradient-to-r from-chile-red to-red-700 text-white font-bold py-4 rounded-xl hover:shadow-xl transition-all duration-300 hover:scale-105 text-lg h-auto">
+                    ¡Me Atrevo!
+                    </Button>
+                </div>
+                </div>
+                <div className="group relative bg-black rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 hover:shadow-fresh-green/30 hover:scale-105 border-2 border-transparent hover:border-fresh-green/50 fade-in-up" style={{animationDelay: '0.4s'}}>
+                <Image src="https://imagenes.nobbora.com/Dise%C3%B1o%20sin%20t%C3%ADtulo%20(2).png" alt="Mild Meatballs" width={600} height={400} className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110"/>
+                <div className="p-8">
+                    <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-4xl font-black text-white">Sabor Suave</h3>
+                    <div className="w-16 h-16 bg-fresh-green/20 rounded-2xl flex items-center justify-center">
+                        <svg className="w-10 h-10 text-fresh-green" fill="currentColor" viewBox="0 0 24 24"><path d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M12,20c-4.41,0-8-3.59-8-8s3.59-8,8-8s8,3.59,8,8S16.41,20,12,20z M7,11.5C7,10.67,7.67,10,8.5,10S10,10.67,10,11.5S9.33,13,8.5,13S7,12.33,7,11.5z M14,11.5c0-0.83,0.67-1.5,1.5-1.5s1.5,0.67,1.5,1.5S16.33,13,15.5,13S14,12.33,14,11.5z M12,16c-2.33,0-4.31-1.46-5.11-3.5h10.22C16.31,14.54,14.33,16,12,16z"/></svg>
+                    </div>
+                    </div>
+                    <p className="text-gray-300 text-lg mb-6 leading-relaxed">
+                    Para los que prefieren disfrutar de la ternura y el sazón sin picante. Sabor tradicional con hierbas frescas.
+                    </p>
+                    <ul className="space-y-4 mb-8">
+                    <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-fresh-green mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Hierbas aromáticas frescas</li>
+                    <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-fresh-green mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Nivel de picor: <span className="font-bold ml-1">Ninguno ✨</span></li>
+                    <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-fresh-green mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Salsa verde tradicional</li>
+                    </ul>
+                    <Button className="w-full bg-gradient-to-r from-fresh-green to-yellow-600 text-white font-bold py-4 rounded-xl hover:shadow-xl transition-all duration-300 hover:scale-105 text-lg h-auto">
+                    ¡Lo Prefiero!
+                    </Button>
+                </div>
+                </div>
+            </div>
         </div>
       </section>
 
@@ -196,7 +197,7 @@ export default function Home() {
                 <div className="text-center flex-1 fade-in-up" style={{animationDelay: '0.1s'}}>
                   <div className="relative inline-block mb-6">
                     <div className="w-24 h-24 rounded-full bg-white dark:bg-gray-800 shadow-lg flex items-center justify-center border-4 border-chile-red/50">
-                      <svg className="w-12 h-12 text-chile-red" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+                      <Phone className="w-12 h-12 text-chile-red" />
                     </div>
                   </div>
                   <h3 className="text-2xl font-bold text-dark-charcoal dark:text-gray-100 mb-3">1. Haz tu Pedido</h3>
@@ -208,7 +209,7 @@ export default function Home() {
                 <div className="text-center flex-1 fade-in-up" style={{animationDelay: '0.3s'}}>
                   <div className="relative inline-block mb-6">
                     <div className="w-24 h-24 rounded-full bg-white dark:bg-gray-800 shadow-lg flex items-center justify-center border-4 border-fresh-green/50">
-                      <svg className="w-12 h-12 text-fresh-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm4-10V5m0 4V7m0 4V9"></path></svg>
+                      <Pizza className="w-12 h-12 text-fresh-green" />
                     </div>
                   </div>
                   <h3 className="text-2xl font-bold text-dark-charcoal dark:text-light-gray mb-3">2. Preparamos tu Comida</h3>
@@ -220,7 +221,7 @@ export default function Home() {
                 <div className="text-center flex-1 fade-in-up" style={{animationDelay: '0.5s'}}>
                   <div className="relative inline-block mb-6">
                     <div className="w-24 h-24 rounded-full bg-white dark:bg-gray-800 shadow-lg flex items-center justify-center border-4 border-orange-500/50">
-                      <svg className="w-12 h-12 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
+                      <CreditCard className="w-12 h-12 text-orange-500" />
                     </div>
                   </div>
                   <h3 className="text-2xl font-bold text-dark-charcoal dark:text-light-gray mb-3">3. Paga y Disfruta</h3>

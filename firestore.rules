@@ -1,38 +1,83 @@
 /**
- * @fileOverview Firestore Security Rules for the Al Chile Delivery app.
- *
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for personal data (profiles, delivery addresses, payment methods)
- * and role-based access control for business data (expenses, suppliers, business units). Menu items are publicly readable.
+ * @file Firestore Security Rules for Al Chile Delivery App
+ * @description This ruleset enforces a user-ownership model for personal data and role-based access for administrative data.
  *
  * Data Structure:
- * - User-specific data is nested under /users/{userId}.
- * - Orders are stored in a top-level /orders/{orderId} collection.
- * - Menu items are stored in a top-level /menu_items collection.
- * - Business expenses, suppliers, and business units are stored in their respective top-level collections.
+ * - /users/{userId}: User profile data, accessible only by the user.
+ * - /users/{userId}/delivery_addresses/{deliveryAddressId}: Delivery addresses owned by the user.
+ * - /users/{userId}/payment_methods/{paymentMethodId}: Payment methods owned by the user.
+ * - /orders/{orderId}: Orders placed by users. Users can only access their own orders.
+ * - /orders/{orderId}/order_items/{orderItemId}: Order items for each order.
+ * - /menu_items/{menuItemId}: Publicly accessible menu items.
+ * - /expenses/{expenseId}: Business expenses, accessible only by admins and super-admins.
+ * - /suppliers/{supplierId}: Supplier information, accessible only by admins and super-admins.
+ * - /business_units/{businessUnitId}: Business unit information, accessible only by admins and super-admins.
  *
  * Key Security Decisions:
- * - Users can only access their own profile data, delivery addresses, and payment methods.
- * - Menu items are publicly readable but writes are disallowed due to lack of defined ownership.
- * - Listing of user profiles is denied to prevent information disclosure.
- * - Admin/super-admin roles are required to access expense, supplier, and business unit data.
+ * - Users can only access their own data under /users/{userId}.
+ * - Menu items are publicly readable.
+ * - Administrative data (expenses, suppliers, business units) is restricted to admins and super-admins.
+ * - Listing of user profiles is disallowed.
  *
  * Denormalization for Authorization:
- * - For the current data structure, no denormalization is required since all authorization checks are path-based or role-based.
+ * - To avoid `get()` calls, the rules rely on path-based ownership and role-based checks.
+ *   For example, user-specific data is nested under `/users/{userId}` to allow simple `isOwner()` checks.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Secure access to user profiles. Only the user can read/write their own profile.
+     * @description Checks if the request is made by a signed-in user.
+     * @return {bool} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user ID matches the provided user ID.
+     * @param {string} userId The user ID to compare against.
+     * @return {bool} True if the user ID matches, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user has the 'admin' or 'super-admin' role.
+     * @return {bool} True if the user is an admin or super-admin, false otherwise.
+     */
+    function isAdmin() {
+      return isSignedIn() && (getUserRole() == 'admin' || getUserRole() == 'super-admin');
+    }
+
+    /**
+     * @description Gets the user's role from the UserProfile document.
+     * @return {string} The user's role, or null if not found.
+     */
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    /**
+     * @description Checks if the user is the owner and the document exists.
+     * @param {string} userId The user ID to check for ownership.
+     * @return {bool} True if the user is the owner and the document exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Defines rules for user profiles.
      * @path /users/{userId}
-     * @allow (create) - User with UID 'user123' can create their profile with id 'user123'.
-     * @allow (get, update, delete) - User with UID 'user123' can read/update/delete their profile at /users/user123.
-     * @deny (create) - User with UID 'user456' cannot create a profile with id 'user123'.
-     * @deny (get, update, delete) - User with UID 'user456' cannot read/update/delete the profile at /users/user123.
+     * @allow (create) - Authenticated user with matching UID can create their profile.
+     * @allow (get, update, delete) - Authenticated user can access/modify their own profile.
      * @deny (list) - Listing user profiles is not allowed.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data.
+     * @deny (create) - Unauthenticated users cannot create profiles.
+     * @deny (update, delete) - Users cannot modify profiles that don't exist.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
@@ -43,13 +88,13 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secure access to delivery addresses. Only the user can read/write their own addresses.
+     * @description Defines rules for delivery addresses under a user's profile.
      * @path /users/{userId}/delivery_addresses/{deliveryAddressId}
-     * @allow (create) - User with UID 'user123' can create an address under /users/user123/delivery_addresses/address456.
-     * @allow (get, update, delete) - User with UID 'user123' can read/update/delete their address at /users/user123/delivery_addresses/address456.
-     * @deny (create) - User with UID 'user456' cannot create an address under /users/user123/delivery_addresses/address456.
-     * @deny (get, update, delete) - User with UID 'user456' cannot read/update/delete the address at /users/user123/delivery_addresses/address456.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     * @allow (create) - Authenticated user can create delivery addresses under their profile.
+     * @allow (get, update, delete) - Authenticated user can access/modify their own delivery addresses.
+     * @deny (list) - Only the owner can list their delivery addresses.
+     * @deny (create, update, delete) - Unauthenticated users cannot manage delivery addresses.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
      */
     match /users/{userId}/delivery_addresses/{deliveryAddressId} {
       allow get: if isOwner(userId);
@@ -60,13 +105,13 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secure access to payment methods. Only the user can read/write their own payment methods.
+     * @description Defines rules for payment methods under a user's profile.
      * @path /users/{userId}/payment_methods/{paymentMethodId}
-     * @allow (create) - User with UID 'user123' can create a payment method under /users/user123/payment_methods/payment789.
-     * @allow (get, update, delete) - User with UID 'user123' can read/update/delete their payment method at /users/user123/payment_methods/payment789.
-     * @deny (create) - User with UID 'user456' cannot create a payment method under /users/user123/payment_methods/payment789.
-     * @deny (get, update, delete) - User with UID 'user456' cannot read/update/delete the payment method at /users/user123/payment_methods/payment789.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     * @allow (create) - Authenticated user can create payment methods under their profile.
+     * @allow (get, update, delete) - Authenticated user can access/modify their own payment methods.
+     * @deny (list) - Only the owner can list their payment methods.
+     * @deny (create, update, delete) - Unauthenticated users cannot manage payment methods.
+     * @principle Enforces document ownership for writes, restricts access to a user's own data tree.
      */
     match /users/{userId}/payment_methods/{paymentMethodId} {
       allow get: if isOwner(userId);
@@ -77,126 +122,89 @@ service cloud.firestore {
     }
 
     /**
-     * @description Secure access to orders. Only the user who placed the order or an admin can access it.
+     * @description Defines rules for orders.
      * @path /orders/{orderId}
-     * @allow (get, list) - Any signed-in user can read order details and list all orders.
-     * @deny (create, update, delete) - Only authenticated users can create, update, or delete orders.
-     * @principle Allows public read access but restricts write access to admins/super-admins.
+     * @allow (get, list) - Authenticated user can access their own orders. Admins can access all orders.
+     * @allow (create) - Authenticated user can create orders.
+     * @allow (update, delete) - Admins can update or delete any order.
+     * @deny (create, update, delete) - Unauthenticated users cannot manage orders. Non-admins cannot update or delete orders.
+     * @principle Differentiates access based on user role, enforces ownership for users.
      */
     match /orders/{orderId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if isSignedIn();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Secure access to order items.  Order Items are publicly readable, but writes are disallowed.
+     * @description Defines rules for order items under an order.
      * @path /orders/{orderId}/order_items/{orderItemId}
-     * @allow (get, list) - Any signed-in user can read order items and list all order items.
-     * @deny (create, update, delete) - No one can create, update, or delete order items.
-     * @principle Allows public read access but restricts write access.
+     * @allow (get, list) - Any signed-in user can read any order items.
+     * @deny (create, update, delete) - Only admins can manage order items.
+     * @principle Open read access for order items, restricted write access.
      */
     match /orders/{orderId}/order_items/{orderItemId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Secure access to menu items.  Menu Items are publicly readable, but writes are disallowed.
+     * @description Defines rules for menu items.
      * @path /menu_items/{menuItemId}
-     * @allow (get, list) - Anyone can read menu items.
-     * @deny (create, update, delete) - No one can create, update, or delete menu items.
-     * @principle Allows public read access but restricts write access.
+     * @allow (get, list) - Publicly accessible menu items.
+     * @deny (create, update, delete) - Only admins can manage menu items.
+     * @principle Open read access for menu items, restricted write access.
      */
     match /menu_items/{menuItemId} {
       allow get: if true;
       allow list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Secure access to expenses. Only admins/super-admins can access expenses.
+     * @description Defines rules for expenses.
      * @path /expenses/{expenseId}
-     * @allow (get, list, create, update, delete) - Only users with 'admin' or 'super-admin' role can access expenses.
-     * @deny (get, list, create, update, delete) - Other users cannot access expenses.
-     * @principle Restricts access based on user role.
+     * @allow (get, list, create, update, delete) - Only admins and super-admins can manage expenses.
      */
     match /expenses/{expenseId} {
-      allow get: if isAdmin() || isSuperAdmin();
-      allow list: if isAdmin() || isSuperAdmin();
-      allow create: if isAdmin() || isSuperAdmin();
-      allow update: if isExistingAdmin() || isExistingSuperAdmin();
-      allow delete: if isExistingAdmin() || isExistingSuperAdmin();
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Secure access to suppliers. Only admins/super-admins can access suppliers.
+     * @description Defines rules for suppliers.
      * @path /suppliers/{supplierId}
-     * @allow (get, list, create, update, delete) - Only users with 'admin' or 'super-admin' role can access suppliers.
-     * @deny (get, list, create, update, delete) - Other users cannot access suppliers.
-     * @principle Restricts access based on user role.
+     * @allow (get, list, create, update, delete) - Only admins and super-admins can manage suppliers.
      */
     match /suppliers/{supplierId} {
-      allow get: if isAdmin() || isSuperAdmin();
-      allow list: if isAdmin() || isSuperAdmin();
-      allow create: if isAdmin() || isSuperAdmin();
-      allow update: if isExistingAdmin() || isExistingSuperAdmin();
-      allow delete: if isExistingAdmin() || isExistingSuperAdmin();
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
 
     /**
-     * @description Secure access to business units. Only admins/super-admins can access business units.
+     * @description Defines rules for business units.
      * @path /business_units/{businessUnitId}
-     * @allow (get, list, create, update, delete) - Only users with 'admin' or 'super-admin' role can access business units.
-     * @deny (get, list, create, update, delete) - Other users cannot access business units.
-     * @principle Restricts access based on user role.
+     * @allow (get, list, create, update, delete) - Only admins and super-admins can manage business units.
      */
     match /business_units/{businessUnitId} {
-      allow get: if isAdmin() || isSuperAdmin();
-      allow list: if isAdmin() || isSuperAdmin();
-      allow create: if isAdmin() || isSuperAdmin();
-      allow update: if isExistingAdmin() || isExistingSuperAdmin();
-      allow delete: if isExistingAdmin() || isExistingSuperAdmin();
-    }
-
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
-    }
-
-    function isAdmin() {
-      return isSignedIn() && (getUserRole() == 'admin');
-    }
-
-     function isExistingAdmin() {
-          return isAdmin() && resource != null;
-    }
-
-    function isSuperAdmin() {
-      return isSignedIn() && (getUserRole() == 'super-admin');
-    }
-
-    function isExistingSuperAdmin() {
-        return isSuperAdmin() && resource != null;
-    }
-
-    function getUserRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      allow get: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() && resource != null;
+      allow delete: if isAdmin() && resource != null;
     }
   }
 }

@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useFirestore } from '@/firebase/provider';
-import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, getDocs, addDoc } from 'firebase/firestore';
 import type { MenuItem } from '@/lib/data';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -29,77 +29,75 @@ const sampleMenuItems: Omit<MenuItem, 'id'>[] = [
       spiceRating: 1,
     },
     {
-      name: "Esquites 'Al Chile'",
-      description: "Granos de elote tierno con mayonesa, queso cotija, chile en polvo y lima.",
-      longDescription: "El antojito callejero mexicano por excelencia. Servimos granos de elote calientes y tiernos en un vaso, cubiertos con una cremosa mayonesa, queso cotija salado, un toque de chile en polvo y un chorrito de jugo de lima fresca. ¡No podrás comer solo uno!",
-      price: 6.00,
-      category: "Acompañamientos",
-      imageUrl: "https://imagenes.nobbora.com/esquites.jpg",
-      ingredients: ["Elote", "Mayonesa", "Queso Cotija", "Chile en Polvo", "Lima"],
-      spiceRating: 1,
+        name: "Esquites 'Al Chile'",
+        description: "Granos de elote tierno con mayonesa, queso cotija, chile en polvo y lima.",
+        longDescription: "El antojito callejero mexicano por excelencia. Servimos granos de elote calientes y tiernos en un vaso, cubiertos con una cremosa mayonesa, queso cotija salado, un toque de chile en polvo y un chorrito de jugo de lima fresca. ¡No podrás comer solo uno!",
+        price: 6.00,
+        category: "Acompañamientos",
+        imageUrl: "https://imagenes.nobbora.com/esquites.jpg",
+        ingredients: ["Elote", "Mayonesa", "Queso Cotija", "Chile en Polvo", "Lima"],
+        spiceRating: 1,
     },
     {
-      name: "Agua de Jamaica",
-      description: "Agua fresca y refrescante hecha de flores de hibisco.",
-      longDescription: "Una bebida tradicional mexicana, perfecta para acompañar cualquier platillo. Hacemos nuestra agua de jamaica fresca todos los días, infusionando flores de hibisco secas para crear una bebida vibrante, ligeramente ácida y muy refrescante.",
-      price: 3.50,
-      category: "Bebidas",
-      imageUrl: "https://imagenes.nobbora.com/agua-jamaica.jpg",
-      ingredients: ["Flor de Jamaica", "Agua", "Azúcar"],
-      spiceRating: 1,
+        name: "Agua de Jamaica",
+        description: "Agua fresca y refrescante hecha de flores de hibisco.",
+        longDescription: "Una bebida tradicional mexicana, perfecta para acompañar cualquier platillo. Hacemos nuestra agua de jamaica fresca todos los días, infusionando flores de hibisco secas para crear una bebida vibrante, ligeramente ácida y muy refrescante.",
+        price: 3.50,
+        category: "Bebidas",
+        imageUrl: "https://imagenes.nobbora.com/agua-jamaica.jpg",
+        ingredients: ["Flor de Jamaica", "Agua", "Azúcar"],
+        spiceRating: 1,
     }
 ];
 
 
 export function SeedDatabase() {
   const firestore = useFirestore();
-  const [isSeeded, setIsSeeded] = useState<boolean | null>(null);
+  const [isSeeding, setIsSeeding] = useState(false);
 
   useEffect(() => {
+    if (!firestore) return;
+
     const seedData = async () => {
-      if (!firestore) return;
-      
       const menuItemsCollection = collection(firestore, 'menu_items');
-      const snapshot = await getDocs(menuItemsCollection);
+      
+      try {
+        const querySnapshot = await getDocs(menuItemsCollection);
+        if (querySnapshot.empty) {
+          setIsSeeding(true);
+          console.log('La colección "menu_items" está vacía. Precargando datos...');
 
-      if (snapshot.empty) {
-        console.log('La colección "menu_items" está vacía. Precargando datos...');
-        const batch = writeBatch(firestore);
-        
-        sampleMenuItems.forEach(item => {
-          const newDocRef = doc(menuItemsCollection);
-          batch.set(newDocRef, item);
-        });
-
-        batch.commit()
-          .then(() => {
-            console.log('¡Datos de platillos precargados con éxito!');
-            setIsSeeded(true);
-          })
-          .catch((error) => {
-            console.error("Error al precargar datos: ", error);
-            setIsSeeded(false);
-            // Emit a detailed, contextual error for better debugging.
-            errorEmitter.emit(
-              'permission-error',
-              new FirestorePermissionError({
+          for (const item of sampleMenuItems) {
+            await addDoc(menuItemsCollection, item).catch(serverError => {
+                 // Lanzamos un error contextual si una escritura individual falla
+                 const permissionError = new FirestorePermissionError({
+                    path: menuItemsCollection.path,
+                    operation: 'create',
+                    requestResourceData: item,
+                 });
+                 errorEmitter.emit('permission-error', permissionError);
+                 throw permissionError; // Detenemos el proceso si un platillo falla
+            });
+          }
+          console.log('Datos de platillos precargados con éxito.');
+        }
+      } catch (error) {
+        console.error('Error al verificar o precargar datos: ', error);
+        if (!(error instanceof FirestorePermissionError)) {
+             const permissionError = new FirestorePermissionError({
                 path: menuItemsCollection.path,
-                operation: 'create', // Operation is creating multiple documents
-                requestResourceData: sampleMenuItems, // Include all data that was attempted
-              })
-            );
-          });
-
-      } else {
-        console.log('La colección "menu_items" ya contiene datos. No se necesita precarga.');
-        setIsSeeded(true);
+                operation: 'list', // The initial check is a list operation
+             });
+             errorEmitter.emit('permission-error', permissionError);
+        }
+      } finally {
+        setIsSeeding(false);
       }
     };
 
-    if (isSeeded === null) {
-      seedData();
-    }
-  }, [firestore, isSeeded]);
+    seedData();
+  }, [firestore]);
 
+  // Este componente no renderiza nada visible.
   return null;
 }
