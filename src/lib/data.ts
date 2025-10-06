@@ -5,7 +5,8 @@ export type MenuItem = {
   longDescription: string;
   price: number;
   category: 'Tacos' | 'Burritos' | 'Acompañamientos' | 'Bebidas';
-  image: string; // Corresponds to id in placeholder-images.json
+  image?: string; // Corresponds to id in placeholder-images.json, now optional
+  imageUrl?: string; // URL from Firebase Storage
   ingredients: string[];
   options?: { name: string; price: number }[];
   spiceRating: 1 | 2 | 3 | 4 | 5;
@@ -80,4 +81,4 @@ export const menuItems: MenuItem[] = [
   },
 ];
 
-export const menuCategories = ['Tacos', 'Burritos', 'Acompañamientos', 'Bebidas'];
+export const menuCategories: ('Tacos' | 'Burritos' | 'Acompañamientos' | 'Bebidas')[] = ['Tacos', 'Burritos', 'Acompañamientos', 'Bebidas'];
