@@ -53,7 +53,7 @@ export default function LoginPage() {
     initiateEmailSignIn(auth, values.email, values.password);
     toast({
       title: 'Iniciando sesión...',
-      description: 'Serás redirigido en un momento.',
+      description: 'Serás redirigido en un momento si tus credenciales son correctas.',
     });
   };
 
