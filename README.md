@@ -61,7 +61,19 @@ Abre tu navegador y ve a `http://localhost:9002` para ver tu aplicación en acci
 
 ### 6. Publica tu Aplicación (Deploy)
 
-Cuando estés listo para que el mundo vea tu aplicación, puedes publicarla en Firebase App Hosting con un solo comando:
+Cuando estés listo para que el mundo vea tu aplicación, puedes publicarla en Firebase App Hosting.
+
+#### **Solución de Problemas de Facturación**
+
+**Importante:** Para publicar, Firebase te pedirá que asocies una cuenta de facturación de Google Cloud a tu proyecto. Si al intentar publicar no ves tu cuenta de facturación en la lista, es probable que tu proyecto de Firebase no esté vinculado a ella.
+
+-   **Solución:**
+    1.  Ve a la página de facturación de tu proyecto en la Consola de Google Cloud:
+        [**Vincular Cuenta de Facturación**](https://console.cloud.google.com/billing/linkedaccount?project=studio-9824031244-700aa)
+    2.  Selecciona la cuenta de facturación que deseas usar y haz clic en **"Establecer cuenta"**.
+    3.  Una vez vinculada, vuelve a ejecutar el comando de despliegue en tu terminal.
+
+Ahora sí, ¡a publicar!
 
 ```bash
 firebase apphosting:backends:deploy al-chile-delivery-app --location=us-central1
