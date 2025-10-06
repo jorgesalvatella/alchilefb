@@ -21,7 +21,6 @@ import Image from 'next/image';
 
 const baseNavLinks = [
   { href: '/menu', label: 'Menú' },
-  { href: '/orders/1', label: 'Rastrear Pedido' },
 ];
 
 const adminNavLink = { href: '/admin', label: 'Admin', roles: ['admin', 'super-admin'] };
@@ -112,6 +111,9 @@ export function Header() {
 
   const getNavLinks = () => {
     let links = [...baseNavLinks];
+    if (user) {
+      links.push({ href: '/orders', label: 'Mis Pedidos' });
+    }
     if (userRole && adminNavLink.roles.includes(userRole)) {
       links.push(adminNavLink);
     }

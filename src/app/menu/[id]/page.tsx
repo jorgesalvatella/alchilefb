@@ -13,10 +13,11 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function MenuItemPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const firestore = useFirestore();
   const menuItemRef = useMemoFirebase(
-    () => (firestore ? doc(firestore, 'menu_items', params.id) : null),
-    [firestore, params.id]
+    () => (firestore ? doc(firestore, 'menu_items', id) : null),
+    [firestore, id]
   );
   const { data: item, isLoading } = useDoc<MenuItem>(menuItemRef);
 

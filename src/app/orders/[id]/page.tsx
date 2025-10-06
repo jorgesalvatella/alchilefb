@@ -19,12 +19,13 @@ const allSteps = [
 ];
 
 export default function OrderTrackingPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const firestore = useFirestore();
   const mapImage = PlaceHolderImages.find((img) => img.id === 'map-placeholder');
 
   const orderRef = useMemoFirebase(
-    () => (firestore ? doc(firestore, 'orders', params.id) : null),
-    [firestore, params.id]
+    () => (firestore ? doc(firestore, 'orders', id) : null),
+    [firestore, id]
   );
   const { data: order, isLoading } = useDoc<Order>(orderRef);
 
@@ -66,7 +67,7 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
         <div className="container mx-auto px-4 py-12 text-center">
             <h1 className="font-headline text-5xl md:text-6xl text-primary">Pedido no Encontrado</h1>
             <p className="text-lg text-muted-foreground mt-2">
-                No pudimos encontrar el pedido con el ID #{params.id}.
+                No pudimos encontrar el pedido con el ID #{id}.
             </p>
         </div>
     );
@@ -85,10 +86,9 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
     <div className="container mx-auto px-4 py-12">
       <div className="text-center mb-12">
         <h1 className="font-headline text-5xl md:text-6xl text-primary">Rastrea Tu Pedido</h1>
-        <p className="text-lg text-muted-foreground mt-2">
-          ¡El pedido #{params.id} está en camino!
-        </p>
-      </div>
+                  <p className="text-lg text-muted-foreground mt-2">
+                    ¡El pedido #{id} está en camino!
+                  </p>      </div>
 
       <div className="grid lg:grid-cols-3 gap-8 items-start">
         <Card className="lg:col-span-1">
