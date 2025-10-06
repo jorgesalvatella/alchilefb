@@ -12,7 +12,42 @@ import type { MenuItem } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
-import { SeedDatabase } from '@/components/dev/seed-database';
+
+const sampleMenuItems: MenuItem[] = [
+    {
+      id: "1",
+      name: "Tacos al Pastor",
+      description: "Carne de cerdo marinada en achiote, asada lentamente y servida con piña.",
+      longDescription: "Un clásico de la Ciudad de México. Nuestra carne de cerdo se marina durante 24 horas en una mezcla secreta de chiles y achiote, luego se asa en un trompo vertical y se sirve en tortillas de maíz calientes con un toque de piña, cilantro y cebolla.",
+      price: 4.50,
+      category: "Tacos",
+      imageUrl: "https://imagenes.nobbora.com/taco-al-pastor.jpg",
+      ingredients: ["Cerdo", "Achiote", "Piña", "Cilantro", "Cebolla"],
+      spiceRating: 2,
+    },
+    {
+      id: "2",
+      name: "Burrito de Barbacoa",
+      description: "Carne de res cocida a fuego lento, envuelta en una tortilla de harina gigante.",
+      longDescription: "Nuestra barbacoa se cocina a fuego lento durante 8 horas hasta que está increíblemente tierna. La envolvemos en una tortilla de harina tostada con arroz, frijoles negros, queso y nuestra salsa de la casa.",
+      price: 14.99,
+      category: "Burritos",
+      imageUrl: "https://imagenes.nobbora.com/burrito-barbacoa.jpg",
+      ingredients: ["Res", "Arroz", "Frijoles Negros", "Queso", "Salsa"],
+      spiceRating: 1,
+    },
+    {
+        id: "3",
+        name: "Esquites 'Al Chile'",
+        description: "Granos de elote tierno con mayonesa, queso cotija, chile en polvo y lima.",
+        longDescription: "El antojito callejero mexicano por excelencia. Servimos granos de elote calientes y tiernos en un vaso, cubiertos con una cremosa mayonesa, queso cotija salado, un toque de chile en polvo y un chorrito de jugo de lima fresca. ¡No podrás comer solo uno!",
+        price: 6.00,
+        category: "Acompañamientos",
+        imageUrl: "https://imagenes.nobbora.com/esquites.jpg",
+        ingredients: ["Elote", "Mayonesa", "Queso Cotija", "Chile en Polvo", "Lima"],
+        spiceRating: 1,
+    },
+];
 
 export default function Home() {
   const heroMeatballsImage = {
@@ -21,14 +56,6 @@ export default function Home() {
     imageHint: "spicy meatballs"
   };
 
-  const firestore = useFirestore();
-
-  const featuredItemsQuery = useMemoFirebase(
-    () => (firestore ? query(collection(firestore, 'menu_items'), limit(3)) : null),
-    [firestore]
-  );
-  const { data: featuredItems, isLoading } = useCollection<MenuItem>(featuredItemsQuery);
-  
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -43,9 +70,6 @@ export default function Home() {
 
   return (
     <div className="flex flex-col">
-       {/* Precarga de datos de la base de datos (solo se ejecuta si es necesario) */}
-      <SeedDatabase />
-
       {/* New Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-20">
         <div className="absolute inset-0 bg-black"></div>
@@ -105,17 +129,7 @@ export default function Home() {
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {isLoading && Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i}>
-                <CardHeader><Skeleton className="h-48 w-full" /></CardHeader>
-                <CardContent className="space-y-2">
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-10 w-1/4 mt-4" />
-                </CardContent>
-              </Card>
-            ))}
-            {featuredItems?.map((item) => {
+            {sampleMenuItems.map((item) => {
               const image = PlaceHolderImages.find((img) => img.id === item.image);
               const imageUrl = item.imageUrl || image?.imageUrl || 'https://placehold.co/600x400';
               const imageHint = item.imageUrl ? item.name : image?.imageHint;
