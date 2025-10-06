@@ -8,7 +8,6 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Al Chile Delivery',
   description: 'La comida mexicana más picante y auténtica a domicilio.',
-  manifest: '/manifest.json',
 };
 
 export const viewport: Viewport = {
