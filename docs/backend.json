@@ -53,6 +53,15 @@
         "spicePreference": {
           "type": "string",
           "description": "User's preferred level of spiciness (e.g., mild, medium, hot)."
+        },
+        "role": {
+          "type": "string",
+          "description": "User's role in the application.",
+          "enum": [
+            "customer",
+            "admin",
+            "super-admin"
+          ]
         }
       },
       "required": [
