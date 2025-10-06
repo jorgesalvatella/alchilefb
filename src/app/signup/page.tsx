@@ -67,6 +67,9 @@ export default function SignupPage() {
       title: 'Creando cuenta de Super Admin...',
       description: '¡Bienvenido! Serás redirigido en un momento.',
     });
+    
+    // Force redirection after submission
+    router.push('/');
   };
 
   return (
