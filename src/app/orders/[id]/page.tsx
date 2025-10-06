@@ -1,12 +1,12 @@
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { CheckCircle, CookingPot, Moped, Pizza } from 'lucide-react';
+import { CheckCircle, CookingPot, Bike, Pizza } from 'lucide-react';
 
 const orderStatusSteps = [
   { id: 1, name: 'Order Placed', icon: CheckCircle, completed: true, time: '12:30 PM' },
   { id: 2, name: 'Preparing', icon: CookingPot, completed: true, time: '12:35 PM' },
-  { id: 3, name: 'Out for Delivery', icon: Moped, completed: false, time: '12:50 PM (est.)' },
+  { id: 3, name: 'Out for Delivery', icon: Bike, completed: false, time: '12:50 PM (est.)' },
   { id: 4, name: 'Delivered', icon: Pizza, completed: false, time: null },
 ];
 
