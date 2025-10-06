@@ -1,0 +1,418 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user profile in the Al Chile Delivery app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "User's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "User's last name."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "User's phone number."
+        },
+        "profilePictureUrl": {
+          "type": "string",
+          "description": "URL of the user's profile picture.",
+          "format": "uri"
+        },
+        "defaultDeliveryAddressId": {
+          "type": "string",
+          "description": "Reference to DeliveryAddress. (Relationship: UserProfile 1:1 DeliveryAddress)"
+        },
+        "paymentMethodIds": {
+          "type": "array",
+          "description": "References to PaymentMethods. (Relationship: UserProfile 1:N PaymentMethod)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "orderHistoryIds": {
+          "type": "array",
+          "description": "References to Orders. (Relationship: UserProfile 1:N Order)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "spicePreference": {
+          "type": "string",
+          "description": "User's preferred level of spiciness (e.g., mild, medium, hot)."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "firstName",
+        "lastName"
+      ]
+    },
+    "DeliveryAddress": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "DeliveryAddress",
+      "type": "object",
+      "description": "Represents a delivery address for a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the DeliveryAddress entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N DeliveryAddress)"
+        },
+        "streetAddress": {
+          "type": "string",
+          "description": "Street address of the delivery location."
+        },
+        "city": {
+          "type": "string",
+          "description": "City of the delivery location."
+        },
+        "state": {
+          "type": "string",
+          "description": "State of the delivery location."
+        },
+        "zipCode": {
+          "type": "string",
+          "description": "Zip code of the delivery location."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude of the delivery location."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude of the delivery location."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "streetAddress",
+        "city",
+        "state",
+        "zipCode"
+      ]
+    },
+    "PaymentMethod": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PaymentMethod",
+      "type": "object",
+      "description": "Represents a payment method associated with a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PaymentMethod entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N PaymentMethod)"
+        },
+        "cardType": {
+          "type": "string",
+          "description": "Type of credit card (e.g., Visa, Mastercard, Amex)."
+        },
+        "cardNumber": {
+          "type": "string",
+          "description": "Credit card number (masked for security)."
+        },
+        "expirationDate": {
+          "type": "string",
+          "description": "Expiration date of the credit card.",
+          "format": "date-time"
+        },
+        "cvv": {
+          "type": "string",
+          "description": "CVV code (masked for security)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "cardType",
+        "cardNumber",
+        "expirationDate",
+        "cvv"
+      ]
+    },
+    "Order": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Order",
+      "type": "object",
+      "description": "Represents an order placed by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Order entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to UserProfile. (Relationship: UserProfile 1:N Order)"
+        },
+        "orderDate": {
+          "type": "string",
+          "description": "Date and time when the order was placed.",
+          "format": "date-time"
+        },
+        "deliveryAddressId": {
+          "type": "string",
+          "description": "Reference to DeliveryAddress. (Relationship: Order 1:1 DeliveryAddress)"
+        },
+        "paymentMethodId": {
+          "type": "string",
+          "description": "Reference to PaymentMethod. (Relationship: Order 1:1 PaymentMethod)"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total amount of the order."
+        },
+        "orderStatus": {
+          "type": "string",
+          "description": "Current status of the order (e.g., pending, processing, out for delivery, delivered)."
+        },
+        "orderItemIds": {
+          "type": "array",
+          "description": "References to OrderItems. (Relationship: Order 1:N OrderItem)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "orderDate",
+        "deliveryAddressId",
+        "paymentMethodId",
+        "totalAmount",
+        "orderStatus"
+      ]
+    },
+    "OrderItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrderItem",
+      "type": "object",
+      "description": "Represents an item within an order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the OrderItem entity."
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Reference to Order. (Relationship: Order 1:N OrderItem)"
+        },
+        "menuItemId": {
+          "type": "string",
+          "description": "Reference to MenuItem. (Relationship: OrderItem 1:1 MenuItem)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "Quantity of the menu item in the order."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "Price of one unit of the menu item at the time of order."
+        },
+        "itemCustomizations": {
+          "type": "string",
+          "description": "Customizations made to the item (e.g., extra cheese, no onions)."
+        }
+      },
+      "required": [
+        "id",
+        "orderId",
+        "menuItemId",
+        "quantity",
+        "unitPrice"
+      ]
+    },
+    "MenuItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MenuItem",
+      "type": "object",
+      "description": "Represents a menu item offered in the Al Chile Delivery app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MenuItem entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the menu item."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the menu item."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of the image of the menu item.",
+          "format": "uri"
+        },
+        "price": {
+          "type": "number",
+          "description": "Price of the menu item."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category of the menu item (e.g., appetizers, entrees, desserts)."
+        },
+        "ingredients": {
+          "type": "string",
+          "description": "List of ingredients in the menu item."
+        },
+        "spiceLevel": {
+          "type": "string",
+          "description": "Spiciness level of the menu item (e.g., mild, medium, hot)."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "price",
+        "category"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores user profile data. Path-based ownership ensures only the user can access their profile.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user.  Matches the Firebase Auth UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/delivery_addresses/{deliveryAddressId}",
+        "definition": {
+          "entityName": "DeliveryAddress",
+          "schema": {
+            "$ref": "#/backend/entities/DeliveryAddress"
+          },
+          "description": "Stores delivery addresses associated with a user. Path-based ownership ensures only the user can access their addresses.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user."
+            },
+            {
+              "name": "deliveryAddressId",
+              "description": "The unique ID of the delivery address."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/payment_methods/{paymentMethodId}",
+        "definition": {
+          "entityName": "PaymentMethod",
+          "schema": {
+            "$ref": "#/backend/entities/PaymentMethod"
+          },
+          "description": "Stores payment methods associated with a user. Path-based ownership ensures only the user can access their payment methods.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user."
+            },
+            {
+              "name": "paymentMethodId",
+              "description": "The unique ID of the payment method."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Stores orders placed by a user. Path-based ownership ensures only the user can access their order history.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user."
+            },
+            {
+              "name": "orderId",
+              "description": "The unique ID of the order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/orders/{orderId}/order_items/{orderItemId}",
+        "definition": {
+          "entityName": "OrderItem",
+          "schema": {
+            "$ref": "#/backend/entities/OrderItem"
+          },
+          "description": "Stores items within an order. All users with the Order ID can see the order Items. This may require further security considerations.",
+          "params": [
+            {
+              "name": "orderId",
+              "description": "The unique ID of the order."
+            },
+            {
+              "name": "orderItemId",
+              "description": "The unique ID of the order item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/menu_items/{menuItemId}",
+        "definition": {
+          "entityName": "MenuItem",
+          "schema": {
+            "$ref": "#/backend/entities/MenuItem"
+          },
+          "description": "Stores menu items available in the app. No specific user association. Publicly accessible.",
+          "params": [
+            {
+              "name": "menuItemId",
+              "description": "The unique ID of the menu item."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore data structure is designed to prioritize security, scalability, and maintainability, following the principles of Authorization Independence, Clarity of Intent, and DBAC. It leverages denormalization and structural segregation to simplify security rules and enable efficient data access. The design focuses on path-based ownership for user-specific data and avoids hierarchical authorization dependencies.\n\n*   **User Profiles:** User profiles are stored under `/users/{userId}`, ensuring clear ownership and easy rule definition.\n*   **Delivery Addresses, Payment Methods, and Orders:** These entities are nested under the `/users/{userId}` collection to establish a direct ownership relationship with the user. This structure simplifies security rules by leveraging path-based ownership. This segregation ensures that listing operations can be securely performed within the scope of the user's data.\n*   **Menu Items:** Stored in a top-level `/menu_items` collection as these are global and not user-specific. This allows for easy listing and querying of menu items without needing user context.\n\nThis structure achieves Authorization Independence by avoiding `get()` calls in security rules. Path-based ownership (`/users/{userId}/...`) makes it clear that only the authenticated user (`request.auth.uid`) can access data under their respective user ID. Segregation of data based on access needs simplifies rules and improves security posture.\n\nThe structure supports the required QAPs (Rules are not Filters) by:\n\n*   **Secure Lists:** The path-based ownership enables secure `list` operations. Rules can easily check if `request.auth.uid` matches the `{userId}` parameter, ensuring that users can only list data they own.\n\nIn summary, this Firestore structure is designed to be secure, scalable, and debuggable by following best practices for data organization and security rule design."
+  }
+}

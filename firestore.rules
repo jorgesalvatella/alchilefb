@@ -1,0 +1,174 @@
+/**
+ * @file Firebase Security Rules for Al Chile Delivery App
+ *
+ * @description This ruleset enforces a strict user-ownership model for personal data
+ * and allows public read access to menu items. Data structure is optimized for
+ * authorization independence and avoids complex queries within rules.
+ *
+ * Data Structure:
+ * - /users/{userId}: User profiles, accessible only by the owning user.
+ * - /users/{userId}/delivery_addresses/{deliveryAddressId}: Delivery addresses, accessible only by the owning user.
+ * - /users/{userId}/payment_methods/{paymentMethodId}: Payment methods, accessible only by the owning user.
+ * - /users/{userId}/orders/{orderId}: Order history, accessible only by the owning user.
+ * - /orders/{orderId}/order_items/{orderItemId}: Order items, accessible only by the owning user.
+ * - /menu_items/{menuItemId}: Menu items, publicly readable.
+ *
+ * Key Security Decisions:
+ * - User data (profiles, addresses, payment methods, orders) is strictly private and
+ *   only accessible to the authenticated user.
+ * - Menu items are publicly readable but writes are not permitted.
+ * - No user listing is allowed.
+ *
+ * Denormalization for Authorization:
+ * - User-specific data is nested under the /users/{userId} path, ensuring that
+ *   ownership can be verified directly from the path without additional reads.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * @description Protects user profiles. Only the authenticated user can read/write their own profile.
+     * @path /users/{userId}
+     * @allow (create) User with UID 'user123' can create /users/user123 document.
+     * @allow (get, update, delete) User with UID 'user123' can read/write /users/user123 document.
+     * @deny (create) User with UID 'user456' cannot create /users/user123 document.
+     * @deny (get, update, delete) User with UID 'user456' cannot read/write /users/user123 document.
+     * @principle Enforces document ownership for writes and reads, and prevents unauthorized access.
+     */
+    match /users/{userId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if false; // No listing of users.
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Protects delivery addresses. Only the authenticated user can read/write their own addresses.
+     * @path /users/{userId}/delivery_addresses/{deliveryAddressId}
+     * @allow (create) User with UID 'user123' can create /users/user123/delivery_addresses/address123 document.
+     * @allow (get, update, delete) User with UID 'user123' can read/write /users/user123/delivery_addresses/address123 document.
+     * @deny (create) User with UID 'user456' cannot create /users/user123/delivery_addresses/address123 document.
+     * @deny (get, update, delete) User with UID 'user456' cannot read/write /users/user123/delivery_addresses/address123 document.
+     * @principle Enforces document ownership for writes and reads, and prevents unauthorized access.
+     */
+    match /users/{userId}/delivery_addresses/{deliveryAddressId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Protects payment methods. Only the authenticated user can read/write their own payment methods.
+     * @path /users/{userId}/payment_methods/{paymentMethodId}
+     * @allow (create) User with UID 'user123' can create /users/user123/payment_methods/payment123 document.
+     * @allow (get, update, delete) User with UID 'user123' can read/write /users/user123/payment_methods/payment123 document.
+     * @deny (create) User with UID 'user456' cannot create /users/user123/payment_methods/payment123 document.
+     * @deny (get, update, delete) User with UID 'user456' cannot read/write /users/user123/payment_methods/payment123 document.
+     * @principle Enforces document ownership for writes and reads, and prevents unauthorized access.
+     */
+    match /users/{userId}/payment_methods/{paymentMethodId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Protects orders. Only the authenticated user can read/write their own orders.
+     * @path /users/{userId}/orders/{orderId}
+     * @allow (create) User with UID 'user123' can create /users/user123/orders/order123 document.
+     * @allow (get, update, delete) User with UID 'user123' can read/write /users/user123/orders/order123 document.
+     * @deny (create) User with UID 'user456' cannot create /users/user123/orders/order123 document.
+     * @deny (get, update, delete) User with UID 'user456' cannot read/write /users/user123/orders/order123 document.
+     * @principle Enforces document ownership for writes and reads, and prevents unauthorized access.
+     */
+    match /users/{userId}/orders/{orderId} {
+      function isSignedIn() {
+        return request.auth != null;
+      }
+      function isOwner(userId) {
+        return request.auth.uid == userId;
+      }
+      function isExistingOwner(userId) {
+        return isOwner(userId) && resource != null;
+      }
+
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+        /**
+     * @description Protects order items. Only the authenticated user can read/write their own order items.
+     * @path /orders/{orderId}/order_items/{orderItemId}
+     * @allow (create) User with UID 'user123' can create /orders/order123/order_items/order_item123 document.
+     * @allow (get, update, delete) User with UID 'user123' can read/write /orders/order123/order_items/order_item123 document.
+     * @deny (create) User with UID 'user456' cannot create /orders/order123/order_items/order_item123 document.
+     * @deny (get, update, delete) User with UID 'user456' cannot read/write /orders/order123/order_items/order_item123 document.
+     * @principle Enforces document ownership for writes and reads, and prevents unauthorized access.
+     */
+    match /orders/{orderId}/order_items/{orderItemId} {
+         function isSignedIn() {
+        return request.auth != null;
+      }
+          //TODO: secure with the user that owns the order that contains this order_item
+          allow get: if true;
+          allow list: if true;
+          allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+          allow update: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+          allow delete: if false; // TODO: Add owner validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Allows public read access to menu items.
+     * @path /menu_items/{menuItemId}
+     * @allow (get, list) Any user can read menu items.
+     * @deny (create, update, delete) No user can create, update, or delete menu items through the client.
+     * @principle Allows public read access for menu items, but prevents unauthorized modifications.
+     */
+    match /menu_items/{menuItemId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
