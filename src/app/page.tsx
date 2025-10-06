@@ -12,6 +12,7 @@ import type { MenuItem } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { SeedDatabase } from '@/components/dev/seed-database';
 
 export default function Home() {
   const heroMeatballsImage = {
@@ -42,6 +43,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col">
+      <SeedDatabase />
       {/* New Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-20">
         <div className="absolute inset-0 bg-black"></div>
@@ -69,7 +71,7 @@ export default function Home() {
           </div>
 
           <div className="mt-12 mb-12 relative float-animation" style={{ animationDelay: '0.3s' }}>
-            <div className="absolute inset-0 bg-gradient-to-r from-chile-red to-orange-500 rounded-3xl blur-2xl opacity-40"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-primary to-orange-500 rounded-3xl blur-2xl opacity-40"></div>
             <Image
               src={heroMeatballsImage.imageUrl}
               alt={heroMeatballsImage.description}
@@ -83,7 +85,7 @@ export default function Home() {
            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center fade-in-up" style={{ animationDelay: '0.5s' }}>
               <Link href="/menu" className={cn("group relative px-10 py-5 font-black text-xl rounded-full md:hover:scale-110 transition-all duration-300 shadow-2xl overflow-hidden", scrolled ? 'bg-black' : 'bg-white')}>
                   <span className={cn("relative z-10 opacity-100 md:opacity-0 md:group-hover:opacity-0 transition-opacity duration-300", scrolled ? 'text-white' : 'text-primary')}>¡Pide Ahora!</span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary to-orange-500 transform scale-x-0 md:group-hover:scale-x-100 transition-transform origin-left duration-300"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary to-orange-500 transform scale-x-0 md:group-hover:scale-x-100 transition-transform origin-right duration-300"></div>
                   <span className="absolute inset-0 flex items-center justify-center text-white font-black text-xl opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">¡Vamos!</span>
               </Link>
           </div>
@@ -209,7 +211,7 @@ export default function Home() {
                       <svg className="w-12 h-12 text-fresh-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm4-10V5m0 4V7m0 4V9"></path></svg>
                     </div>
                   </div>
-                  <h3 className="text-2xl font-bold text-dark-charcoal dark:text-gray-100 mb-3">2. Preparamos tu Comida</h3>
+                  <h3 className="text-2xl font-bold text-dark-charcoal dark:text-light-gray mb-3">2. Preparamos tu Comida</h3>
                   <p className="text-gray-600 dark:text-gray-400 leading-relaxed px-4">
                     Cocinamos tus albóndigas al momento con los ingredientes más frescos y nuestra sazón especial.
                   </p>
@@ -221,7 +223,7 @@ export default function Home() {
                       <svg className="w-12 h-12 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>
                     </div>
                   </div>
-                  <h3 className="text-2xl font-bold text-dark-charcoal dark:text-gray-100 mb-3">3. Paga y Disfruta</h3>
+                  <h3 className="text-2xl font-bold text-dark-charcoal dark:text-light-gray mb-3">3. Paga y Disfruta</h3>
                   <p className="text-gray-600 dark:text-gray-400 leading-relaxed px-4">
                     Recibe tu pedido en casa. Paga con transferencia, efectivo o tarjeta al recibir.
                   </p>
