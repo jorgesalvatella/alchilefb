@@ -9,8 +9,8 @@ import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const navLinks = [
-  { href: '/menu', label: 'Menu' },
-  { href: '/orders/1', label: 'Track Order' },
+  { href: '/menu', label: 'Menú' },
+  { href: '/orders/1', label: 'Rastrear Pedido' },
   { href: '/admin', label: 'Admin' },
 ];
 
@@ -50,7 +50,7 @@ export function Header() {
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
                 <MenuIcon />
-                <span className="sr-only">Open menu</span>
+                <span className="sr-only">Abrir menú</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full max-w-xs pt-16">
@@ -58,10 +58,10 @@ export function Header() {
                 {navContent}
                 <div className="flex items-center gap-2">
                   <Button variant="ghost" size="icon" asChild onClick={closeSheet}>
-                    <Link href="/login"><User /><span className="sr-only">Profile</span></Link>
+                    <Link href="/login"><User /><span className="sr-only">Perfil</span></Link>
                   </Button>
                   <Button variant="ghost" size="icon" asChild onClick={closeSheet}>
-                    <Link href="/cart"><ShoppingCart /><span className="sr-only">Cart</span></Link>
+                    <Link href="/cart"><ShoppingCart /><span className="sr-only">Carrito</span></Link>
                   </Button>
                 </div>
               </div>
@@ -72,10 +72,10 @@ export function Header() {
             {navContent}
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" asChild>
-                <Link href="/login"><User /><span className="sr-only">Profile</span></Link>
+                <Link href="/login"><User /><span className="sr-only">Perfil</span></Link>
               </Button>
               <Button variant="ghost" size="icon" asChild>
-                <Link href="/cart"><ShoppingCart /><span className="sr-only">Cart</span></Link>
+                <Link href="/cart"><ShoppingCart /><span className="sr-only">Carrito</span></Link>
               </Button>
             </div>
           </div>

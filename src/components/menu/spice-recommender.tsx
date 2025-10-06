@@ -19,8 +19,8 @@ export default function SpiceRecommender() {
     startTransition(async () => {
       // Mock data for the AI function
       const mockInput = {
-        orderHistory: ['Tacos al Pastor', 'Camarón Enchilado Tacos'],
-        preferences: 'I like it spicy, but not so much that I can\'t taste the food. I enjoy jalapeños.',
+        orderHistory: ['Tacos al Pastor', 'Tacos de Camarón Enchilado'],
+        preferences: 'Me gusta picante, pero no tanto como para no poder saborear la comida. Disfruto de los jalapeños.',
       };
       const result = await getSpiceRecommendation(mockInput);
       if (result.error) {
@@ -32,7 +32,7 @@ export default function SpiceRecommender() {
   };
 
   const SpiceLevelIcon = ({ level }: { level: string }) => {
-    const levelMap: { [key: string]: number } = { 'Mild': 1, 'Medium': 2, 'Hot': 3, 'Extra Hot': 4 };
+    const levelMap: { [key: string]: number } = { 'Suave': 1, 'Medio': 2, 'Picante': 3, 'Extra Picante': 4, 'Mild': 1, 'Medium': 2, 'Hot': 3, 'Extra Hot': 4 };
     const rating = levelMap[level] || 0;
     return (
         <div className="flex items-center gap-1">
@@ -50,40 +50,40 @@ export default function SpiceRecommender() {
             <Sparkles className="h-8 w-8 text-primary" />
             <div>
                 <CardTitle className="font-headline text-2xl">¿Te Atreves o Prefieres?</CardTitle>
-                <CardDescription>Let our AI find your perfect spice level.</CardDescription>
+                <CardDescription>Deja que nuestra IA encuentre tu nivel de picante perfecto.</CardDescription>
             </div>
         </div>
       </CardHeader>
       <CardContent>
         {!isPending && !recommendation && !error && (
             <Button onClick={handleRecommendation} disabled={isPending} className="w-full font-headline">
-                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Recommend My Spice'}
+                {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Recomiéndame Picante'}
             </Button>
         )}
         
         {isPending && (
             <div className="flex items-center justify-center p-8 text-muted-foreground">
                 <Loader2 className="mr-3 h-6 w-6 animate-spin" />
-                <span className="font-headline text-lg">Finding your fire...</span>
+                <span className="font-headline text-lg">Encontrando tu fuego...</span>
             </div>
         )}
 
         {error && (
             <Alert variant="destructive">
-                <AlertTitle>Oops!</AlertTitle>
+                <AlertTitle>¡Ups!</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
             </Alert>
         )}
 
         {recommendation && (
             <div className="text-center p-4 bg-background/50 rounded-lg">
-                <h4 className="font-headline text-lg text-muted-foreground">Our suggestion for you:</h4>
+                <h4 className="font-headline text-lg text-muted-foreground">Nuestra sugerencia para ti:</h4>
                 <div className="my-3 flex flex-col items-center">
-                    <p className="font-headline text-4xl text-primary">{recommendation.spiceLevel}</p>
+                    <p className="font-headline text-4xl text-primary">{recommendation.spiceLevel.replace('Hot', 'Picante').replace('Mild', 'Suave').replace('Medium', 'Medio').replace('Extra Hot', 'Extra Picante')}</p>
                     <SpiceLevelIcon level={recommendation.spiceLevel} />
                 </div>
                 <p className="text-sm text-muted-foreground italic">"{recommendation.reason}"</p>
-                <Button onClick={handleRecommendation} variant="link" size="sm" className="mt-4">Try again</Button>
+                <Button onClick={handleRecommendation} variant="link" size="sm" className="mt-4">Intentar de nuevo</Button>
             </div>
         )}
 

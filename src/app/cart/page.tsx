@@ -9,8 +9,8 @@ import { Minus, Plus, Trash2 } from 'lucide-react';
 
 const cartItems = [
   { id: 1, name: 'Tacos al Pastor', price: 3.50, quantity: 2, imageId: 'taco-al-pastor' },
-  { id: 2, name: 'Carne Asada Burrito', price: 12.99, quantity: 1, imageId: 'burrito-asada' },
-  { id: 3, name: 'Classic Horchata', price: 4.00, quantity: 2, imageId: 'horchata' },
+  { id: 2, name: 'Burrito de Carne Asada', price: 12.99, quantity: 1, imageId: 'burrito-asada' },
+  { id: 3, name: 'Horchata Clásica', price: 4.00, quantity: 2, imageId: 'horchata' },
 ];
 
 const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
@@ -21,14 +21,14 @@ export default function CartPage() {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="text-center mb-12">
-        <h1 className="font-headline text-5xl md:text-6xl text-primary">Your Cart</h1>
+        <h1 className="font-headline text-5xl md:text-6xl text-primary">Tu Carrito</h1>
       </div>
       
       {cartItems.length === 0 ? (
         <div className="text-center">
-            <p className="text-xl text-muted-foreground mb-4">Your cart is empty.</p>
+            <p className="text-xl text-muted-foreground mb-4">Tu carrito está vacío.</p>
             <Button asChild>
-                <Link href="/menu">Start an Order</Link>
+                <Link href="/menu">Comenzar un Pedido</Link>
             </Button>
         </div>
       ) : (
@@ -69,7 +69,7 @@ export default function CartPage() {
 
             <Card className="sticky top-24">
             <CardHeader>
-                <CardTitle className="font-headline text-2xl">Order Summary</CardTitle>
+                <CardTitle className="font-headline text-2xl">Resumen del Pedido</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex justify-between">
@@ -77,7 +77,7 @@ export default function CartPage() {
                 <span>${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                <span className="text-muted-foreground">Taxes & Fees</span>
+                <span className="text-muted-foreground">Impuestos y Tarifas</span>
                 <span>${tax.toFixed(2)}</span>
                 </div>
                 <Separator />
@@ -88,7 +88,7 @@ export default function CartPage() {
             </CardContent>
             <CardFooter>
                 <Button asChild size="lg" className="w-full font-headline text-lg">
-                <Link href="/checkout">Proceed to Checkout</Link>
+                <Link href="/checkout">Proceder al Pago</Link>
                 </Button>
             </CardFooter>
             </Card>

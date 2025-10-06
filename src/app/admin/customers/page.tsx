@@ -12,15 +12,15 @@ export default function AdminCustomersPage() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Customers</CardTitle>
+                <CardTitle>Clientes</CardTitle>
             </CardHeader>
             <CardContent>
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Customer</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Total Spent</TableHead>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead>Correo Electrónico</TableHead>
+                            <TableHead>Total Gastado</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>

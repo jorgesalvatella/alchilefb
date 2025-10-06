@@ -14,8 +14,8 @@ import {z} from 'genkit';
 const SuggestSpiceLevelInputSchema = z.object({
   orderHistory: z
     .array(z.string())
-    .describe('The user historical orders, list of dish names.'),
-  preferences: z.string().describe('The user preferences for spicy food.'),
+    .describe('El historial de pedidos del usuario, lista de nombres de platillos.'),
+  preferences: z.string().describe('Las preferencias del usuario por la comida picante.'),
 });
 export type SuggestSpiceLevelInput = z.infer<typeof SuggestSpiceLevelInputSchema>;
 
@@ -23,9 +23,9 @@ const SuggestSpiceLevelOutputSchema = z.object({
   spiceLevel: z
     .string()
     .describe(
-      'The suggested spice level for the order. Possible values: Mild, Medium, Hot, Extra Hot.'
+      'El nivel de picante sugerido para el pedido. Valores posibles: Suave, Medio, Picante, Extra Picante.'
     ),
-  reason: z.string().describe('The explanation why the spice level was suggested.'),
+  reason: z.string().describe('La explicación de por qué se sugirió el nivel de picante.'),
 });
 export type SuggestSpiceLevelOutput = z.infer<typeof SuggestSpiceLevelOutputSchema>;
 
@@ -39,24 +39,24 @@ const prompt = ai.definePrompt({
   name: 'suggestSpiceLevelPrompt',
   input: {schema: SuggestSpiceLevelInputSchema},
   output: {schema: SuggestSpiceLevelOutputSchema},
-  prompt: `You are an AI assistant specializing in suggesting spice levels for food orders.
+  prompt: `Eres un asistente de IA especializado en sugerir niveles de picante para pedidos de comida. Tu respuesta debe ser en español.
 
-  Based on the user's order history and preferences, suggest a spice level for their current order.
+  Basado en el historial de pedidos y las preferencias del usuario, sugiere un nivel de picante para su pedido actual.
 
-  Order History: {{orderHistory}}
-  Preferences: {{preferences}}
+  Historial de Pedidos: {{orderHistory}}
+  Preferencias: {{preferences}}
 
-  Consider the following spice levels:
-  - Mild
-  - Medium
-  - Hot
-  - Extra Hot
+  Considera los siguientes niveles de picante:
+  - Suave
+  - Medio
+  - Picante
+  - Extra Picante
 
-  Provide a brief explanation for your suggestion.
-  Output in JSON format:
+  Proporciona una breve explicación para tu sugerencia.
+  Salida en formato JSON:
   {
-    "spiceLevel": "suggested spice level",
-    "reason": "explanation for the suggestion"
+    "spiceLevel": "nivel de picante sugerido",
+    "reason": "explicación de la sugerencia"
   }`,
 });
 

@@ -16,10 +16,10 @@ import { Separator } from '@/components/ui/separator';
 import { Bot, Home, Package, ShoppingCart, Users } from 'lucide-react';
 
 const adminNavItems = [
-    { href: '/admin', label: 'Dashboard', icon: Home },
-    { href: '/admin/orders', label: 'Orders', icon: ShoppingCart, badge: '12' },
-    { href: '/admin/products', label: 'Products', icon: Package },
-    { href: '/admin/customers', label: 'Customers', icon: Users },
+    { href: '/admin', label: 'Panel', icon: Home },
+    { href: '/admin/orders', label: 'Pedidos', icon: ShoppingCart, badge: '12' },
+    { href: '/admin/products', label: 'Productos', icon: Package },
+    { href: '/admin/customers', label: 'Clientes', icon: Users },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -50,10 +50,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                  <Separator className="my-4" />
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton asChild tooltip="AI Tools">
+                        <SidebarMenuButton asChild tooltip="Herramientas de IA">
                                 <Link href="#">
                                     <Bot />
-                                    <span>AI Tools</span>
+                                    <span>Herramientas IA</span>
                                 </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -63,7 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <SidebarInset>
             <header className="flex items-center h-14 px-4 border-b">
                 <SidebarTrigger />
-                <h1 className="font-headline text-xl ml-4">Dashboard</h1>
+                <h1 className="font-headline text-xl ml-4">Panel</h1>
             </header>
             <main className="p-4 md:p-6">{children}</main>
         </SidebarInset>

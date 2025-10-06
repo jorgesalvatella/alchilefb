@@ -27,17 +27,17 @@ export default function Home() {
         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
         <div className="relative z-10 p-4 flex flex-col items-center">
           <h1 className="font-headline text-5xl md:text-7xl lg:text-8xl tracking-tight drop-shadow-lg">
-            Artfully Spiced.
+            Sabor con Arte.
           </h1>
           <h2 className="font-headline text-5xl md:text-7xl lg:text-8xl tracking-tight text-primary drop-shadow-lg mb-6">
-            Authentically Mexican.
+            Auténticamente Mexicano.
           </h2>
           <p className="max-w-2xl text-lg md:text-xl text-foreground/90 mb-8">
-            Experience the vibrant flavors of Mexico, crafted with passion and delivered with a kick. Welcome to Al Chile.
+            Experimenta los vibrantes sabores de México, elaborados con pasión y entregados con un toque picante. Bienvenido a Al Chile.
           </p>
           <Button asChild size="lg" className="font-headline text-lg">
             <Link href="/menu">
-              Explore The Menu <ArrowRight className="ml-2" />
+              Explora El Menú <ArrowRight className="ml-2" />
             </Link>
           </Button>
         </div>
@@ -47,8 +47,8 @@ export default function Home() {
       <section className="py-16 md:py-24 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center mb-12">
-            <h2 className="font-headline text-4xl md:text-5xl text-primary mb-2">Featured Dishes</h2>
-            <p className="text-lg text-muted-foreground max-w-xl mx-auto">Handpicked favorites that capture the soul of our kitchen.</p>
+            <h2 className="font-headline text-4xl md:text-5xl text-primary mb-2">Platillos Destacados</h2>
+            <p className="text-lg text-muted-foreground max-w-xl mx-auto">Favoritos seleccionados que capturan el alma de nuestra cocina.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {featuredItems.map((item) => {
@@ -93,11 +93,11 @@ export default function Home() {
         <div className="container mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
             <div>
                 <h2 className="font-headline text-4xl md:text-5xl text-primary mb-4">¿Te Atreves o Prefieres?</h2>
-                <p className="text-lg text-muted-foreground mb-4">"Do you dare, or do you prefer?" is our mantra. We celebrate the spectrum of spice, from the gentle warmth that comforts to the fiery kick that exhilarates. At Al Chile, every dish is an invitation to explore your own flavor frontier.</p>
-                <p className="text-lg text-muted-foreground mb-8">Our AI-powered spice recommender learns your taste to suggest the perfect heat level for every order. Find your fire.</p>
+                <p className="text-lg text-muted-foreground mb-4">"¿Te atreves o prefieres?" es nuestro lema. Celebramos todo el espectro del picante, desde el calor suave que reconforta hasta el toque ardiente que emociona. En Al Chile, cada platillo es una invitación a explorar tu propia frontera de sabor.</p>
+                <p className="text-lg text-muted-foreground mb-8">Nuestro recomendador de picante con IA aprende de tu gusto para sugerir el nivel de picante perfecto para cada pedido. Encuentra tu fuego.</p>
                 <Button asChild size="lg" variant="outline" className="font-headline text-lg border-2">
                     <Link href="/menu">
-                        Find Your Flavor
+                        Encuentra Tu Sabor
                     </Link>
                 </Button>
             </div>

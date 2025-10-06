@@ -3,26 +3,26 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 
 const orders = [
-    { id: 'ORD001', customer: 'John Doe', date: '2024-07-21', total: '$25.50', status: 'Delivered' },
-    { id: 'ORD002', customer: 'Jane Smith', date: '2024-07-21', total: '$15.00', status: 'Preparing' },
-    { id: 'ORD003', customer: 'Bob Johnson', date: '2024-07-20', total: '$42.10', status: 'Delivered' },
+    { id: 'ORD001', customer: 'John Doe', date: '2024-07-21', total: '$25.50', status: 'Entregado' },
+    { id: 'ORD002', customer: 'Jane Smith', date: '2024-07-21', total: '$15.00', status: 'Preparando' },
+    { id: 'ORD003', customer: 'Bob Johnson', date: '2024-07-20', total: '$42.10', status: 'Entregado' },
 ];
 
 export default function AdminOrdersPage() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Recent Orders</CardTitle>
+                <CardTitle>Pedidos Recientes</CardTitle>
             </CardHeader>
             <CardContent>
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Order ID</TableHead>
-                            <TableHead>Customer</TableHead>
-                            <TableHead>Date</TableHead>
+                            <TableHead>ID Pedido</TableHead>
+                            <TableHead>Cliente</TableHead>
+                            <TableHead>Fecha</TableHead>
                             <TableHead>Total</TableHead>
-                            <TableHead>Status</TableHead>
+                            <TableHead>Estado</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -33,7 +33,7 @@ export default function AdminOrdersPage() {
                                 <TableCell>{order.date}</TableCell>
                                 <TableCell>{order.total}</TableCell>
                                 <TableCell>
-                                    <Badge variant={order.status === 'Delivered' ? 'default' : 'secondary'}>{order.status}</Badge>
+                                    <Badge variant={order.status === 'Entregado' ? 'default' : 'secondary'}>{order.status}</Badge>
                                 </TableCell>
                             </TableRow>
                         ))}

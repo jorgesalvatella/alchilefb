@@ -7,17 +7,17 @@ export default function AdminProductsPage() {
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Products</CardTitle>
-                <Button>Add Product</Button>
+                <CardTitle>Productos</CardTitle>
+                <Button>Añadir Producto</Button>
             </CardHeader>
             <CardContent>
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Category</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>Actions</TableHead>
+                            <TableHead>Nombre</TableHead>
+                            <TableHead>Categoría</TableHead>
+                            <TableHead>Precio</TableHead>
+                            <TableHead>Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -27,7 +27,7 @@ export default function AdminProductsPage() {
                                 <TableCell>{item.category}</TableCell>
                                 <TableCell>${item.price.toFixed(2)}</TableCell>
                                 <TableCell>
-                                    <Button variant="outline" size="sm">Edit</Button>
+                                    <Button variant="outline" size="sm">Editar</Button>
                                 </TableCell>
                             </TableRow>
                         ))}

@@ -45,7 +45,7 @@ export default function MenuItemPage({ params }: { params: { id: string } }) {
           <p className="text-lg text-muted-foreground mb-6">{item.longDescription}</p>
 
           <div className="mb-6">
-            <h3 className="font-headline text-lg mb-2">Ingredients</h3>
+            <h3 className="font-headline text-lg mb-2">Ingredientes</h3>
             <div className="flex flex-wrap gap-2">
               {item.ingredients.map((ingredient) => (
                 <Badge key={ingredient} variant="secondary">{ingredient}</Badge>
@@ -54,7 +54,7 @@ export default function MenuItemPage({ params }: { params: { id: string } }) {
           </div>
           
           <div className="flex items-center gap-4 mb-8">
-            <h3 className="font-headline text-lg">Quantity</h3>
+            <h3 className="font-headline text-lg">Cantidad</h3>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" className="h-8 w-8">
                 <Minus className="h-4 w-4" />
@@ -69,7 +69,7 @@ export default function MenuItemPage({ params }: { params: { id: string } }) {
           <SpiceRecommender />
 
           <div className="mt-8">
-            <Button size="lg" className="w-full md:w-auto font-headline text-lg">Add to Cart</Button>
+            <Button size="lg" className="w-full md:w-auto font-headline text-lg">Añadir al Carrito</Button>
           </div>
         </div>
       </div>

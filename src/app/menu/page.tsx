@@ -42,7 +42,7 @@ function MenuItemCard({ item }: { item: (typeof menuItems)[0] }) {
           <p className="text-lg font-bold text-primary">${item.price.toFixed(2)}</p>
           <Button size="sm" variant="outline">
             <PlusCircle className="mr-2 h-4 w-4" />
-            Add
+            Añadir
           </Button>
         </div>
       </CardContent>
@@ -54,9 +54,9 @@ export default function MenuPage() {
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="text-center mb-12">
-        <h1 className="font-headline text-5xl md:text-6xl text-primary">Our Menu</h1>
+        <h1 className="font-headline text-5xl md:text-6xl text-primary">Nuestro Menú</h1>
         <p className="text-lg text-muted-foreground mt-2 max-w-2xl mx-auto">
-          From timeless classics to bold new creations, every dish is a celebration of flavor.
+          Desde clásicos atemporales hasta nuevas y audaces creaciones, cada platillo es una celebración de sabor.
         </p>
       </div>
 
