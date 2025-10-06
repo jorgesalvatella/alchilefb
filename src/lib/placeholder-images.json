@@ -1,3 +1,58 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-image",
+      "description": "A vibrant spread of Mexican food on a dark table.",
+      "imageUrl": "https://images.unsplash.com/photo-1552332386-f8dd00dc2f85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtZXhpY2FuJTIwZm9vZHxlbnwwfHx8fDE3NTk2NzI1MTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mexican food"
+    },
+    {
+      "id": "chiles-art",
+      "description": "An artistic arrangement of various types of chiles.",
+      "imageUrl": "https://images.unsplash.com/photo-1707857204225-b526447975ab?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxjaGlsaSUyMHBlcHBlcnN8ZW58MHx8fHwxNzU5NzI1MTA0fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "chili peppers"
+    },
+    {
+      "id": "taco-al-pastor",
+      "description": "Close-up of a delicious taco al pastor with pineapple.",
+      "imageUrl": "https://images.unsplash.com/photo-1626876657310-26bf46fd1d00?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHx0YWNvJTIwcGFzdG9yfGVufDB8fHx8MTc1OTcyNTEwNHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "taco pastor"
+    },
+    {
+      "id": "burrito-asada",
+      "description": "A large carne asada burrito cut in half.",
+      "imageUrl": "https://images.unsplash.com/photo-1544025162-d76694265947?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxjYXJuZSUyMGFzYWRhfGVufDB8fHx8MTc1OTY4NDMwNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "carne asada"
+    },
+    {
+      "id": "guacamole",
+      "description": "A fresh bowl of guacamole with tortilla chips.",
+      "imageUrl": "https://images.unsplash.com/photo-1505797414-04c5c2e76205?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxndWFjYW1vbGUlMjBjaGlwc3xlbnwwfHx8fDE3NTk3MDI0NDd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "guacamole chips"
+    },
+    {
+      "id": "taco-camaron",
+      "description": "Shrimp tacos on a platter.",
+      "imageUrl": "https://images.unsplash.com/photo-1607247098391-111d84c1aa72?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxzaHJpbXAlMjB0YWNvfGVufDB8fHx8MTc1OTcyNTEwNHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "shrimp taco"
+    },
+    {
+      "id": "horchata",
+      "description": "A glass of refreshing horchata with a cinnamon stick.",
+      "imageUrl": "https://images.unsplash.com/photo-1568268205735-fbb7cbb46e23?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxob3JjaGF0YSUyMGRyaW5rfGVufDB8fHx8MTc1OTcxOTU5OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "horchata drink"
+    },
+    {
+      "id": "salsa-bar",
+      "description": "A variety of colorful salsas in bowls.",
+      "imageUrl": "https://images.unsplash.com/photo-1753078946863-3fc296594bbe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxzYWxzYSUyMHZhcmlldHl8ZW58MHx8fHwxNzU5NzI1MTA1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "salsa variety"
+    },
+    {
+      "id": "map-placeholder",
+      "description": "A stylized map showing a delivery route.",
+      "imageUrl": "https://images.unsplash.com/photo-1694580511925-bfca6bb34020?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYXAlMjByb3V0ZXxlbnwwfHx8fDE3NTk2NTYxOTV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "map route"
+    }
+  ]
 }
