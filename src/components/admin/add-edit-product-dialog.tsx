@@ -24,9 +24,7 @@ import { useFirestore } from '@/firebase/provider';
 import { collection, doc } from 'firebase/firestore';
 import { menuCategories } from '@/lib/data';
 import type { MenuItem } from '@/lib/data';
-import { ImageUploader } from './image-uploader';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-
 
 interface AddEditProductDialogProps {
   isOpen: boolean;
@@ -93,43 +91,42 @@ export function AddEditProductDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="bg-black/80 backdrop-blur-lg border-white/10 text-white sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{product ? 'Editar Producto' : 'Añadir Producto'}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-2xl font-headline bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+            {product ? 'Editar Producto' : 'Añadir Producto'}
+          </DialogTitle>
+          <DialogDescription className="text-white/60">
             {product ? 'Edita los detalles de tu producto.' : 'Añade un nuevo producto a tu menú.'}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nombre</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <ImageUploader onUploadComplete={setImageUrl} initialImageUrl={imageUrl} />
+            <Label htmlFor="name" className="text-white/80">Nombre</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
            <div className="space-y-2">
-            <Label htmlFor="description">Descripción Corta</Label>
-            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
+            <Label htmlFor="description" className="text-white/80">Descripción Corta</Label>
+            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
            <div className="space-y-2">
-            <Label htmlFor="longDescription">Descripción Larga</Label>
-            <Textarea id="longDescription" value={longDescription} onChange={(e) => setLongDescription(e.target.value)} />
+            <Label htmlFor="longDescription" className="text-white/80">Descripción Larga</Label>
+            <Textarea id="longDescription" value={longDescription} onChange={(e) => setLongDescription(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-                <Label htmlFor="price">Precio</Label>
-                <Input id="price" type="number" value={price} onChange={(e) => setPrice(parseFloat(e.target.value))} />
+                <Label htmlFor="price" className="text-white/80">Precio</Label>
+                <Input id="price" type="number" value={price} onChange={(e) => setPrice(parseFloat(e.target.value))} className="bg-white/5 border-white/20" />
             </div>
             <div className="space-y-2">
-                <Label htmlFor="category">Categoría</Label>
+                <Label htmlFor="category" className="text-white/80">Categoría</Label>
                 <Select onValueChange={(value) => setCategory(value as any)} defaultValue={category}>
-                <SelectTrigger id="category">
+                <SelectTrigger id="category" className="bg-white/5 border-white/20">
                     <SelectValue placeholder="Selecciona una categoría" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-black/80 backdrop-blur-lg border-white/10 text-white">
                     {menuCategories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
+                    <SelectItem key={cat} value={cat} className="hover:bg-white/10 focus:bg-white/10 cursor-pointer">
                         {cat}
                     </SelectItem>
                     ))}
@@ -139,8 +136,8 @@ export function AddEditProductDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit}>Guardar Cambios</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-white/60 hover:text-white">Cancelar</Button>
+          <Button onClick={handleSubmit} className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white font-bold hover:scale-105 transition-transform duration-300">Guardar Cambios</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,44 +1,97 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-const customers = [
-    { id: 'CUST001', name: 'John Doe', email: 'john.d@example.com', totalSpent: '$255.50' },
-    { id: 'CUST002', name: 'Jane Smith', email: 'jane.s@example.com', totalSpent: '$150.00' },
-    { id: 'CUST003', name: 'Bob Johnson', email: 'bob.j@example.com', totalSpent: '$420.10' },
-];
+'use client';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import type { Order, UserProfile, Address } from '@/lib/data';
+import { useEffect, useState } from 'react';
 
 export default function AdminCustomersPage() {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Clientes</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Cliente</TableHead>
-                            <TableHead>Correo Electrónico</TableHead>
-                            <TableHead>Total Gastado</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {customers.map(customer => (
-                            <TableRow key={customer.id}>
-                                <TableCell className="flex items-center gap-2">
-                                    <Avatar>
-                                        <AvatarFallback>{customer.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
-                                    <span className="font-medium">{customer.name}</span>
-                                </TableCell>
-                                <TableCell>{customer.email}</TableCell>
-                                <TableCell>{customer.totalSpent}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
-    );
+  const firestore = useFirestore();
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const ordersCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'orders') : null),
+    [firestore]
+  );
+  const { data: orders, isLoading: isLoadingOrders } = useCollection<Order>(ordersCollection);
+
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      if (orders && firestore) {
+        const userIds = [...new Set(orders.map(order => order.userId))];
+        const customerData = await Promise.all(
+          userIds.map(async (userId) => {
+            const userRef = doc(firestore, 'users', userId);
+            const userSnap = await getDoc(userRef);
+            const userProfile = userSnap.data() as UserProfile;
+
+            const addressesRef = collection(firestore, `users/${userId}/delivery_addresses`);
+            const addressesSnap = await getDocs(addressesRef);
+            const addresses = addressesSnap.docs.map(doc => doc.data()) as Address[];
+
+            const orderCount = orders.filter(order => order.userId === userId).length;
+            return { ...userProfile, id: userId, orderCount, addresses };
+          })
+        );
+        setCustomers(customerData);
+        setIsLoading(false);
+      }
+    };
+
+    if (!isLoadingOrders) {
+        fetchCustomers();
+    }
+  }, [orders, firestore, isLoadingOrders]);
+
+  return (
+    <>
+        <div className="text-center mb-12">
+            <h1 className="text-5xl md:text-7xl font-black text-white">
+                <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+                    Clientes
+                </span>
+            </h1>
+        </div>
+
+        <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-white/10 hover:bg-transparent">
+                <TableHead className="text-white/80">Nombre</TableHead>
+                <TableHead className="text-white/80">Email</TableHead>
+                <TableHead className="text-white/80">Teléfono</TableHead>
+                <TableHead className="text-white/80">Dirección Principal</TableHead>
+                <TableHead className="text-white/80">Pedidos</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading && (
+                <TableRow className="border-b-0">
+                  <TableCell colSpan={5} className="text-center text-white/60 py-12">
+                    Cargando clientes...
+                  </TableCell>
+                </TableRow>
+              )}
+              {customers.map((customer) => (
+                <TableRow key={customer.id} className="border-b border-white/10 hover:bg-white/5">
+                  <TableCell className="font-medium text-white">{customer.firstName} {customer.lastName}</TableCell>
+                  <TableCell className="text-white/80">{customer.email}</TableCell>
+                  <TableCell className="text-white/80">{customer.phone}</TableCell>
+                  <TableCell className="text-white/80">
+                    {customer.addresses && customer.addresses.length > 0 ? (
+                        <>{customer.addresses[0].street}, {customer.addresses[0].city}</>
+                    ) : (
+                        'No disponible'
+                    )}
+                    </TableCell>
+                  <TableCell className="text-white/80">{customer.orderCount}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+    </>
+  );
 }

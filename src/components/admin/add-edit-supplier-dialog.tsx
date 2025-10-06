@@ -17,7 +17,6 @@ import { collection, doc } from 'firebase/firestore';
 import type { Supplier } from '@/lib/data';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
-
 interface AddEditSupplierDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
@@ -31,21 +30,23 @@ export function AddEditSupplierDialog({
 }: AddEditSupplierDialogProps) {
   const firestore = useFirestore();
   const [name, setName] = useState('');
-  const [contactPerson, setContactPerson] = useState('');
-  const [phone, setPhone] = useState('');
+  const [contactName, setContactName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
 
   useEffect(() => {
-    if (supplier) {
-        setName(supplier.name);
-        setContactPerson(supplier.contactPerson || '');
-        setPhone(supplier.phone || '');
-        setEmail(supplier.email || '');
-    } else {
-        setName('');
-        setContactPerson('');
-        setPhone('');
-        setEmail('');
+    if (isOpen) {
+        if (supplier) {
+            setName(supplier.name || '');
+            setContactName(supplier.contactName || '');
+            setEmail(supplier.email || '');
+            setPhone(supplier.phone || '');
+        } else {
+            setName('');
+            setContactName('');
+            setEmail('');
+            setPhone('');
+        }
     }
   }, [supplier, isOpen]);
 
@@ -55,9 +56,9 @@ export function AddEditSupplierDialog({
 
     const supplierData = {
       name,
-      contactPerson,
-      phone,
+      contactName,
       email,
+      phone,
     };
 
     if (supplier) {
@@ -71,42 +72,36 @@ export function AddEditSupplierDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="bg-black/80 backdrop-blur-lg border-white/10 text-white sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{supplier ? 'Editar Proveedor' : 'Añadir Proveedor'}</DialogTitle>
-          <DialogDescription>
-            {supplier ? 'Edita los detalles del proveedor.' : 'Añade un nuevo proveedor a tu lista.'}
+          <DialogTitle className="text-2xl font-headline bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+            {supplier ? 'Editar Proveedor' : 'Añadir Proveedor'}
+          </DialogTitle>
+          <DialogDescription className="text-white/60">
+            {supplier ? 'Edita los detalles de tu proveedor.' : 'Añade un nuevo proveedor a tu lista.'}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Nombre
-            </Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-white/80">Nombre</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
-           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="contactPerson" className="text-right">
-              Contacto
-            </Label>
-            <Input id="contactPerson" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} className="col-span-3" />
+          <div className="space-y-2">
+            <Label htmlFor="contactName" className="text-white/80">Nombre de Contacto</Label>
+            <Input id="contactName" value={contactName} onChange={(e) => setContactName(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
-           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="phone" className="text-right">
-              Teléfono
-            </Label>
-            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="col-span-3" />
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-white/80">Email</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
-           <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="email" className="text-right">
-              Email
-            </Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
+          <div className="space-y-2">
+            <Label htmlFor="phone" className="text-white/80">Teléfono</Label>
+            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit}>Guardar Cambios</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-white/60 hover:text-white">Cancelar</Button>
+          <Button onClick={handleSubmit} className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white font-bold hover:scale-105 transition-transform duration-300">Guardar Cambios</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
