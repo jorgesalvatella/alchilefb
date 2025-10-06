@@ -61,10 +61,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   useEffect(() => {
-    user?.getIdTokenResult().then(idTokenResult => {
-      const role = idTokenResult.claims.role as string || 'customer';
-      setUserRole(role);
-    });
+    const fetchUserRole = async () => {
+      if (user) {
+        try {
+          // Force a token refresh to get the latest claims.
+          const idTokenResult = await user.getIdTokenResult(true);
+          const role = idTokenResult.claims.role as string || 'customer';
+          setUserRole(role);
+        } catch (error) {
+          console.error("Error fetching user role:", error);
+          setUserRole('customer'); // Fallback to a default role on error
+        }
+      } else {
+        setUserRole(null);
+      }
+    };
+  
+    fetchUserRole();
   }, [user]);
 
   const filteredAdminNavItems = adminNavItems.filter(item => userRole && item.roles.includes(userRole));
@@ -105,7 +118,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </SidebarMenuButton>
                             {item.subItems && (
                                 <SidebarMenuSub>
-                                    {item.subItems.filter(sub => userRole && sub.roles.includes(sub.roles)).map(subItem => (
+                                    {item.subItems.filter(sub => userRole && sub.roles.includes(userRole)).map(subItem => (
                                          <SidebarMenuSubItem key={subItem.href}>
                                             <SidebarMenuSubButton asChild isActive={pathname === subItem.href}>
                                                 <Link href={subItem.href}>{subItem.label}</Link>
