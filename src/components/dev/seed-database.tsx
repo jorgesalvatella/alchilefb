@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useFirestore } from '@/firebase/provider';
-import { collection, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import type { MenuItem } from '@/lib/data';
 
 const sampleMenuItems: Omit<MenuItem, 'id'>[] = [
@@ -65,9 +65,9 @@ export function SeedDatabase() {
         const batch = writeBatch(firestore);
         
         sampleMenuItems.forEach(item => {
-          const docRef = collection(firestore, 'menu_items');
-          // Firestore will auto-generate an ID when we call addDoc or in this case, a new doc() ref in a batch
-          batch.set(docRef.doc(), item);
+          // Correct way to create a new document with an auto-generated ID in a batch
+          const newDocRef = doc(menuItemsCollection);
+          batch.set(newDocRef, item);
         });
 
         try {
