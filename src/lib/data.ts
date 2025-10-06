@@ -76,4 +76,12 @@ export type Supplier = {
   phone?: string;
   email?: string;
 };
+
+export type BusinessUnit = {
+  id: string;
+  name: string;
+  address: string;
+  phone: string;
+  taxIdUrl?: string;
+};
     

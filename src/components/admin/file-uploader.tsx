@@ -7,28 +7,38 @@ import { Progress } from '@/components/ui/progress';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useFirebaseApp } from '@/firebase/provider';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { X, UploadCloud } from 'lucide-react';
-import Image from 'next/image';
-import { Label } from '../ui/label';
+import { X, CheckCircle, UploadCloud, File as FileIcon, Download } from 'lucide-react';
+import Link from 'next/link';
 
-interface ImageUploaderProps {
+interface FileUploaderProps {
   onUploadComplete: (url: string) => void;
-  initialImageUrl?: string;
+  initialFileUrl?: string;
+  uploadPath?: string;
+  allowedTypes?: string[];
 }
 
-export function ImageUploader({ onUploadComplete, initialImageUrl }: ImageUploaderProps) {
+export function FileUploader({ 
+    onUploadComplete, 
+    initialFileUrl, 
+    uploadPath = 'general_uploads',
+    allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif']
+}: FileUploaderProps) {
   const app = useFirebaseApp();
   const [file, setFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(initialImageUrl || null);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(initialFileUrl || null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
+        if (!allowedTypes.includes(selectedFile.type)) {
+            setError(`Tipo de archivo no permitido. Solo se aceptan: ${allowedTypes.join(', ')}`);
+            return;
+        }
       setFile(selectedFile);
-      setUploadedUrl(null); // Clear previous image
+      setUploadedUrl(null);
       setError(null);
     }
   };
@@ -48,7 +58,7 @@ export function ImageUploader({ onUploadComplete, initialImageUrl }: ImageUpload
     setUploadProgress(0);
 
     const storage = getStorage(app);
-    const storageRef = ref(storage, `menu_items/${Date.now()}_${file.name}`);
+    const storageRef = ref(storage, `${uploadPath}/${Date.now()}_${file.name}`);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
     uploadTask.on(
@@ -59,7 +69,7 @@ export function ImageUploader({ onUploadComplete, initialImageUrl }: ImageUpload
       },
       (uploadError) => {
         console.error('Error al subir:', uploadError);
-        setError('Error al subir la imagen. Por favor, inténtalo de nuevo.');
+        setError('Error al subir el archivo. Por favor, inténtalo de nuevo.');
         setIsUploading(false);
       },
       () => {
@@ -73,34 +83,41 @@ export function ImageUploader({ onUploadComplete, initialImageUrl }: ImageUpload
     );
   };
   
-   const removeImage = () => {
+   const removeFile = () => {
     setUploadedUrl(null);
     setFile(null);
     onUploadComplete('');
   };
 
   return (
-    <div className="space-y-2">
-      <Label>Imagen del Producto</Label>
+    <div className="space-y-4">
       {uploadedUrl ? (
-        <div className="relative group w-full h-32">
-          <Image src={uploadedUrl} alt="Imagen subida" layout="fill" className="object-contain rounded-md border" />
-           <Button
-              variant="destructive"
-              size="icon"
-              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={removeImage}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+        <div className="flex items-center justify-between rounded-md border p-2">
+            <div className="flex items-center gap-2">
+                <FileIcon className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm font-medium truncate max-w-xs">Archivo cargado</span>
+            </div>
+            <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                    <Link href={uploadedUrl} target="_blank"><Download className="h-4 w-4" /></Link>
+                </Button>
+                <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-destructive hover:text-destructive"
+                onClick={removeFile}
+                >
+                <X className="h-4 w-4" />
+                </Button>
+            </div>
         </div>
       ) : (
         <div className="flex items-center gap-2">
           <div className="grid w-full items-center gap-1.5">
-            <Input id="picture" type="file" onChange={handleFileChange} accept="image/*" className="text-sm"/>
+            <Input id="file-upload" type="file" onChange={handleFileChange} accept={allowedTypes.join(',')} className="text-sm"/>
           </div>
           <Button onClick={handleUpload} disabled={isUploading || !file} size="sm" className="self-end">
-            <UploadCloud className="mr-2 h-4 w-4" />
+             <UploadCloud className="mr-2 h-4 w-4" />
             {isUploading ? 'Subiendo...' : 'Subir'}
           </Button>
         </div>

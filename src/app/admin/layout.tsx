@@ -12,11 +12,12 @@ import {
   SidebarInset,
   SidebarMenuSub,
   SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Bot, Home, Package, ShoppingCart, Users, Wallet, Building2 } from 'lucide-react';
+import { Bot, Home, Package, ShoppingCart, Users, Wallet, Building2, Settings } from 'lucide-react';
 import { useUser } from '@/firebase/provider';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -34,6 +35,15 @@ const adminNavItems = [
         subItems: [
             { href: '/admin/finance', label: 'Gastos', roles: ['admin', 'super-admin'] },
             { href: '/admin/finance/suppliers', label: 'Proveedores', icon: Building2, roles: ['admin', 'super-admin'] },
+        ]
+    },
+    { 
+        href: '/admin/configuracion', 
+        label: 'Configuración', 
+        icon: Settings, 
+        roles: ['super-admin'],
+        subItems: [
+            { href: '/admin/configuracion/unidades-de-negocio', label: 'Unidades de Negocio', roles: ['super-admin'] },
         ]
     },
 ]
@@ -86,7 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <SidebarMenu>
                     {filteredAdminNavItems.map(item => (
                         <SidebarMenuItem key={item.href}>
-                             <SidebarMenuButton asChild tooltip={item.label} isActive={pathname === item.href || (item.subItems && item.subItems.some(sub => pathname.startsWith(sub.href)))}>
+                             <SidebarMenuButton asChild tooltip={item.label} isActive={pathname.startsWith(item.href) && (item.href !== '/admin' || pathname === '/admin')}>
                                 <Link href={item.href}>
                                     <item.icon />
                                     <span>{item.label}</span>
@@ -95,7 +105,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </SidebarMenuButton>
                             {item.subItems && (
                                 <SidebarMenuSub>
-                                    {item.subItems.filter(sub => userRole && sub.roles.includes(userRole)).map(subItem => (
+                                    {item.subItems.filter(sub => userRole && sub.roles.includes(sub.roles)).map(subItem => (
                                          <SidebarMenuSubItem key={subItem.href}>
                                             <SidebarMenuSubButton asChild isActive={pathname === subItem.href}>
                                                 <Link href={subItem.href}>{subItem.label}</Link>

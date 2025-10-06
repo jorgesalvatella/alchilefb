@@ -338,6 +338,20 @@
         "email": { "type": "string", "format": "email", "description": "Supplier's email address." }
       },
       "required": ["id", "name"]
+    },
+    "BusinessUnit": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "BusinessUnit",
+      "type": "object",
+      "description": "Represents a business unit or location.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the Business Unit." },
+        "name": { "type": "string", "description": "Name of the business unit." },
+        "address": { "type": "string", "description": "Physical address of the business unit." },
+        "phone": { "type": "string", "description": "Business unit's phone number." },
+        "taxIdUrl": { "type": "string", "format": "uri", "description": "URL of the uploaded tax ID document." }
+      },
+      "required": ["id", "name", "address", "phone"]
     }
   },
   "auth": {
@@ -472,6 +486,15 @@
           "schema": { "$ref": "#/backend/entities/Supplier" },
           "description": "Stores supplier information. Access should be restricted to admin/super-admin roles.",
           "params": [{ "name": "supplierId", "description": "The unique ID of the supplier." }]
+        }
+      },
+      {
+        "path": "/business_units/{businessUnitId}",
+        "definition": {
+          "entityName": "BusinessUnit",
+          "schema": { "$ref": "#/backend/entities/BusinessUnit" },
+          "description": "Stores business unit information. Access should be restricted to admin/super-admin roles.",
+          "params": [{ "name": "businessUnitId", "description": "The unique ID of the business unit." }]
         }
       }
     ],
