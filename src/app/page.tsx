@@ -11,6 +11,7 @@ import { collection, limit, query } from 'firebase/firestore';
 import type { MenuItem } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const heroMeatballsImage = {
@@ -78,17 +79,15 @@ export default function Home() {
               data-ai-hint={heroMeatballsImage.imageHint}
             />
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center fade-in-up" style={{ animationDelay: '0.5s' }}>
-            <Link
-              href="/menu"
-              className={`group relative px-10 py-5 font-black text-xl rounded-full md:hover:scale-110 transition-all duration-300 shadow-2xl overflow-hidden ${scrolled ? 'bg-black' : 'bg-white'}`}
-            >
-              <span className={`relative z-10 opacity-100 md:opacity-0 md:group-hover:opacity-0 transition-opacity duration-300 ${scrolled ? 'text-white' : 'text-primary'}`}>¡Pide Ahora!</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-primary to-orange-500 transform scale-x-0 md:group-hover:scale-x-100 transition-transform origin-left duration-300"></div>
-              <span className="absolute inset-0 flex items-center justify-center text-white font-black text-xl opacity-0 md:opacity-100 transition-opacity duration-300">¡Vamos!</span>
-            </Link>
+          
+           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center fade-in-up" style={{ animationDelay: '0.5s' }}>
+              <Link href="/menu" className={cn("group relative px-10 py-5 font-black text-xl rounded-full md:hover:scale-110 transition-all duration-300 shadow-2xl overflow-hidden", scrolled ? 'bg-black' : 'bg-white')}>
+                  <span className={cn("relative z-10 opacity-100 md:opacity-0 md:group-hover:opacity-0 transition-opacity duration-300", scrolled ? 'text-white' : 'text-primary')}>¡Pide Ahora!</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary to-orange-500 transform scale-x-0 md:group-hover:scale-x-100 transition-transform origin-left duration-300"></div>
+                  <span className="absolute inset-0 flex items-center justify-center text-white font-black text-xl opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">¡Vamos!</span>
+              </Link>
           </div>
+
         </div>
       </section>
 

@@ -16,6 +16,8 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth, useUser } from '@/firebase';
+import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 const baseNavLinks = [
   { href: '/menu', label: 'Menú' },
@@ -83,8 +85,19 @@ export function Header() {
   const isMobile = useIsMobile();
   const { user, isUserLoading } = useUser();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [scrolled, setScrolled] = useState(false);
 
-   useEffect(() => {
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
     if (user) {
       user.getIdTokenResult().then(idTokenResult => {
         const role = idTokenResult.claims.role as string || 'customer';
@@ -124,49 +137,47 @@ export function Header() {
   );
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-sm">
-      <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center gap-2" onClick={closeSheet}>
-          <Icons.logo className="h-8 w-8" />
-          <span className="font-headline text-2xl font-bold tracking-tighter">
+    <header className={cn(
+        "fixed w-full top-0 z-50 transition-all duration-300",
+        scrolled ? 'bg-gradient-to-r from-yellow-400/80 via-orange-500/80 to-red-600/80 backdrop-blur-lg shadow-xl' : 'bg-transparent'
+    )}>
+      <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
+        <Link href="/" className="flex items-center gap-2">
+          <Image src="https://imagenes.nobbora.com/Dise%C3%B1o%20sin%20t%C3%ADtulo%20(3)%20(2).png" alt="Achille Logo" width={40} height={40} />
+          <span className="font-headline text-2xl font-bold tracking-tighter text-white">
             Al Chile
           </span>
         </Link>
 
-        {isMobile ? (
-          <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MenuIcon />
-                <span className="sr-only">Abrir menú</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full max-w-xs pt-16">
-              <div className="flex flex-col gap-8">
-                {navContent}
+        <div className="hidden md:flex items-center space-x-4">
+            {navContent}
+        </div>
+
+        <div className="flex items-center space-x-2">
+             {isMobile ? (
+                <Sheet open={isSheetOpen} onOpenChange={setSheetOpen}>
+                    <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+                        <MenuIcon />
+                        <span className="sr-only">Abrir menú</span>
+                    </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-full max-w-xs pt-16">
+                    <div className="flex flex-col gap-8">
+                        {navContent}
+                    </div>
+                    </SheetContent>
+                </Sheet>
+            ) : (
                 <div className="flex items-center gap-2">
-                  <div onClick={closeSheet}>
-                    <UserNav />
-                  </div>
-                  <Button variant="ghost" size="icon" asChild onClick={closeSheet}>
+                  <UserNav />
+                  <Button variant="ghost" size="icon" asChild>
                     <Link href="/cart"><ShoppingCart /><span className="sr-only">Carrito</span></Link>
                   </Button>
                 </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-        ) : (
-          <div className="flex items-center gap-6">
-            {navContent}
-            <div className="flex items-center gap-2">
-              <UserNav />
-              <Button variant="ghost" size="icon" asChild>
-                <Link href="/cart"><ShoppingCart /><span className="sr-only">Carrito</span></Link>
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
+            )}
+        </div>
+      </nav>
     </header>
   );
 }

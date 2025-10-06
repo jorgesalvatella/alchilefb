@@ -97,13 +97,18 @@ export default {
         'float-animation': {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-20px)' },
-        }
+        },
+        'fire-glow': {
+          '0%, 100%': { 'box-shadow': '0 0 5px #f59e0b, 0 0 10px #f59e0b, 0 0 20px #ef4444' },
+          '50%': { 'box-shadow': '0 0 20px #f59e0b, 0 0 30px #ef4444, 0 0 40px #ef4444' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'fade-in-up': 'fade-in-up 0.8s ease-out forwards',
         'float-animation': 'float-animation 6s ease-in-out infinite',
+        'fire-glow': 'fire-glow 3s ease-in-out infinite',
       },
     },
   },
