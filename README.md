@@ -69,4 +69,38 @@ firebase apphosting:backends:deploy al-chile-delivery-app --location=us-central1
 
 Este comando tomará tu código, lo construirá y lo desplegará en la web. Una vez que termine, te dará una URL pública donde tu aplicación estará en vivo.
 
-¡Y eso es todo! Tienes el control total para seguir construyendo y publicando tu increíble aplicación. ¡Mucho éxito!
+---
+
+### 7. Sube tu Código a GitHub (Flujo Profesional)
+
+¡Absolutamente! Usar Git y GitHub es el estándar profesional para el control de versiones. Sigue estos pasos para tomar el control total de tu código:
+
+1.  **Inicializa tu repositorio Git:**
+    Dentro de la carpeta de tu proyecto, ejecuta:
+    ```bash
+    git init
+    ```
+
+2.  **Crea tu primer commit:**
+    Añade todos los archivos y crea el primer "snapshot" de tu proyecto.
+    ```bash
+    git add .
+    git commit -m "Primer commit desde Firebase Studio"
+    ```
+
+3.  **Crea un repositorio en GitHub:**
+    -   Ve a [github.com](https://github.com) y crea una nueva cuenta si no tienes una.
+    -   Haz clic en "New repository".
+    -   Dale un nombre (ej. `al-chile-delivery-app`), asegúrate de que sea **privado** o **público** según tu preferencia y **no** inicialices con un `README` o `.gitignore` (ya los tenemos).
+    -   Haz clic en "Create repository".
+
+4.  **Conecta tu proyecto local con GitHub:**
+    GitHub te dará unos comandos. Usa el que conecta tu repositorio local con el remoto. Se verá así:
+    ```bash
+    git remote add origin https://github.com/TU_USUARIO/TU_REPOSITORIO.git
+    git branch -M main
+    git push -u origin main
+    ```
+    ¡Reemplaza la URL con la de tu repositorio!
+
+¡Y eso es todo! Ahora tu código está en GitHub. Cada vez que hagas un cambio, puedes usar `git add`, `git commit` y `git push` para guardarlo y mantener un historial completo de tu trabajo. ¡Bienvenido al flujo de desarrollo profesional!
