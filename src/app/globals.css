@@ -86,3 +86,34 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .fade-in-up {
+    animation: fade-in-up 0.8s ease-out forwards;
+  }
+  
+  @keyframes float-animation {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-20px); }
+  }
+  .float-animation {
+    animation: float-animation 6s ease-in-out infinite;
+  }
+
+  .scale-hover {
+    transition: transform 0.3s ease-in-out;
+  }
+  .scale-hover:hover {
+    transform: scale(1.05);
+  }
+}
