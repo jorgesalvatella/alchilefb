@@ -68,7 +68,8 @@
         "id",
         "email",
         "firstName",
-        "lastName"
+        "lastName",
+        "role"
       ]
     },
     "DeliveryAddress": {
@@ -305,6 +306,38 @@
         "price",
         "category"
       ]
+    },
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents a business expense.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the Expense." },
+        "date": { "type": "string", "format": "date-time", "description": "Date the expense was incurred." },
+        "amount": { "type": "number", "description": "Amount of the expense." },
+        "description": { "type": "string", "description": "Description of the expense." },
+        "supplierId": { "type": "string", "description": "Reference to the Supplier." },
+        "paymentMethod": { "type": "string", "enum": ["Efectivo", "Tarjeta de Crédito", "Transferencia Bancaria"], "description": "Method of payment." },
+        "department": { "type": "string", "description": "Department the expense belongs to." },
+        "group": { "type": "string", "description": "Expense group for categorization." },
+        "concept": { "type": "string", "description": "Specific concept of the expense." }
+      },
+      "required": ["id", "date", "amount", "description", "paymentMethod", "department", "group", "concept"]
+    },
+    "Supplier": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Supplier",
+      "type": "object",
+      "description": "Represents a supplier or vendor.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the Supplier." },
+        "name": { "type": "string", "description": "Name of the supplier." },
+        "contactPerson": { "type": "string", "description": "Contact person at the supplier." },
+        "phone": { "type": "string", "description": "Supplier's phone number." },
+        "email": { "type": "string", "format": "email", "description": "Supplier's email address." }
+      },
+      "required": ["id", "name"]
     }
   },
   "auth": {
@@ -422,9 +455,27 @@
             }
           ]
         }
+      },
+      {
+        "path": "/expenses/{expenseId}",
+        "definition": {
+          "entityName": "Expense",
+          "schema": { "$ref": "#/backend/entities/Expense" },
+          "description": "Stores business expenses. Access should be restricted to admin/super-admin roles.",
+          "params": [{ "name": "expenseId", "description": "The unique ID of the expense." }]
+        }
+      },
+      {
+        "path": "/suppliers/{supplierId}",
+        "definition": {
+          "entityName": "Supplier",
+          "schema": { "$ref": "#/backend/entities/Supplier" },
+          "description": "Stores supplier information. Access should be restricted to admin/super-admin roles.",
+          "params": [{ "name": "supplierId", "description": "The unique ID of the supplier." }]
+        }
       }
     ],
-    "reasoning": "The Firestore data structure is designed to prioritize security, scalability, and maintainability, following the principles of Authorization Independence, Clarity of Intent, and DBAC. It leverages denormalization and structural segregation to simplify security rules and enable efficient data access. The design focuses on path-based ownership for user-specific data and avoids hierarchical authorization dependencies.\n\n*   **User Profiles:** User profiles are stored under `/users/{userId}`, ensuring clear ownership and easy rule definition.\n*   **Delivery Addresses, Payment Methods:** These entities are nested under the `/users/{userId}` collection to establish a direct ownership relationship with the user. This structure simplifies security rules by leveraging path-based ownership. This segregation ensures that listing operations can be securely performed within the scope of the user's data.\n*   **Orders:** Stored in a top-level `/orders` collection to allow admins to query all orders. Security rules will grant users access to their own orders, and admins access to all orders.\n*   **Menu Items:** Stored in a top-level `/menu_items` collection as these are global and not user-specific. This allows for easy listing and querying of menu items without needing user context.\n\nThis structure achieves Authorization Independence by avoiding `get()` calls in security rules. Path-based ownership (`/users/{userId}/...`) makes it clear that only the authenticated user (`request.auth.uid`) can access data under their respective user ID. Segregation of data based on access needs simplifies rules and improves security posture.\n\nThe structure supports the required QAPs (Rules are not Filters) by:\n\n*   **Secure Lists:** The path-based ownership enables secure `list` operations for user-specific data. For global collections like `/orders`, rules will differentiate between user and admin access.\n\nIn summary, this Firestore structure is designed to be secure, scalable, and debuggable by following best practices for data organization and security rule design."
+    "reasoning": "The Firestore data structure is designed to prioritize security, scalability, and maintainability, following the principles of Authorization Independence, Clarity of Intent, and DBAC. It leverages denormalization and structural segregation to simplify security rules and enable efficient data access. The design focuses on path-based ownership for user-specific data and avoids hierarchical authorization dependencies.\n\n*   **User Profiles:** User profiles are stored under `/users/{userId}`, ensuring clear ownership and easy rule definition.\n*   **Delivery Addresses, Payment Methods:** These entities are nested under the `/users/{userId}` collection to establish a direct ownership relationship with the user. This structure simplifies security rules by leveraging path-based ownership. This segregation ensures that listing operations can be securely performed within the scope of the user's data.\n*   **Orders:** Stored in a top-level `/orders` collection to allow admins to query all orders. Security rules will grant users access to their own orders, and admins access to all orders.\n*   **Menu Items:** Stored in a top-level `/menu_items` collection as these are global and not user-specific. This allows for easy listing and querying of menu items without needing user context.\n*   **Expenses and Suppliers:** New top-level collections for `/expenses` and `/suppliers` are added. This is because they represent global business data, not user-specific data. Access to these will be controlled by security rules, restricted to 'admin' and 'super-admin' roles.\n\nThis structure achieves Authorization Independence by avoiding `get()` calls in security rules. Path-based ownership (`/users/{userId}/...`) makes it clear that only the authenticated user (`request.auth.uid`) can access data under their respective user ID. Segregation of data based on access needs simplifies rules and improves security posture.\n\nThe structure supports the required QAPs (Rules are not Filters) by:\n\n*   **Secure Lists:** The path-based ownership enables secure `list` operations for user-specific data. For global collections like `/orders`, rules will differentiate between user and admin access.\n\nIn summary, this Firestore structure is designed to be secure, scalable, and debuggable by following best practices for data organization and security rule design."
   }
 }
     

@@ -1,15 +1,26 @@
+'use client';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, Flame } from 'lucide-react';
-import { menuItems } from '@/lib/data';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { collection, limit, query } from 'firebase/firestore';
+import type { MenuItem } from '@/lib/data';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
-  const featuredItems = menuItems.slice(0, 3);
   const heroImage = PlaceHolderImages.find((img) => img.id === 'hero-image');
-  
+  const firestore = useFirestore();
+
+  const featuredItemsQuery = useMemoFirebase(
+    () => (firestore ? query(collection(firestore, 'menu_items'), limit(3)) : null),
+    [firestore]
+  );
+  const { data: featuredItems, isLoading } = useCollection<MenuItem>(featuredItemsQuery);
+
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
@@ -51,22 +62,37 @@ export default function Home() {
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">Favoritos seleccionados que capturan el alma de nuestra cocina.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredItems.map((item) => {
+            {isLoading && Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="overflow-hidden h-full">
+                    <CardHeader className="p-0">
+                        <Skeleton className="h-64 w-full" />
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <Skeleton className="h-6 w-3/4 mb-2" />
+                        <Skeleton className="h-4 w-full mb-4" />
+                        <div className="flex justify-between items-center">
+                            <Skeleton className="h-6 w-1/4" />
+                            <Skeleton className="h-4 w-1/4" />
+                        </div>
+                    </CardContent>
+                </Card>
+            ))}
+            {featuredItems && featuredItems.map((item) => {
               const itemImage = PlaceHolderImages.find((img) => img.id === item.image);
+              const imageUrl = item.imageUrl || itemImage?.imageUrl || 'https://placehold.co/600x400';
+              const imageHint = item.imageUrl ? item.name : itemImage?.imageHint;
               return (
               <Link href={`/menu/${item.id}`} key={item.id} className="group">
                 <Card className="overflow-hidden h-full transform transition-all duration-300 hover:scale-105 hover:shadow-primary/20 shadow-lg">
                   <CardHeader className="p-0">
                     <div className="relative h-64 w-full">
-                       {itemImage && (
                         <Image
-                          src={itemImage.imageUrl}
+                          src={imageUrl}
                           alt={item.name}
                           fill
                           className="object-cover"
-                           data-ai-hint={itemImage.imageHint}
+                           data-ai-hint={imageHint}
                         />
-                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="p-6">
@@ -75,9 +101,9 @@ export default function Home() {
                     <div className="flex justify-between items-center">
                        <p className="text-xl font-bold text-primary">${item.price.toFixed(2)}</p>
                        <div className="flex items-center gap-1 text-sm text-amber-400">
-                          <Flame size={16}/>
-                          <Flame size={16}/>
-                          <Flame size={16} className="text-muted-foreground/50"/>
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Flame key={i} size={16} className={i < item.spiceRating ? 'fill-current' : 'text-muted-foreground/30'}/>
+                          ))}
                        </div>
                     </div>
                   </CardContent>

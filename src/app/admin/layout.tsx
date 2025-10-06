@@ -14,7 +14,7 @@ import {
 import { Icons } from '@/components/icons';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Bot, Home, Package, ShoppingCart, Users } from 'lucide-react';
+import { Bot, Home, Package, ShoppingCart, Users, Wallet } from 'lucide-react';
 import { useUser } from '@/firebase/provider';
 import { useEffect, useState } from 'react';
 
@@ -23,6 +23,7 @@ const adminNavItems = [
     { href: '/admin/orders', label: 'Pedidos', icon: ShoppingCart, badge: '12', roles: ['admin', 'super-admin'] },
     { href: '/admin/products', label: 'Productos', icon: Package, roles: ['admin', 'super-admin'] },
     { href: '/admin/customers', label: 'Clientes', icon: Users, roles: ['admin', 'super-admin'] },
+    { href: '/admin/finance', label: 'Finanzas', icon: Wallet, roles: ['admin', 'super-admin'] },
 ]
 
 const aiToolsNavItem = {
