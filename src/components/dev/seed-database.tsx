@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useFirestore } from '@/firebase/provider';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import type { MenuItem } from '@/lib/data';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const sampleMenuItems: Omit<MenuItem, 'id'>[] = [
     {
@@ -65,31 +67,39 @@ export function SeedDatabase() {
         const batch = writeBatch(firestore);
         
         sampleMenuItems.forEach(item => {
-          // Correct way to create a new document with an auto-generated ID in a batch
           const newDocRef = doc(menuItemsCollection);
           batch.set(newDocRef, item);
         });
 
-        try {
-          await batch.commit();
-          console.log('¡Datos de platillos precargados con éxito!');
-          setIsSeeded(true);
-        } catch (error) {
-          console.error("Error al precargar datos: ", error);
-          setIsSeeded(false);
-        }
+        batch.commit()
+          .then(() => {
+            console.log('¡Datos de platillos precargados con éxito!');
+            setIsSeeded(true);
+          })
+          .catch((error) => {
+            console.error("Error al precargar datos: ", error);
+            setIsSeeded(false);
+            // Emit a detailed, contextual error for better debugging.
+            errorEmitter.emit(
+              'permission-error',
+              new FirestorePermissionError({
+                path: menuItemsCollection.path,
+                operation: 'create', // Operation is creating multiple documents
+                requestResourceData: sampleMenuItems, // Include all data that was attempted
+              })
+            );
+          });
+
       } else {
         console.log('La colección "menu_items" ya contiene datos. No se necesita precarga.');
         setIsSeeded(true);
       }
     };
 
-    // Solo ejecuta la precarga una vez
     if (isSeeded === null) {
       seedData();
     }
   }, [firestore, isSeeded]);
 
-  // Este componente no renderiza nada en la UI
   return null;
 }
