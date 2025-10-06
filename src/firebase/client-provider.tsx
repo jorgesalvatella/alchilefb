@@ -23,7 +23,6 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   const [firebaseServices, setFirebaseServices] = useState<FirebaseServices | null>(null);
 
   useEffect(() => {
-    // Initialize Firebase on the client side, once per component mount.
     // This code will only run in the browser, after the component has mounted.
     if (typeof window !== 'undefined') {
        const services = initializeFirebase();
