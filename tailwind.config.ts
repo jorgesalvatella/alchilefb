@@ -17,7 +17,6 @@ export default {
       },
       colors: {
         'chile-red': '#C11B17',
-        'fresh-green': '#FFC107',
         'dark-charcoal': '#1A1A1A',
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',

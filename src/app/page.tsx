@@ -151,7 +151,23 @@ export default function Home() {
         </div>
       </section>
       
-      {/* About Section */}
+      {/* Call to Action Section */}
+      <section id="cta" className="pb-20 bg-white dark:bg-black">
+        <div className="container mx-auto px-6 text-center">
+          <h2 className="text-4xl font-bold text-dark-charcoal dark:text-gray-100">¿Listo para Probar?</h2>
+          <p className="text-lg mt-4 text-gray-600 dark:text-gray-300">Una experiencia que te hará decir '¡Al Chile!'</p>
+          <div className="mt-8 flex justify-center gap-4">
+            <Link href="https://wa.me/5211234567890?text=Hola,%20quiero%20hacer%20un%20pedido%20de%20Al%20Chile%20Meatballs" target="_blank" className="bg-accent text-white font-bold py-3 px-8 rounded-full hover:bg-yellow-700 transition duration-300">
+              Pedir por WhatsApp
+            </Link>
+            <Link href="https://www.instagram.com/alchilemeatballs" target="_blank" className="bg-chile-red text-white font-bold py-3 px-8 rounded-full hover:bg-red-700 transition duration-300">
+              Ver en Instagram
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Challenge Section */}
       <section id="challenge" className="pb-20 md:pb-32 bg-gradient-to-b from-white to-gray-50 dark:from-black dark:to-black relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-chile-red/5 rounded-full filter blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/5 rounded-full filter blur-3xl"></div>
