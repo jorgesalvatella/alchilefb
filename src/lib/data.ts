@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export type MenuItem = {
   id: string;
   name: string;
@@ -25,6 +27,23 @@ export type UserProfile = {
   spicePreference?: string;
   role: 'customer' | 'admin' | 'super-admin';
 }
+
+export type Order = {
+  id: string;
+  userId: string;
+  customerName?: string;
+  orderDate: Timestamp;
+  deliveryAddress: string;
+  totalAmount: number;
+  orderStatus: 'Pedido Realizado' | 'Preparando' | 'En Reparto' | 'Entregado';
+  items: {
+    menuItemId: string;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+  }[];
+}
+
 
 export const menuItems: MenuItem[] = [
   {
@@ -96,3 +115,4 @@ export const menuItems: MenuItem[] = [
 ];
 
 export const menuCategories: ('Tacos' | 'Burritos' | 'Acompañamientos' | 'Bebidas')[] = ['Tacos', 'Burritos', 'Acompañamientos', 'Bebidas'];
+    

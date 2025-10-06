@@ -193,7 +193,13 @@
         },
         "orderStatus": {
           "type": "string",
-          "description": "Current status of the order (e.g., pending, processing, out for delivery, delivered)."
+          "description": "Current status of the order.",
+          "enum": [
+            "Pedido Realizado",
+            "Preparando",
+            "En Reparto",
+            "Entregado"
+          ]
         },
         "orderItemIds": {
           "type": "array",
@@ -366,7 +372,7 @@
         }
       },
       {
-        "path": "/users/{userId}/orders/{orderId}",
+        "path": "/orders/{orderId}",
         "definition": {
           "entityName": "Order",
           "schema": {
@@ -374,10 +380,6 @@
           },
           "description": "Stores orders placed by a user. Path-based ownership ensures only the user can access their order history.",
           "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user."
-            },
             {
               "name": "orderId",
               "description": "The unique ID of the order."
@@ -422,6 +424,7 @@
         }
       }
     ],
-    "reasoning": "The Firestore data structure is designed to prioritize security, scalability, and maintainability, following the principles of Authorization Independence, Clarity of Intent, and DBAC. It leverages denormalization and structural segregation to simplify security rules and enable efficient data access. The design focuses on path-based ownership for user-specific data and avoids hierarchical authorization dependencies.\n\n*   **User Profiles:** User profiles are stored under `/users/{userId}`, ensuring clear ownership and easy rule definition.\n*   **Delivery Addresses, Payment Methods, and Orders:** These entities are nested under the `/users/{userId}` collection to establish a direct ownership relationship with the user. This structure simplifies security rules by leveraging path-based ownership. This segregation ensures that listing operations can be securely performed within the scope of the user's data.\n*   **Menu Items:** Stored in a top-level `/menu_items` collection as these are global and not user-specific. This allows for easy listing and querying of menu items without needing user context.\n\nThis structure achieves Authorization Independence by avoiding `get()` calls in security rules. Path-based ownership (`/users/{userId}/...`) makes it clear that only the authenticated user (`request.auth.uid`) can access data under their respective user ID. Segregation of data based on access needs simplifies rules and improves security posture.\n\nThe structure supports the required QAPs (Rules are not Filters) by:\n\n*   **Secure Lists:** The path-based ownership enables secure `list` operations. Rules can easily check if `request.auth.uid` matches the `{userId}` parameter, ensuring that users can only list data they own.\n\nIn summary, this Firestore structure is designed to be secure, scalable, and debuggable by following best practices for data organization and security rule design."
+    "reasoning": "The Firestore data structure is designed to prioritize security, scalability, and maintainability, following the principles of Authorization Independence, Clarity of Intent, and DBAC. It leverages denormalization and structural segregation to simplify security rules and enable efficient data access. The design focuses on path-based ownership for user-specific data and avoids hierarchical authorization dependencies.\n\n*   **User Profiles:** User profiles are stored under `/users/{userId}`, ensuring clear ownership and easy rule definition.\n*   **Delivery Addresses, Payment Methods:** These entities are nested under the `/users/{userId}` collection to establish a direct ownership relationship with the user. This structure simplifies security rules by leveraging path-based ownership. This segregation ensures that listing operations can be securely performed within the scope of the user's data.\n*   **Orders:** Stored in a top-level `/orders` collection to allow admins to query all orders. Security rules will grant users access to their own orders, and admins access to all orders.\n*   **Menu Items:** Stored in a top-level `/menu_items` collection as these are global and not user-specific. This allows for easy listing and querying of menu items without needing user context.\n\nThis structure achieves Authorization Independence by avoiding `get()` calls in security rules. Path-based ownership (`/users/{userId}/...`) makes it clear that only the authenticated user (`request.auth.uid`) can access data under their respective user ID. Segregation of data based on access needs simplifies rules and improves security posture.\n\nThe structure supports the required QAPs (Rules are not Filters) by:\n\n*   **Secure Lists:** The path-based ownership enables secure `list` operations for user-specific data. For global collections like `/orders`, rules will differentiate between user and admin access.\n\nIn summary, this Firestore structure is designed to be secure, scalable, and debuggable by following best practices for data organization and security rule design."
   }
 }
+    
