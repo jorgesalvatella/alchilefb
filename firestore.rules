@@ -1,201 +1,219 @@
 /**
  * @file Firestore Security Rules for Al Chile Delivery App
- * @core_philosophy This ruleset enforces a strict user-ownership model for user-specific data and role-based access for administrative data. It allows public read access to menu items.
- * @data_structure
- *   - /users/{userId}: User profiles.
- *   - /users/{userId}/delivery_addresses/{deliveryAddressId}: User's delivery addresses.
- *   - /users/{userId}/payment_methods/{paymentMethodId}: User's payment methods.
- *   - /orders/{orderId}: Orders placed by users.
- *   - /orders/{orderId}/order_items/{orderItemId}: Items within an order.
- *   - /menu_items/{menuItemId}: Publicly accessible menu items.
- *   - /expenses/{expenseId}: Business expenses (admin only).
- *   - /suppliers/{supplierId}: Supplier information (admin only).
- *   - /business_units/{businessUnitId}: Business unit information (admin only).
- * @key_security_decisions
- *   - User data is strictly controlled by user ID.
- *   - Listing all users is disallowed.
- *   - Menu items are publicly readable.
- *   - Administrative data (expenses, suppliers, business units) is restricted to admin roles.
- * @denormalization_for_authorization
- *   - Orders should include the userId to efficiently authorize access.
+ * @description This ruleset enforces a strict user-ownership model for personal data and role-based access for administrative data, while allowing public read access to the menu.
+ *
+ * Data Structure:
+ * - /users/{userId}: User profiles, accessible only by the user themselves.
+ * - /users/{userId}/delivery_addresses/{deliveryAddressId}: Delivery addresses, accessible only by the user.
+ * - /users/{userId}/payment_methods/{paymentMethodId}: Payment methods, accessible only by the user.
+ * - /orders/{orderId}: Orders, accessible by the owning user or admins.
+ * - /orders/{orderId}/order_items/{orderItemId}: Order items, accessible by the owning user or admins.
+ * - /menu_items/{menuItemId}: Menu items, publicly readable, writeable by no one.
+ * - /expenses/{expenseId}: Business expenses, accessible only by admins and super-admins.
+ * - /suppliers/{supplierId}: Supplier information, accessible only by admins and super-admins.
+ * - /business_units/{businessUnitId}: Business unit information, accessible only by admins and super-admins.
+ *
+ * Key Security Decisions:
+ * - User listing is disallowed for privacy.
+ * - Menu items are publicly readable but not writable via rules. Data is meant to be seeded.
+ * - Admin/Super-Admin roles have full access to expenses, suppliers, and business units.
+ * - All write operations are validated against user authentication.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * @description Checks if the request is made by an authenticated user.
-     * @return {bool} True if the user is signed in, false otherwise.
+     * @description Checks if the request is authenticated.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId - The user ID to compare against the authenticated user's ID.
-     * @return {bool} True if the user IDs match, false otherwise.
+     * @description Checks if the request is made by the owner of the document.
      */
     function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+      return request.auth.uid == userId;
     }
 
     /**
-     * @description Checks if the authenticated user ID matches the provided user ID and the resource exists
-     * @param {string} userId - The user ID to compare against the authenticated user's ID.
-     * @return {bool} True if the user IDs match and resource exists, false otherwise.
+     * @description Checks if the request is made by an existing owner of the document.
      */
     function isExistingOwner(userId) {
-        return isOwner(userId) && resource != null;
+      return isOwner(userId) && resource != null;
     }
 
     /**
-     * @description Checks if the authenticated user has the 'admin' or 'super-admin' role.
-     *   This function is a placeholder. In a real application, you would need to
-     *   implement a mechanism to securely assign and verify user roles (e.g., using
-     *   custom claims).
-     * @return {bool} True if the user has an admin role, false otherwise.
+     * @description Checks if the user has the 'admin' or 'super-admin' role.
      */
     function isAdmin() {
-      // This is a placeholder. Replace with your actual admin role check.
-      // For example, using custom claims:
-      // return isSignedIn() && request.auth.token.role in ['admin', 'super-admin'];
-      return false;
+      return isSignedIn() && (getUserRole() == 'admin' || getUserRole() == 'super-admin');
     }
 
+        /**
+         * @description Gets the user's role from the UserProfile document.
+         */
+        function getUserRole() {
+            return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+        }
+
     /**
-     * @description
-     *   - Enforces document ownership: only the user with the matching `userId` can read, update, or delete their profile.
-     *   - Allows self-creation: a user can create their own profile if the `userId` matches their auth UID.
+     * @description Rules for user profiles.
      * @path /users/{userId}
-     * @allow (create) - User 'abc' with auth UID 'abc' can create their profile.
-     * @allow (get, update, delete) - User 'abc' with auth UID 'abc' can read, update, and delete their profile.
-     * @deny (create) - User 'def' with auth UID 'abc' cannot create a profile for 'def'.
-     * @deny (get, update, delete) - User 'def' with auth UID 'abc' cannot read, update, or delete the profile for 'def'.
-     * @principle Enforces document ownership for writes and restricts access to a user's own data tree.
+     * @allow (create) - Authenticated user can create their own profile if the userId matches their auth UID.
+     * @allow (get, update, delete) - Authenticated user can get, update, and delete their own profile.
+     * @deny (create) - User cannot create a profile with a userId that doesn't match their auth UID.
+     * @deny (list) - No one can list all user profiles.
+     * @principle Enforces document ownership for writes.
      */
     match /users/{userId} {
-      // Only allow creation if the user ID matches the authenticated user ID.
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      // Only allow reading, updating, and deleting if the user ID matches the authenticated user ID.
-      allow get, update, delete: if isExistingOwner(userId);
+      // Only allow authenticated users to read their own profile
+      allow get: if isOwner(userId);
       allow list: if false;
+
+      // Allow a user to create their profile if the userId matches their auth.uid
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+
+      // Only allow the owner to update their profile, and enforce immutability for the id field
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+
+      // Only allow the owner to delete their profile
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description
-     *   - Enforces document ownership: only the user with the matching `userId` can create, read, update, or delete their delivery addresses.
+     * @description Rules for delivery addresses.
      * @path /users/{userId}/delivery_addresses/{deliveryAddressId}
-     * @allow (create) - User 'abc' with auth UID 'abc' can create a delivery address under their profile.
-     * @allow (get, update, delete) - User 'abc' with auth UID 'abc' can read, update, and delete a delivery address under their profile.
-     * @deny (create) - User 'def' with auth UID 'abc' cannot create a delivery address under user 'def' profile.
-     * @deny (get, update, delete) - User 'def' with auth UID 'abc' cannot read, update, or delete a delivery address under user 'def' profile.
-     * @principle Enforces document ownership for all operations within a user's subcollection.
+     * @allow (create, get, update, delete, list) - Authenticated user can manage their own delivery addresses.
+     * @deny (create, get, update, delete, list) - User cannot manage delivery addresses for other users.
+     * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId}/delivery_addresses/{deliveryAddressId} {
+      // Only allow authenticated users to read and list their own delivery addresses
+      allow get, list: if isOwner(userId);
+
+      // Only allow authenticated users to create delivery addresses under their own user ID
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow get, update, delete: if isExistingOwner(userId);
-      allow list: if isOwner(userId);
+
+      // Only allow the owner to update and delete their delivery addresses, and enforce immutability for the userId field
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+
+      // Only allow the owner to delete their delivery addresses
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description
-     *   - Enforces document ownership: only the user with the matching `userId` can create, read, update, or delete their payment methods.
+     * @description Rules for payment methods.
      * @path /users/{userId}/payment_methods/{paymentMethodId}
-     * @allow (create) - User 'abc' with auth UID 'abc' can create a payment method under their profile.
-     * @allow (get, update, delete) - User 'abc' with auth UID 'abc' can read, update, and delete a payment method under their profile.
-     * @deny (create) - User 'def' with auth UID 'abc' cannot create a payment method under user 'def' profile.
-     * @deny (get, update, delete) - User 'def' with auth UID 'abc' cannot read, update, or delete a payment method under user 'def' profile.
-     * @principle Enforces document ownership for all operations within a user's subcollection.
+     * @allow (create, get, update, delete, list) - Authenticated user can manage their own payment methods.
+     * @deny (create, get, update, delete, list) - User cannot manage payment methods for other users.
+     * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId}/payment_methods/{paymentMethodId} {
+      // Only allow authenticated users to read and list their own payment methods
+      allow get, list: if isOwner(userId);
+
+      // Only allow authenticated users to create payment methods under their own user ID
       allow create: if isOwner(userId) && request.resource.data.userId == userId;
-      allow get, update, delete: if isExistingOwner(userId);
-      allow list: if isOwner(userId);
+
+      // Only allow the owner to update and delete their payment methods, and enforce immutability for the userId field
+      allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId;
+
+      // Only allow the owner to delete their payment methods
+      allow delete: if isExistingOwner(userId);
     }
 
     /**
-     * @description
-     *   - Allows any signed-in user to read (get, list) any menu item.
-     *   - Write operations are forbidden, pending a decision on whether admins should manage menu items via the app.
+     * @description Rules for orders.
+     * @path /orders/{orderId}
+     * @allow (create) - Authenticated user can create an order with their userId.
+     * @allow (get, list) - Authenticated user can read and list their own orders. Admins can read and list all orders.
+     * @allow (update, delete) - Only admins can update or delete orders.
+     * @deny (create) - User cannot create an order for another user.
+     * @principle Allows user to manage own orders, admins to manage all.
+     */
+    match /orders/{orderId} {
+      // Allow authenticated users to read their own orders and admins to read all orders
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+
+      // Only allow an authenticated user to create an order for themselves
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+
+      // Only allow admins to update and delete orders
+      allow update, delete: if isAdmin() && resource != null;
+    }
+
+    /**
+     * @description Rules for order items.
+     * @path /orders/{orderId}/order_items/{orderItemId}
+     * @allow (read) - Any user with access to the order can read its items.
+     * @allow (create, update, delete) - Only admins can create, update, or delete order items.
+     * @deny (write) - Regular users cannot create, update, or delete order items.
+     */
+    match /orders/{orderId}/order_items/{orderItemId} {
+      // Allow users with access to the order to read the order items (based on Order rules)
+      allow get, list: if isSignedIn() && (get(/databases/$(database)/documents/orders/$(orderId)).data.userId == request.auth.uid || isAdmin());
+
+      // Only allow admins to create, update, and delete order items
+      allow create, update, delete: if isAdmin();
+    }
+
+    /**
+     * @description Rules for menu items.
      * @path /menu_items/{menuItemId}
-     * @allow (get, list) - Any signed-in user can view the menu items.
-     * @deny (create, update, delete) - No user can create, update, or delete menu items.
-     * @principle Public read access with owner-only writes (currently no owner, so writes are disabled).
+     * @allow (read) - Everyone can read menu items.
+     * @deny (write) - No one can write menu items via rules. They are meant to be seeded.
      */
     match /menu_items/{menuItemId} {
+      // Allow anyone to read menu items
       allow get, list: if true;
+
+      // Prevent anyone from creating, updating, or deleting menu items via rules.
       allow create, update, delete: if false;
     }
 
     /**
-     * @description
-     *   - Allows administrators to manage (create, read, update, delete) expenses.
-     *   - Regular users have no access.
+     * @description Rules for expenses.
      * @path /expenses/{expenseId}
-     * @allow (create, get, update, delete) - User with 'admin' or 'super-admin' role can manage expenses.
-     * @deny (create, get, update, delete) - Regular users cannot manage expenses.
-     * @principle Role-based access control for administrative data.
+     * @allow (read, write) - Only admins and super-admins can manage expenses.
+     * @deny (read, write) - Regular users cannot access expenses.
      */
     match /expenses/{expenseId} {
-      allow create, get, update, delete: if isAdmin();
-      allow list: if isAdmin();
+      // Allow only admins and super-admins to read and list expenses
+      allow get, list: if isAdmin();
+
+      // Allow only admins and super-admins to create, update, and delete expenses
+      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description
-     *   - Allows administrators to manage (create, read, update, delete) suppliers.
-     *   - Regular users have no access.
+     * @description Rules for suppliers.
      * @path /suppliers/{supplierId}
-     * @allow (create, get, update, delete) - User with 'admin' or 'super-admin' role can manage suppliers.
-     * @deny (create, get, update, delete) - Regular users cannot manage suppliers.
-     * @principle Role-based access control for administrative data.
+     * @allow (read, write) - Only admins and super-admins can manage suppliers.
+     * @deny (read, write) - Regular users cannot access suppliers.
      */
     match /suppliers/{supplierId} {
-      allow create, get, update, delete: if isAdmin();
-      allow list: if isAdmin();
+      // Allow only admins and super-admins to read and list suppliers
+      allow get, list: if isAdmin();
+
+      // Allow only admins and super-admins to create, update, and delete suppliers
+      allow create, update, delete: if isAdmin();
     }
 
     /**
-     * @description
-     *   - Allows administrators to manage (create, read, update, delete) business units.
-     *   - Regular users have no access.
+     * @description Rules for business units.
      * @path /business_units/{businessUnitId}
-     * @allow (create, get, update, delete) - User with 'admin' or 'super-admin' role can manage business units.
-     * @deny (create, get, update, delete) - Regular users cannot manage business units.
-     * @principle Role-based access control for administrative data.
+     * @allow (read, write) - Only admins and super-admins can manage business units.
+     * @deny (read, write) - Regular users cannot access business units.
      */
     match /business_units/{businessUnitId} {
-      allow create, get, update, delete: if isAdmin();
-      allow list: if isAdmin();
-    }
+      // Allow only admins and super-admins to read and list business units
+      allow get, list: if isAdmin();
 
-    /**
-     * @description
-     *  - Allows any authenticated user to view an order
-     *   - Write operations are forbidden, pending a decision on whether admins should manage orders via the app.
-     * @path /orders/{orderId}
-     * @allow (get, list) - Any signed-in user can view an order.
-     * @deny (create, update, delete) - No user can create, update, or delete orders.
-     * @principle Public read access with owner-only writes (currently no owner, so writes are disabled).
-     */
-    match /orders/{orderId} {
-        allow get, list: if true; // TODO: Limit to order owner
-        allow create, update, delete: if false; // TODO: Limit to order owner or admin
-    }
-
-     /**
-      * @description
-      *   - Allows any signed-in user to read (get, list) any order item.
-      *   - Write operations are forbidden, pending a decision on whether admins should manage order items via the app.
-      * @path /orders/{orderId}/order_items/{orderItemId}
-      * @allow (get, list) - Any signed-in user can view the order items.
-      * @deny (create, update, delete) - No user can create, update, or delete order items.
-      * @principle Public read access with owner-only writes (currently no owner, so writes are disabled).
-      */
-    match /orders/{orderId}/order_items/{orderItemId} {
-        allow get, list: if true;
-        allow create, update, delete: if false;
+      // Allow only admins and super-admins to create, update, and delete business units
+      allow create, update, delete: if isAdmin();
     }
   }
 }
