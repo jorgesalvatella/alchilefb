@@ -4,10 +4,10 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { CheckCircle, CookingPot, Bike, Pizza } from 'lucide-react';
 
 const orderStatusSteps = [
-  { id: 1, name: 'Order Placed', icon: CheckCircle, completed: true, time: '12:30 PM' },
-  { id: 2, name: 'Preparing', icon: CookingPot, completed: true, time: '12:35 PM' },
-  { id: 3, name: 'Out for Delivery', icon: Bike, completed: false, time: '12:50 PM (est.)' },
-  { id: 4, name: 'Delivered', icon: Pizza, completed: false, time: null },
+  { id: 1, name: 'Pedido Realizado', icon: CheckCircle, completed: true, time: '12:30 PM' },
+  { id: 2, name: 'Preparando', icon: CookingPot, completed: true, time: '12:35 PM' },
+  { id: 3, name: 'En Reparto', icon: Bike, completed: false, time: '12:50 PM (est.)' },
+  { id: 4, name: 'Entregado', icon: Pizza, completed: false, time: null },
 ];
 
 export default function OrderTrackingPage({ params }: { params: { id: string } }) {
@@ -16,16 +16,16 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="text-center mb-12">
-        <h1 className="font-headline text-5xl md:text-6xl text-primary">Track Your Order</h1>
+        <h1 className="font-headline text-5xl md:text-6xl text-primary">Rastrea Tu Pedido</h1>
         <p className="text-lg text-muted-foreground mt-2">
-          Order #{params.id} is on its way!
+          ¡El pedido #{params.id} está en camino!
         </p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8 items-start">
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="font-headline text-2xl">Order Status</CardTitle>
+            <CardTitle className="font-headline text-2xl">Estado del Pedido</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-4">
@@ -52,7 +52,7 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-                <CardTitle className="font-headline text-2xl">Live Map</CardTitle>
+                <CardTitle className="font-headline text-2xl">Mapa en Vivo</CardTitle>
             </CardHeader>
             <CardContent>
                 <div className="relative aspect-video w-full rounded-lg overflow-hidden bg-muted">
