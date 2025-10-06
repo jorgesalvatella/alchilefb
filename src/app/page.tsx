@@ -13,42 +13,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
-const sampleMenuItems: MenuItem[] = [
-    {
-      id: "1",
-      name: "Tacos al Pastor",
-      description: "Carne de cerdo marinada en achiote, asada lentamente y servida con piña.",
-      longDescription: "Un clásico de la Ciudad de México. Nuestra carne de cerdo se marina durante 24 horas en una mezcla secreta de chiles y achiote, luego se asa en un trompo vertical y se sirve en tortillas de maíz calientes con un toque de piña, cilantro y cebolla.",
-      price: 4.50,
-      category: "Tacos",
-      imageUrl: "https://imagenes.nobbora.com/taco-al-pastor.jpg",
-      ingredients: ["Cerdo", "Achiote", "Piña", "Cilantro", "Cebolla"],
-      spiceRating: 2,
-    },
-    {
-      id: "2",
-      name: "Burrito de Barbacoa",
-      description: "Carne de res cocida a fuego lento, envuelta en una tortilla de harina gigante.",
-      longDescription: "Nuestra barbacoa se cocina a fuego lento durante 8 horas hasta que está increíblemente tierna. La envolvemos en una tortilla de harina tostada con arroz, frijoles negros, queso y nuestra salsa de la casa.",
-      price: 14.99,
-      category: "Burritos",
-      imageUrl: "https://imagenes.nobbora.com/burrito-barbacoa.jpg",
-      ingredients: ["Res", "Arroz", "Frijoles Negros", "Queso", "Salsa"],
-      spiceRating: 1,
-    },
-    {
-        id: "3",
-        name: "Esquites 'Al Chile'",
-        description: "Granos de elote tierno con mayonesa, queso cotija, chile en polvo y lima.",
-        longDescription: "El antojito callejero mexicano por excelencia. Servimos granos de elote calientes y tiernos en un vaso, cubiertos con una cremosa mayonesa, queso cotija salado, un toque de chile en polvo y un chorrito de jugo de lima fresca. ¡No podrás comer solo uno!",
-        price: 6.00,
-        category: "Acompañamientos",
-        imageUrl: "https://imagenes.nobbora.com/esquites.jpg",
-        ingredients: ["Elote", "Mayonesa", "Queso Cotija", "Chile en Polvo", "Lima"],
-        spiceRating: 1,
-    },
-];
-
 export default function Home() {
   const heroMeatballsImage = {
     imageUrl: "https://imagenes.nobbora.com/Gemini_Generated_Image_dnit2idnit2idnit%20(3).png",
@@ -119,53 +83,71 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Items Section */}
-      <section id="featured-items" className="py-20 md:py-32 bg-gray-50 dark:bg-black">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="font-headline text-5xl md:text-6xl text-primary mb-4">Platillos Destacados</h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Una probadita de nuestras creaciones más populares, hechas con amor y el toque justo de picante.
+      {/* Challenge Section */}
+      <section id="challenge" className="pb-20 md:pb-32 bg-gradient-to-b from-white to-gray-50 dark:from-black dark:to-black relative overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-chile-red/5 rounded-full filter blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-fresh-green/5 rounded-full filter blur-3xl"></div>
+
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="text-center mb-16 fade-in-up">
+            <h2 className="text-5xl md:text-6xl font-black text-dark-charcoal dark:text-light-gray mb-4">
+              ¿Te Atreves o Prefieres?
+            </h2>
+            <div className="w-24 h-1.5 bg-gradient-to-r from-chile-red to-fresh-green mx-auto mb-6 rounded-full"></div>
+            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              Elige tu nivel de picante y déjate seducir por el sabor auténtico
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {sampleMenuItems.map((item) => {
-              const image = PlaceHolderImages.find((img) => img.id === item.image);
-              const imageUrl = item.imageUrl || image?.imageUrl || 'https://placehold.co/600x400';
-              const imageHint = item.imageUrl ? item.name : image?.imageHint;
-              return (
-                <Card key={item.id} className="overflow-hidden shadow-lg hover:shadow-primary/20 transition-shadow duration-300 group">
-                  <CardHeader className="p-0">
-                    <div className="relative h-64 w-full">
-                       <Image
-                        src={imageUrl}
-                        alt={item.name}
-                        fill
-                        className="object-cover transition-transform duration-300 group-hover:scale-105"
-                        data-ai-hint={imageHint}
-                      />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <div className="flex justify-between items-start mb-2">
-                      <CardTitle className="font-headline text-2xl text-primary">{item.name}</CardTitle>
-                      <div className="flex items-center gap-0.5 text-amber-400 shrink-0 ml-2">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Flame key={i} size={18} className={i < item.spiceRating ? 'fill-current' : 'text-muted-foreground/30'} />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-muted-foreground mb-4 line-clamp-2 h-10">{item.description}</p>
-                    <div className="flex justify-between items-end">
-                      <p className="text-2xl font-bold">${item.price.toFixed(2)}</p>
-                      <Button asChild>
-                        <Link href={`/menu/${item.id}`}>Ver Platillo</Link>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+
+          <div className="grid md:grid-cols-2 gap-12 lg:gap-16 max-w-6xl mx-auto">
+            {/* Picante Card */}
+            <div className="group relative bg-black rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 hover:shadow-chile-red/30 hover:scale-105 border-2 border-transparent hover:border-chile-red/50 fade-in-up" style={{animationDelay: "0.2s"}}>
+              <Image src="https://imagenes.nobbora.com/Dise%C3%B1o%20sin%20t%C3%ADtulo%20(1).png" alt="Spicy Meatballs" width={600} height={400} className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110"/>
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-4xl font-black text-white">Picante Extremo</h3>
+                  <div className="w-16 h-16 bg-chile-red/20 rounded-2xl flex items-center justify-center">
+                    <svg className="w-10 h-10 text-chile-red" fill="currentColor" viewBox="0 0 24 24"><path d="M12.82,2.29A2.4,2.4,0,0,0,11.18,2.29C10.59,2.88,10.59,3.84,11.18,4.43L12,5.25l.82-.82c.59-.59.59-1.55,0-2.14M12,7.25a2.24,2.24,0,0,1-2.24,2.24h-1.5A4.74,4.74,0,0,0,13,5V3.5A2.5,2.5,0,0,0,10.5,1,2.5,2.5,0,0,0,8,3.5V5a4.74,4.74,0,0,0,4.74,4.74h-1.5A2.24,2.24,0,0,1,9,7.25a2.24,2.24,0,0,1,2.24-2.24A2.24,2.24,0,0,1,13.5,7.25,2.24,2.24,0,0,1,12,9.49H12A2.24,2.24,0,0,1,9.75,7.25a2.24,2.24,0,0,1,2.25-2.24A2.24,2.24,0,0,1,14.25,7.25,2.24,2.24,0,0,1,12,9.49h0a2.24,2.24,0,0,1-2.24-2.24A2.24,2.24,0,0,1,12,5a2.24,2.24,0,0,1,2.24,2.25,2.24,2.24,0,0,1-2.24,2.24H12a2.24,2.24,0,0,1-2.24-2.24A2.24,2.24,0,0,1,12,5a2.24,2.24,0,0,1,2.24,2.25Z"/><path d="M18,11H6a3,3,0,0,0-3,3v6a3,3,0,0,0,3,3H18a3,3,0,0,0,3-3V14A3,3,0,0,0,18,11Zm-6,8a1,1,0,1,1,1-1A1,1,0,0,1,12,19Zm3-3H9a1,1,0,0,1,0-2h6a1,1,0,0,1,0,2Z"/></svg>
+                  </div>
+                </div>
+                <p className="text-gray-300 text-lg mb-6 leading-relaxed">
+                  Para los valientes que buscan una explosión de sabor y picor. Preparado con chiles frescos y especias secretas.
+                </p>
+                <ul className="space-y-4 mb-8">
+                  <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-chile-red mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Chile habanero y serrano</li>
+                  <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-chile-red mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Nivel de picor: <span className="font-bold ml-1">Alto 🔥🔥🔥</span></li>
+                  <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-chile-red mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Salsa roja artesanal</li>
+                </ul>
+                <button className="w-full bg-gradient-to-r from-chile-red to-red-700 text-white font-bold py-4 rounded-xl hover:shadow-xl transition-all duration-300 hover:scale-105 text-lg">
+                  ¡Me Atrevo!
+                </button>
+              </div>
+            </div>
+
+            {/* Suave Card */}
+            <div className="group relative bg-black rounded-3xl shadow-2xl overflow-hidden transition-all duration-300 hover:shadow-fresh-green/30 hover:scale-105 border-2 border-transparent hover:border-fresh-green/50 fade-in-up" style={{animationDelay: "0.4s"}}>
+              <Image src="https://imagenes.nobbora.com/Dise%C3%B1o%20sin%20t%C3%ADtulo%20(2).png" alt="Mild Meatballs" width={600} height={400} className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-110"/>
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-4xl font-black text-white">Sabor Suave</h3>
+                  <div className="w-16 h-16 bg-fresh-green/20 rounded-2xl flex items-center justify-center">
+                    <svg className="w-10 h-10 text-fresh-green" fill="currentColor" viewBox="0 0 24 24"><path d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M12,20c-4.41,0-8-3.59-8-8s3.59-8,8-8s8,3.59,8,8S16.41,20,12,20z M7,11.5C7,10.67,7.67,10,8.5,10S10,10.67,10,11.5S9.33,13,8.5,13S7,12.33,7,11.5z M14,11.5c0-0.83,0.67-1.5,1.5-1.5s1.5,0.67,1.5,1.5S16.33,13,15.5,13S14,12.33,14,11.5z M12,16c-2.33,0-4.31-1.46-5.11-3.5h10.22C16.31,14.54,14.33,16,12,16z"/></svg>
+                  </div>
+                </div>
+                <p className="text-gray-300 text-lg mb-6 leading-relaxed">
+                  Para los que prefieren disfrutar de la ternura y el sazón sin picante. Sabor tradicional con hierbas frescas.
+                </p>
+                <ul className="space-y-4 mb-8">
+                  <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-fresh-green mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Hierbas aromáticas frescas</li>
+                  <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-fresh-green mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Nivel de picor: <span className="font-bold ml-1">Ninguno ✨</span></li>
+                  <li className="flex items-center text-gray-300"><svg className="w-6 h-6 text-fresh-green mr-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>Salsa verde tradicional</li>
+                </ul>
+                <button className="w-full bg-gradient-to-r from-fresh-green to-yellow-600 text-white font-bold py-4 rounded-xl hover:shadow-xl transition-all duration-300 hover:scale-105 text-lg">
+                  ¡Lo Prefiero!
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
