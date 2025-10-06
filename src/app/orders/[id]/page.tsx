@@ -60,12 +60,22 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
   }
 
   if (!order) {
-    notFound();
+    // We can't call notFound() directly if there's a chance the doc is just loading.
+    // It's better to show a "not found" state in the UI.
+    return (
+        <div className="container mx-auto px-4 py-12 text-center">
+            <h1 className="font-headline text-5xl md:text-6xl text-primary">Pedido no Encontrado</h1>
+            <p className="text-lg text-muted-foreground mt-2">
+                No pudimos encontrar el pedido con el ID #{params.id}.
+            </p>
+        </div>
+    );
   }
 
   const currentStepIndex = allSteps.findIndex(step => step.status === order.orderStatus);
 
   const getStepTime = (stepIndex: number) => {
+    if (!order.orderDate) return null;
     if (stepIndex < currentStepIndex) return 'Completado';
     if (stepIndex === currentStepIndex) return order.orderDate?.toDate().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) || 'Ahora';
     return null;
@@ -136,4 +146,3 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
     </div>
   );
 }
-    
