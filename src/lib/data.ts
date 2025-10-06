@@ -12,6 +12,20 @@ export type MenuItem = {
   spiceRating: 1 | 2 | 3 | 4 | 5;
 };
 
+export type UserProfile = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber?: string;
+  profilePictureUrl?: string;
+  defaultDeliveryAddressId?: string;
+  paymentMethodIds?: string[];
+  orderHistoryIds?: string[];
+  spicePreference?: string;
+  role: 'customer' | 'admin' | 'super-admin';
+}
+
 export const menuItems: MenuItem[] = [
   {
     id: 'taco-al-pastor',
