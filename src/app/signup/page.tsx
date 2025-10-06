@@ -10,7 +10,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useAuth } from '@/firebase/provider';
+import { useAuth, useFirestore } from '@/firebase/provider';
 import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
@@ -32,6 +32,7 @@ const SocialButton = ({ children, ...props }: { children: React.ReactNode } & Re
 
 export default function SignupPage() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
   const { user, isUserLoading } = useUser();
@@ -52,10 +53,19 @@ export default function SignupPage() {
   }, [user, isUserLoading, router]);
 
   const onSubmit = (values: z.infer<typeof signupSchema>) => {
-    initiateEmailSignUp(auth, values.email, values.password);
+    // For the next user that signs up, create a super-admin
+    const userProfileData = {
+      email: values.email,
+      firstName: values.fullName.split(' ')[0] || '',
+      lastName: values.fullName.split(' ').slice(1).join(' ') || '',
+      role: 'super-admin' as const,
+    };
+
+    initiateEmailSignUp(auth, firestore, values.email, values.password, userProfileData);
+
     toast({
-      title: 'Creando cuenta...',
-      description: '¡Bienvenido a Al Chile! Serás redirigido en un momento.',
+      title: 'Creando cuenta de Super Admin...',
+      description: '¡Bienvenido! Serás redirigido en un momento.',
     });
   };
 
