@@ -13,15 +13,17 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth, useUser } from '@/firebase';
 
-const navLinks = [
+const baseNavLinks = [
   { href: '/menu', label: 'Menú' },
   { href: '/orders/1', label: 'Rastrear Pedido' },
-  { href: '/admin', label: 'Admin' },
 ];
+
+const adminNavLink = { href: '/admin', label: 'Admin', roles: ['admin', 'super-admin'] };
+
 
 function UserNav() {
   const auth = useAuth();
@@ -80,8 +82,31 @@ export function Header() {
   const [isSheetOpen, setSheetOpen] = useState(false);
   const isMobile = useIsMobile();
   const { user, isUserLoading } = useUser();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+   useEffect(() => {
+    if (user) {
+      user.getIdTokenResult().then(idTokenResult => {
+        const role = idTokenResult.claims.role as string || 'customer';
+        setUserRole(role);
+      });
+    } else {
+      setUserRole('customer'); // Default role for non-logged-in users
+    }
+  }, [user]);
 
   const closeSheet = () => setSheetOpen(false);
+
+  const getNavLinks = () => {
+    let links = [...baseNavLinks];
+    if (userRole && adminNavLink.roles.includes(userRole)) {
+      links.push(adminNavLink);
+    }
+    return links;
+  };
+  
+  const navLinks = getNavLinks();
+
 
   const navContent = (
     <nav className="flex flex-col md:flex-row items-center gap-6 text-lg md:text-sm font-medium text-foreground/80">
