@@ -3,11 +3,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection } from 'firebase/firestore';
-import type { Supplier } from '@/lib/data';
-import { PlusCircle, Pen } from 'lucide-react';
+import { collection, doc } from 'firebase/firestore';
+import type { Supplier, Concept } from '@/lib/data';
+import { PlusCircle, Pen, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { AddEditSupplierDialog } from '@/components/admin/add-edit-supplier-dialog';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function AdminSuppliersPage() {
   const firestore = useFirestore();
@@ -20,6 +21,12 @@ export default function AdminSuppliersPage() {
   );
   const { data: suppliers, isLoading } = useCollection<Supplier>(suppliersCollection);
 
+  const conceptsCollection = useMemoFirebase(
+    () => (firestore ? collection(firestore, 'concepts') : null),
+    [firestore]
+  );
+  const { data: concepts } = useCollection<Concept>(conceptsCollection);
+
   const handleEdit = (item: Supplier) => {
     setSelectedSupplier(item);
     setDialogOpen(true);
@@ -28,6 +35,12 @@ export default function AdminSuppliersPage() {
   const handleAddNew = () => {
     setSelectedSupplier(null);
     setDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (!firestore) return;
+    const docRef = doc(collection(firestore, 'suppliers'), id);
+    deleteDocumentNonBlocking(docRef);
   };
 
   return (
@@ -81,6 +94,14 @@ export default function AdminSuppliersPage() {
                     >
                       <Pen className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(supplier.id)}
+                      className="text-white/60 hover:text-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -91,6 +112,7 @@ export default function AdminSuppliersPage() {
         isOpen={dialogOpen}
         onOpenChange={setDialogOpen}
         supplier={selectedSupplier}
+        concepts={concepts || []}
       />
     </>
   );

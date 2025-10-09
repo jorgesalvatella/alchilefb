@@ -226,5 +226,26 @@ service cloud.firestore {
       allow update: if isAdmin() || isSuperAdmin();
       allow delete: if isAdmin() || isSuperAdmin();
     }
+
+    match /departments/{departmentId} {
+      allow read, list: if isAdmin() || isSuperAdmin();
+      allow create: if isAdmin() || isSuperAdmin() && request.resource.data.businessUnitId in get(/databases/$(database)/documents/business_units/$(request.resource.data.businessUnitId)).data.keys();
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
+    }
+
+    match /groups/{groupId} {
+      allow read, list: if isAdmin() || isSuperAdmin();
+      allow create: if isAdmin() || isSuperAdmin() && request.resource.data.departmentId in get(/databases/$(database)/documents/departments/$(request.resource.data.departmentId)).data.keys();
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
+    }
+
+    match /concepts/{conceptId} {
+      allow read, list: if isAdmin() || isSuperAdmin();
+      allow create: if isAdmin() || isSuperAdmin() && request.resource.data.groupId in get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.keys();
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
+    }
   }
 }

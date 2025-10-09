@@ -75,13 +75,47 @@ export type Supplier = {
   contactPerson?: string;
   phone?: string;
   email?: string;
+  conceptIds?: string[];
 };
 
 export type BusinessUnit = {
   id: string;
   name: string;
+  razonSocial: string;
   address: string;
   phone: string;
   taxIdUrl?: string;
+};
+
+export type Department = {
+  id: string;
+  name: string;
+  businessUnitId: string;
+};
+
+export type Group = {
+  id: string;
+  name: string;
+  departmentId: string;
+};
+
+export type Concept = {
+  id: string;
+  name: string;
+  groupId: string;
+};
+
+export type Supplier = {
+  id: string;
+  name: string;
+  contactPerson?: string;
+  phone?: string;
+  email?: string;
+  conceptIds?: string[];
+};
+
+export type Department = {
+  id: string;
+  name: string;
 };
     

@@ -3,10 +3,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection } from 'firebase/firestore';
+import { collection, doc } from 'firebase/firestore';
 import type { BusinessUnit } from '@/lib/data';
-import { PlusCircle, Pen } from 'lucide-react';
+import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState } from 'react';
+import { AddEditBusinessUnitDialog } from '@/components/admin/add-edit-business-unit-dialog';
+import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import Link from 'next/link';
 
 export default function AdminBusinessUnitsPage() {
   const firestore = useFirestore();
@@ -28,6 +31,13 @@ export default function AdminBusinessUnitsPage() {
     setSelectedBusinessUnit(null);
     setDialogOpen(true);
   };
+
+  const handleDelete = (id: string) => {
+    if (!firestore) return;
+    const docRef = doc(collection(firestore, 'business_units'), id);
+    deleteDocumentNonBlocking(docRef);
+  };
+
 
   return (
     <>
@@ -51,6 +61,7 @@ export default function AdminBusinessUnitsPage() {
             <TableHeader>
               <TableRow className="border-b border-white/10 hover:bg-transparent">
                 <TableHead className="text-white/80">Nombre</TableHead>
+                <TableHead className="text-white/80">Razón Social</TableHead>
                 <TableHead className="text-white/80">Dirección</TableHead>
                 <TableHead className="text-white/80">Teléfono</TableHead>
                 <TableHead className="text-right text-white/80">Acciones</TableHead>
@@ -59,7 +70,7 @@ export default function AdminBusinessUnitsPage() {
             <TableBody>
               {isLoading && (
                 <TableRow className="border-b-0">
-                  <TableCell colSpan={4} className="text-center text-white/60 py-12">
+                  <TableCell colSpan={5} className="text-center text-white/60 py-12">
                     Cargando unidades de negocio...
                   </TableCell>
                 </TableRow>
@@ -67,6 +78,7 @@ export default function AdminBusinessUnitsPage() {
               {businessUnits && businessUnits.map((unit) => (
                 <TableRow key={unit.id} className="border-b border-white/10 hover:bg-white/5">
                   <TableCell className="font-medium text-white">{unit.name}</TableCell>
+                  <TableCell className="text-white/80">{unit.razonSocial}</TableCell>
                   <TableCell className="text-white/80">{unit.address}</TableCell>
                   <TableCell className="text-white/80">{unit.phone}</TableCell>
                   <TableCell className="text-right">
@@ -78,17 +90,34 @@ export default function AdminBusinessUnitsPage() {
                     >
                       <Pen className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(unit.id)}
+                      className="text-white/60 hover:text-red-500"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Link href={`/admin/catalogo/unidades-de-negocio/${unit.id}`}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-white/60 hover:text-blue-400"
+                      >
+                        <FolderKanban className="h-4 w-4" />
+                      </Button>
+                    </Link>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </div>
-        {/* <AddEditBusinessUnitDialog
-        isOpen={dialogOpen}
-        onOpenChange={setDialogOpen}
-        businessUnit={selectedBusinessUnit}
-      /> */}
+        <AddEditBusinessUnitDialog
+            isOpen={dialogOpen}
+            onOpenChange={setDialogOpen}
+            businessUnit={selectedBusinessUnit}
+        />
     </>
   );
 }

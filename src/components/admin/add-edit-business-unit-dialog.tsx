@@ -14,87 +14,89 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useFirestore } from '@/firebase/provider';
 import { collection, doc } from 'firebase/firestore';
-import type { Supplier } from '@/lib/data';
+import type { BusinessUnit } from '@/lib/data';
 import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { uploadFile } from '@/app/actions';
 
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { MultiSelect } from '@/components/ui/multi-select';
-import type { Concept, Supplier } from '@/lib/data';
-
-interface AddEditSupplierDialogProps {
+interface AddEditBusinessUnitDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  supplier: Supplier | null;
+  businessUnit: BusinessUnit | null;
 }
 
-export function AddEditSupplierDialog({ 
+export function AddEditBusinessUnitDialog({ 
     isOpen, 
     onOpenChange, 
-    supplier,
-}: AddEditSupplierDialogProps) {
+    businessUnit 
+}: AddEditBusinessUnitDialogProps) {
   const firestore = useFirestore();
   const [name, setName] = useState('');
-  const [contactName, setContactName] = useState('');
-  const [email, setEmail] = useState('');
+  const [razonSocial, setRazonSocial] = useState('');
+  const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
-  const [conceptIds, setConceptIds] = useState<string[]>([]);
-
-  const conceptsCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'concepts') : null),
-    [firestore]
-  );
-  const { data: concepts } = useCollection<Concept>(conceptsCollection);
+  const [taxIdFile, setTaxIdFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (isOpen) {
-        if (supplier) {
-            setName(supplier.name || '');
-            setContactName(supplier.contactName || '');
-            setEmail(supplier.email || '');
-            setPhone(supplier.phone || '');
-            setConceptIds(supplier.conceptIds || []);
+        if (businessUnit) {
+            setName(businessUnit.name || '');
+            setRazonSocial(businessUnit.razonSocial || '');
+            setAddress(businessUnit.address || '');
+            setPhone(businessUnit.phone || '');
         } else {
             setName('');
-            setContactName('');
-            setEmail('');
+            setRazonSocial('');
+            setAddress('');
             setPhone('');
-            setConceptIds([]);
         }
     }
-  }, [supplier, isOpen]);
+  }, [businessUnit, isOpen]);
 
   const handleSubmit = async () => {
     if (!firestore) return;
-    const suppliersCollection = collection(firestore, 'suppliers');
+    
+    let taxIdUrl = businessUnit?.taxIdUrl || '';
+    if (taxIdFile) {
+      const formData = new FormData();
+      formData.append('file', taxIdFile);
+      const result = await uploadFile(formData);
+      if (result.url) {
+        taxIdUrl = result.url;
+      } else {
+        // TODO: Handle upload error
+        console.error(result.error);
+        return;
+      }
+    }
 
-    const supplierData = {
+    const businessUnitsCollection = collection(firestore, 'business_units');
+
+    const businessUnitData = {
       name,
-      contactName,
-      email,
+      razonSocial,
+      address,
       phone,
-      conceptIds,
+      taxIdUrl,
     };
 
-    if (supplier) {
-      const docRef = doc(suppliersCollection, supplier.id);
-      setDocumentNonBlocking(docRef, supplierData, { merge: true });
+    if (businessUnit) {
+      const docRef = doc(businessUnitsCollection, businessUnit.id);
+      setDocumentNonBlocking(docRef, businessUnitData, { merge: true });
     } else {
-      await addDocumentNonBlocking(suppliersCollection, supplierData);
+      await addDocumentNonBlocking(businessUnitsCollection, businessUnitData);
     }
     onOpenChange(false);
   };
-
-  const conceptOptions = concepts?.map(concept => ({ label: concept.name, value: concept.id })) || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="bg-black/80 backdrop-blur-lg border-white/10 text-white sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-2xl font-headline bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
-            {supplier ? 'Editar Proveedor' : 'Añadir Proveedor'}
+            {businessUnit ? 'Editar Unidad de Negocio' : 'Añadir Unidad de Negocio'}
           </DialogTitle>
           <DialogDescription className="text-white/60">
-            {supplier ? 'Edita los detalles de tu proveedor.' : 'Añade un nuevo proveedor a tu lista.'}
+            {businessUnit ? 'Edita los detalles de la unidad de negocio.' : 'Añade una nueva unidad de negocio.'}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -103,25 +105,20 @@ export function AddEditSupplierDialog({
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="contactName" className="text-white/80">Nombre de Contacto</Label>
-            <Input id="contactName" value={contactName} onChange={(e) => setContactName(e.target.value)} className="bg-white/5 border-white/20" />
+            <Label htmlFor="razonSocial" className="text-white/80">Razón Social</Label>
+            <Input id="razonSocial" value={razonSocial} onChange={(e) => setRazonSocial(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-white/80">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="bg-white/5 border-white/20" />
+            <Label htmlFor="address" className="text-white/80">Dirección</Label>
+            <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone" className="text-white/80">Teléfono</Label>
             <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="concepts" className="text-white/80">Conceptos</Label>
-            <MultiSelect
-              options={conceptOptions}
-              onValueChange={setConceptIds}
-              defaultValue={conceptIds}
-              placeholder="Selecciona conceptos..."
-            />
+            <Label htmlFor="taxIdFile" className="text-white/80">Cédula Fiscal</Label>
+            <Input id="taxIdFile" type="file" onChange={(e) => setTaxIdFile(e.target.files ? e.target.files[0] : null)} className="bg-white/5 border-white/20" />
           </div>
         </div>
         <DialogFooter>
