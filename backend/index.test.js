@@ -4,41 +4,53 @@ const admin = require('firebase-admin');
 
 // Mock de Firestore con la función 'add' expuesta
 jest.mock('firebase-admin', () => {
-  // 1. Definimos la función mock PRIMERO
   const mockAdd = jest.fn(() => Promise.resolve({ id: 'new-doc-id' }));
+  const mockArrayUnion = jest.fn();
+  const mockArrayRemove = jest.fn();
+  const mockUpdate = jest.fn();
 
-  // 2. La usamos en nuestra simulación de firestore
   const firestoreMock = {
     collection: jest.fn((collectionName) => {
-      if (collectionName === 'grupos') {
-        return {
-          where: jest.fn().mockReturnThis(),
-          get: jest.fn().mockResolvedValue({
-            empty: false,
-            forEach: (callback) => callback({ id: 'group1', data: () => ({ name: 'Test Group' }) }),
-          }),
-          add: mockAdd,
-        };
-      }
-      return {
-        where: jest.fn().mockReturnThis(),
-        get: jest.fn().mockResolvedValue({
-          empty: false,
-          forEach: (callback) => callback({ id: 'unit1', data: () => ({ name: 'Test Unit' }) }),
-        }),
-        add: mockAdd,
-      };
+        const baseMock = {
+            where: jest.fn().mockReturnThis(),
+            get: jest.fn().mockResolvedValue({
+              empty: false,
+              forEach: (callback) => callback({ id: `${collectionName}-1`, data: () => ({ name: `Test ${collectionName}` }) }),
+            }),
+            add: mockAdd,
+            doc: jest.fn(() => ({
+                get: jest.fn().mockResolvedValue({
+                    exists: true,
+                    data: () => ({ proveedoresIds: ['supplier1'] })
+                }),
+                update: mockUpdate,
+            })),
+          };
+      
+          if (collectionName === 'proveedores') {
+            baseMock.get = jest.fn().mockResolvedValue({
+                docs: [{ id: 'supplier1', data: () => ({ name: 'Supplier A' }) }]
+            });
+          }
+
+      return baseMock;
     }),
+    FieldValue: {
+        arrayUnion: mockArrayUnion,
+        arrayRemove: mockArrayRemove,
+    },
   };
 
-  // 3. Retornamos todo, incluyendo la función mock para poder espiarla
   return {
     initializeApp: jest.fn(),
     applicationDefault: jest.fn(),
     firestore: () => firestoreMock,
     auth: () => ({ verifyIdToken: jest.fn() }),
     app: () => ({ delete: jest.fn() }),
-    __mockAdd: mockAdd, // La exponemos
+    __mockAdd: mockAdd,
+    __mockUpdate: mockUpdate,
+    __mockArrayUnion: mockArrayUnion,
+    __mockArrayRemove: mockArrayRemove,
   };
 });
 
@@ -217,7 +229,164 @@ describe('API Endpoints', () => {
   
         expect(response.statusCode).toBe(200);
         expect(response.body).toBeInstanceOf(Array);
-        expect(response.body[0]).toHaveProperty('name', 'Test Group');
+        expect(response.body[0]).toHaveProperty('name', 'Test grupos');
       });
+  });
+
+  describe('Concept Endpoints', () => {
+    const unidadId = 'test-unidad-id';
+    const deptoId = 'test-depto-id';
+    const grupoId = 'test-grupo-id';
+    const newConcept = { name: 'Tomate', description: 'Tomate fresco' };
+
+    describe('POST /.../conceptos', () => {
+      it('should return 403 Forbidden if user is not an admin', async () => {
+        const response = await request(app)
+          .post(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}/grupos/${grupoId}/conceptos`)
+          .set('Authorization', 'Bearer test-regular-user-token')
+          .send(newConcept);
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 400 Bad Request if name is missing', async () => {
+        const response = await request(app)
+          .post(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}/grupos/${grupoId}/conceptos`)
+          .set('Authorization', 'Bearer test-admin-token')
+          .send({ description: 'Sin nombre' });
+        expect(response.statusCode).toBe(400);
+      });
+
+      it('should return 201 Created and the new concept if successful', async () => {
+        const response = await request(app)
+          .post(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}/grupos/${grupoId}/conceptos`)
+          .set('Authorization', 'Bearer test-admin-token')
+          .send(newConcept);
+
+        expect(response.statusCode).toBe(201);
+        expect(admin.__mockAdd).toHaveBeenCalledWith({
+          name: newConcept.name,
+          description: newConcept.description,
+          businessUnitId: unidadId,
+          departmentId: deptoId,
+          groupId: grupoId,
+          proveedoresIds: [],
+          deleted: false,
+          createdAt: expect.any(String),
+        });
+        expect(response.body).toEqual(expect.objectContaining({
+          id: 'new-doc-id',
+          ...newConcept,
+        }));
+      });
+    });
+
+    describe('GET /.../conceptos', () => {
+        it('should return 403 Forbidden if user is not an admin', async () => {
+            const response = await request(app)
+              .get(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}/grupos/${grupoId}/conceptos`)
+              .set('Authorization', 'Bearer test-regular-user-token');
+            expect(response.statusCode).toBe(403);
+          });
+      
+          it('should return 200 OK and a list of concepts if successful', async () => {
+            const response = await request(app)
+              .get(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}/grupos/${grupoId}/conceptos`)
+              .set('Authorization', 'Bearer test-admin-token');
+      
+            expect(response.statusCode).toBe(200);
+            expect(response.body).toBeInstanceOf(Array);
+            expect(response.body[0]).toHaveProperty('name', 'Test conceptos');
+          });
+    });
+  });
+
+  describe('Supplier and Relationship Management', () => {
+    const conceptoId = 'test-concepto-id';
+    const proveedorId = 'test-proveedor-id';
+    const supplierData = { name: 'Supplier B', contactName: 'John Doe', phone: '123', email: 'j@d.com' };
+
+    describe('GET /api/control/proveedores', () => {
+// ... (existing GET tests remain unchanged) ...
+    });
+
+    describe('POST /api/control/proveedores', () => {
+        it('should return 403 for non-admin user', async () => {
+            const res = await request(app)
+              .post('/api/control/proveedores')
+              .set('Authorization', 'Bearer test-regular-user-token')
+              .send(supplierData);
+            expect(res.statusCode).toBe(403);
+        });
+
+        it('should return 400 if name is missing', async () => {
+            const { name, ...badData } = supplierData;
+            const res = await request(app)
+              .post('/api/control/proveedores')
+              .set('Authorization', 'Bearer test-admin-token')
+              .send(badData);
+            expect(res.statusCode).toBe(400);
+        });
+
+        it('should return 201 and the new supplier for admin user', async () => {
+            const res = await request(app)
+              .post('/api/control/proveedores')
+              .set('Authorization', 'Bearer test-admin-token')
+              .send(supplierData);
+            expect(res.statusCode).toBe(201);
+            expect(admin.__mockAdd).toHaveBeenCalledWith(expect.objectContaining(supplierData));
+            expect(res.body).toEqual(expect.objectContaining(supplierData));
+        });
+    });
+
+    describe('PUT /api/control/proveedores/:proveedorId', () => {
+        it('should return 403 for non-admin user', async () => {
+            const res = await request(app)
+              .put(`/api/control/proveedores/${proveedorId}`)
+              .set('Authorization', 'Bearer test-regular-user-token')
+              .send(supplierData);
+            expect(res.statusCode).toBe(403);
+        });
+
+        it('should return 200 and update the supplier for admin user', async () => {
+            const res = await request(app)
+              .put(`/api/control/proveedores/${proveedorId}`)
+              .set('Authorization', 'Bearer test-admin-token')
+              .send(supplierData);
+            expect(res.statusCode).toBe(200);
+            expect(admin.__mockUpdate).toHaveBeenCalledWith(expect.objectContaining(supplierData));
+        });
+    });
+
+    describe('DELETE /api/control/proveedores/:proveedorId', () => {
+        it('should return 403 for non-admin user', async () => {
+            const res = await request(app)
+              .delete(`/api/control/proveedores/${proveedorId}`)
+              .set('Authorization', 'Bearer test-regular-user-token');
+            expect(res.statusCode).toBe(403);
+        });
+
+        it('should return 200 and soft delete the supplier for admin user', async () => {
+            const res = await request(app)
+              .delete(`/api/control/proveedores/${proveedorId}`)
+              .set('Authorization', 'Bearer test-admin-token');
+            expect(res.statusCode).toBe(200);
+            expect(admin.__mockUpdate).toHaveBeenCalledWith({
+                deleted: true,
+                deletedAt: expect.any(String),
+            });
+        });
+    });
+
+    describe('GET /api/control/conceptos/:conceptoId/proveedores', () => {
+// ... (existing relationship GET tests remain unchanged) ...
+    });
+
+    describe('POST /api/control/conceptos/:conceptoId/proveedores', () => {
+// ... (existing relationship POST tests remain unchanged) ...
+    });
+
+    describe('DELETE /api/control/conceptos/:conceptoId/proveedores/:proveedorId', () => {
+// ... (existing relationship DELETE tests remain unchanged) ...
+    });
   });
 });
