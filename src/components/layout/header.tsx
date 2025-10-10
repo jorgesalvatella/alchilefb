@@ -29,27 +29,27 @@ const baseNavLinks = [
 ];
 
 const adminNavItems = [
-    { href: '/admin', label: 'Panel', icon: Home, roles: ['admin', 'super-admin'] },
-    { href: '/admin/orders', label: 'Pedidos', icon: ShoppingCart, roles: ['admin', 'super-admin'] },
-    { href: '/admin/products', label: 'Productos', icon: Package, roles: ['admin', 'super-admin'] },
-    { href: '/admin/customers', label: 'Clientes', icon: Users, roles: ['admin', 'super-admin'] },
+    { href: '/control', label: 'Panel', icon: Home, roles: ['admin', 'super-admin'] },
+    { href: '/control/pedidos', label: 'Pedidos', icon: ShoppingCart, roles: ['admin', 'super-admin'] },
+    { href: '/control/productos', label: 'Productos', icon: Package, roles: ['admin', 'super-admin'] },
+    { href: '/control/clientes', label: 'Clientes', icon: Users, roles: ['admin', 'super-admin'] },
     { 
-        href: '/admin/finance', 
+        href: '/control/finanzas', 
         label: 'Finanzas', 
         icon: Wallet, 
         roles: ['admin', 'super-admin'],
         subItems: [
-            { href: '/admin/finance', label: 'Gastos', roles: ['admin', 'super-admin'] },
-            { href: '/admin/finance/suppliers', label: 'Proveedores', roles: ['admin', 'super-admin'] },
+            { href: '/control/finanzas', label: 'Gastos', roles: ['admin', 'super-admin'] },
+            { href: '/control/finanzas/proveedores', label: 'Proveedores', roles: ['admin', 'super-admin'] },
         ]
     },
     { 
-        href: '/admin/configuracion', 
-        label: 'Configuración', 
+        href: '/control/catalogo', 
+        label: 'Catálogo', 
         icon: Settings, 
         roles: ['super-admin'],
         subItems: [
-            { href: '/admin/configuracion/unidades-de-negocio', label: 'Unidades de Negocio', roles: ['super-admin'] },
+            { href: '/control/catalogo/unidades-de-negocio', label: 'Unidades de Negocio', roles: ['super-admin'] },
         ]
     },
 ]
@@ -72,7 +72,7 @@ function UserNav() {
   if (!user) {
     return (
       <Button variant="ghost" size="icon" asChild className="text-white hover:bg-white/10">
-        <Link href="/login">
+        <Link href="/ingresar">
           <User />
           <span className="sr-only">Perfil</span>
         </Link>
@@ -103,10 +103,10 @@ function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-white/10" />
         <DropdownMenuItem asChild className="hover:bg-white/10 focus:bg-white/10 cursor-pointer">
-          <Link href="/profile">Perfil</Link>
+          <Link href="/perfil">Perfil</Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="hover:bg-white/10 focus:bg-white/10 cursor-pointer">
-          <Link href="/orders">Mis Pedidos</Link>
+          <Link href="/mis-pedidos">Mis Pedidos</Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-white/10" />
         <DropdownMenuItem onClick={() => auth.signOut()} className="hover:bg-white/10 focus:bg-red-600/50 cursor-pointer">
@@ -152,7 +152,7 @@ export function Header() {
   const getNavLinks = () => {
     let links = [...baseNavLinks];
     if (user) {
-      links.push({ href: '/orders', label: 'Mis Pedidos' });
+      links.push({ href: '/mis-pedidos', label: 'Mis Pedidos' });
     }
     return links;
   };
@@ -182,8 +182,8 @@ export function Header() {
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative font-headline tracking-wider transition-colors hover:text-white text-white/80 data-[state=open]:text-white">
-                    Admin
-                    {pathname.startsWith('/admin') && <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-yellow-400 to-orange-500"></span>}
+                    Control
+                    {pathname.startsWith('/control') && <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-yellow-400 to-orange-500"></span>}
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="bg-black/80 backdrop-blur-lg border-white/10 text-white w-56">
@@ -257,7 +257,7 @@ export function Header() {
                         <div className="border-t border-white/10 pt-6 flex justify-center items-center gap-4">
                           <UserNav />
                           <Button variant="ghost" size="icon" asChild className="relative text-white hover:bg-white/10">
-                            <Link href="/cart">
+                            <Link href="/carrito">
                               <ShoppingCart />
                               <span className="sr-only">Carrito</span>
                               <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-xs font-bold">
@@ -273,7 +273,7 @@ export function Header() {
                 <div className="flex items-center gap-2 text-white">
                   <UserNav />
                   <Button variant="ghost" size="icon" asChild className="relative text-white hover:bg-white/10">
-                    <Link href="/cart">
+                    <Link href="/carrito">
                       <ShoppingCart />
                       <span className="sr-only">Carrito</span>
                       <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-xs font-bold">
