@@ -12,10 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useUser, useFirestore } from '@/firebase/provider';
-import { collection, doc } from 'firebase/firestore';
+import { useUser } from '@/firebase/provider';
 import type { Group } from '@/lib/data';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -34,7 +32,6 @@ export function AddEditGroupDialog({
     businessUnitId,
     departmentId,
 }: AddEditGroupDialogProps) {
-  const firestore = useFirestore(); // Needed for editing
   const { user } = useUser();
   const { toast } = useToast();
   const [name, setName] = useState('');
@@ -63,71 +60,57 @@ export function AddEditGroupDialog({
         return;
     }
 
+    if (!user) {
+      toast({
+          title: 'Error de autenticación',
+          description: 'No se pudo verificar el usuario.',
+          variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    const groupData = {
-        name,
-        description,
-        businessUnitId,
-        departmentId,
-    };
+    try {
+      const token = await user.getIdToken();
+      const groupData = { name, description };
 
-    if (group) {
-      // --- Lógica de edición (TODO: migrar a API) ---
-      if (!firestore) return;
-      const groupsCollection = collection(firestore, 'grupos');
-      const docRef = doc(groupsCollection, group.id);
-      await setDocumentNonBlocking(docRef, groupData, { merge: true });
-      toast({
-        title: 'Grupo Actualizado',
-        description: 'Los cambios se han guardado correctamente.',
+      const url = group
+        ? `/api/control/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos/${group.id}`
+        : `/api/control/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos`;
+      const method = group ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+          method: method,
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(groupData),
       });
+
+      if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Error al ${group ? 'actualizar' : 'crear'} el grupo`);
+      }
+
+      toast({
+          title: `Grupo ${group ? 'Actualizado' : 'Creado'}`,
+          description: `El grupo se ha ${group ? 'actualizado' : 'creado'} correctamente.`,
+      });
+      onOpenChange(false);
       window.location.reload();
-    } else {
-      // --- Lógica de creación usando la API ---
-      if (!user) {
-        toast({
-            title: 'Error de autenticación',
-            description: 'No se pudo verificar el usuario.',
-            variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
 
-      try {
-        const token = await user.getIdToken();
-        const response = await fetch(`/api/control/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({ name, description }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error al crear el grupo');
-        }
-
-        toast({
-            title: 'Grupo Creado',
-            description: 'El nuevo grupo se ha añadido correctamente.',
-        });
-        onOpenChange(false);
-        window.location.reload();
-
-      } catch (error) {
-        console.error('Error creating group:', error);
-        toast({
-            title: 'Error',
-            description: (error as Error).message || 'Ocurrió un problema al contactar el servidor.',
-            variant: 'destructive',
-        });
-      }
+    } catch (error) {
+      console.error(`Error ${group ? 'updating' : 'creating'} group:`, error);
+      toast({
+          title: 'Error',
+          description: (error as Error).message || 'Ocurrió un problema al contactar el servidor.',
+          variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

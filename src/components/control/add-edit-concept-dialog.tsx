@@ -12,10 +12,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useUser, useFirestore } from '@/firebase/provider';
-import { collection, doc } from 'firebase/firestore';
+import { useUser } from '@/firebase/provider';
 import type { Concept } from '@/lib/data';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -36,7 +34,6 @@ export function AddEditConceptDialog({
     departmentId,
     groupId,
 }: AddEditConceptDialogProps) {
-  const firestore = useFirestore(); // Needed for editing
   const { user } = useUser();
   const { toast } = useToast();
   const [name, setName] = useState('');
@@ -65,72 +62,57 @@ export function AddEditConceptDialog({
         return;
     }
 
+    if (!user) {
+      toast({
+          title: 'Error de autenticación',
+          description: 'No se pudo verificar el usuario.',
+          variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    const conceptData = {
-        name,
-        description,
-        businessUnitId,
-        departmentId,
-        groupId,
-    };
+    try {
+      const token = await user.getIdToken();
+      const conceptData = { name, description };
 
-    if (concept) {
-      // --- Lógica de edición (TODO: migrar a API) ---
-      if (!firestore) return;
-      const conceptsCollection = collection(firestore, 'conceptos');
-      const docRef = doc(conceptsCollection, concept.id);
-      await setDocumentNonBlocking(docRef, conceptData, { merge: true });
-      toast({
-        title: 'Concepto Actualizado',
-        description: 'Los cambios se han guardado correctamente.',
+      const url = concept
+        ? `/api/control/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos/${groupId}/conceptos/${concept.id}`
+        : `/api/control/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos/${groupId}/conceptos`;
+      const method = concept ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+          method: method,
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify(conceptData),
       });
+
+      if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Error al ${concept ? 'actualizar' : 'crear'} el concepto`);
+      }
+
+      toast({
+          title: `Concepto ${concept ? 'Actualizado' : 'Creado'}`,
+          description: `El concepto se ha ${concept ? 'actualizado' : 'creado'} correctamente.`,
+      });
+      onOpenChange(false);
       window.location.reload();
-    } else {
-      // --- Lógica de creación usando la API ---
-      if (!user) {
-        toast({
-            title: 'Error de autenticación',
-            description: 'No se pudo verificar el usuario.',
-            variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
 
-      try {
-        const token = await user.getIdToken();
-        const response = await fetch(`/api/control/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos/${groupId}/conceptos`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-            body: JSON.stringify({ name, description }),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Error al crear el concepto');
-        }
-
-        toast({
-            title: 'Concepto Creado',
-            description: 'El nuevo concepto se ha añadido correctamente.',
-        });
-        onOpenChange(false);
-        window.location.reload();
-
-      } catch (error) {
-        console.error('Error creating concept:', error);
-        toast({
-            title: 'Error',
-            description: (error as Error).message || 'Ocurrió un problema al contactar el servidor.',
-            variant: 'destructive',
-        });
-      }
+    } catch (error) {
+      console.error(`Error ${concept ? 'updating' : 'creating'} concept:`, error);
+      toast({
+          title: 'Error',
+          description: (error as Error).message || 'Ocurrió un problema al contactar el servidor.',
+          variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

@@ -1,13 +1,15 @@
 'use client';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import type { Group } from '@/lib/data';
+import type { Group, BusinessUnit, Department } from '@/lib/data';
 import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AddEditGroupDialog } from '@/components/control/add-edit-group-dialog';
+import { Breadcrumbs } from '@/components/ui/breadcrumb';
 
 export default function AdminGroupsPage() {
   const { user } = useUser();
@@ -15,12 +17,53 @@ export default function AdminGroupsPage() {
   const businessUnitId = params.id as string;
   const departmentId = params.depId as string;
 
+  const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
+  const [department, setDepartment] = useState<Department | null>(null);
+
+  // Fetch business unit and department data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user || !businessUnitId || !departmentId) return;
+
+      try {
+        const token = await user.getIdToken();
+
+        // Fetch business unit
+        const buResponse = await fetch(`/api/control/unidades-de-negocio/${businessUnitId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (buResponse.ok) {
+          setBusinessUnit(await buResponse.json());
+        }
+
+        // Fetch department
+        const deptResponse = await fetch(`/api/control/departamentos/${departmentId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (deptResponse.ok) {
+          setDepartment(await deptResponse.json());
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      }
+    };
+
+    fetchData();
+  }, [user, businessUnitId, departmentId]);
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+
+  const breadcrumbItems = [
+    { label: 'Catálogos', href: '/control/catalogo' },
+    { label: 'Unidades de Negocio', href: '/control/catalogo/unidades-de-negocio' },
+    { label: businessUnit?.name || '...', href: `/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos` },
+    { label: department?.name || '...', href: `/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos` },
+  ];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,10 +114,11 @@ export default function AdminGroupsPage() {
 
   return (
     <>
+      <Breadcrumbs items={breadcrumbItems} />
       <div className="text-center mb-12">
         <h1 className="text-5xl md:text-7xl font-black text-white">
           <span className="bg-gradient-to-r from-teal-400 via-cyan-500 to-blue-600 bg-clip-text text-transparent">
-            Grupos
+            Grupos de {department?.name}
           </span>
         </h1>
       </div>
@@ -86,7 +130,55 @@ export default function AdminGroupsPage() {
         </Button>
       </div>
 
-      <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+      {/* Mobile View: Cards */}
+      <div className="md:hidden space-y-4">
+        {isLoading ? (
+          <p className="text-center text-white/60 py-12">Cargando grupos...</p>
+        ) : error ? (
+          <p className="text-center text-red-500 py-12">Error: {error}</p>
+        ) : (
+          groups.map((group) => (
+            <Card key={group.id} className="bg-black/50 backdrop-blur-sm border-white/10 text-white">
+              <CardHeader>
+                <CardTitle className="text-cyan-400">{group.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm">
+                <p>{group.description}</p>
+              </CardContent>
+              <CardFooter className="flex justify-end space-x-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleEdit(group as Group)}
+                  className="text-white/60 hover:text-orange-400"
+                >
+                  <Pen className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDelete(group.id)}
+                  className="text-white/60 hover:text-red-500"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Link href={`/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos/${group.id}/conceptos`}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white/60 hover:text-green-400"
+                  >
+                    <FolderKanban className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-b border-white/10 hover:bg-transparent">

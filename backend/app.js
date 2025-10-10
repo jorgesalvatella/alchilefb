@@ -78,6 +78,28 @@ app.get('/api/control/unidades-de-negocio', authMiddleware, async (req, res) => 
   }
 });
 
+// GET a single business unit by ID
+app.get('/api/control/unidades-de-negocio/:id', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { id } = req.params;
+        const db = admin.firestore();
+        const docRef = db.collection('businessUnits').doc(id);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            return res.status(404).json({ message: 'Business unit not found' });
+        }
+
+        res.status(200).json({ id: docSnap.id, ...docSnap.data() });
+    } catch (error) {
+        console.error('Error fetching business unit:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 // POST a new business unit
 app.post('/api/control/unidades-de-negocio', authMiddleware, async (req, res) => {
   try {
@@ -176,6 +198,28 @@ app.get('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddlewa
     }
 });
 
+// GET a single department by ID
+app.get('/api/control/departamentos/:id', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { id } = req.params;
+        const db = admin.firestore();
+        const docRef = db.collection('departamentos').doc(id);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            return res.status(404).json({ message: 'Department not found' });
+        }
+
+        res.status(200).json({ id: docSnap.id, ...docSnap.data() });
+    } catch (error) {
+        console.error('Error fetching department:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 // GET all groups for a department
 app.get('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos', authMiddleware, async (req, res) => {
     try {
@@ -201,6 +245,28 @@ app.get('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupo
         res.status(200).json(groups);
     } catch (error) {
         console.error('Error fetching groups:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// GET a single group by ID
+app.get('/api/control/grupos/:id', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { id } = req.params;
+        const db = admin.firestore();
+        const docRef = db.collection('grupos').doc(id);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            return res.status(404).json({ message: 'Group not found' });
+        }
+
+        res.status(200).json({ id: docSnap.id, ...docSnap.data() });
+    } catch (error) {
+        console.error('Error fetching group:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
@@ -298,6 +364,121 @@ app.post('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grup
 
     } catch (error) {
         console.error('Error creating concept:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// PUT to update a business unit
+app.put('/api/control/unidades-de-negocio/:unidadId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { unidadId } = req.params;
+        const { name, razonSocial, address, phone, taxIdUrl } = req.body;
+
+        if (!name || !razonSocial) {
+            return res.status(400).json({ message: 'Missing required fields: name, razonSocial' });
+        }
+
+        const db = admin.firestore();
+        const businessUnitRef = db.collection('businessUnits').doc(unidadId);
+        const updatedData = {
+            name,
+            razonSocial,
+            address: address || '',
+            phone: phone || '',
+            taxIdUrl: taxIdUrl || '',
+            updatedAt: new Date().toISOString(),
+        };
+        await businessUnitRef.update(updatedData);
+        res.status(200).json({ id: unidadId, ...updatedData });
+    } catch (error) {
+        console.error('Error updating business unit:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// PUT to update a department
+app.put('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { deptoId } = req.params;
+        const { name, description } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ message: 'Missing required field: name' });
+        }
+
+        const db = admin.firestore();
+        const departmentRef = db.collection('departamentos').doc(deptoId);
+        const updatedData = {
+            name,
+            description: description || '',
+            updatedAt: new Date().toISOString(),
+        };
+        await departmentRef.update(updatedData);
+        res.status(200).json({ id: deptoId, ...updatedData });
+    } catch (error) {
+        console.error('Error updating department:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// PUT to update a group
+app.put('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { grupoId } = req.params;
+        const { name, description } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ message: 'Missing required field: name' });
+        }
+
+        const db = admin.firestore();
+        const groupRef = db.collection('grupos').doc(grupoId);
+        const updatedData = {
+            name,
+            description: description || '',
+            updatedAt: new Date().toISOString(),
+        };
+        await groupRef.update(updatedData);
+        res.status(200).json({ id: grupoId, ...updatedData });
+    } catch (error) {
+        console.error('Error updating group:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// PUT to update a concept
+app.put('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId/conceptos/:conceptoId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { conceptoId } = req.params;
+        const { name, description } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ message: 'Missing required field: name' });
+        }
+
+        const db = admin.firestore();
+        const conceptRef = db.collection('conceptos').doc(conceptoId);
+        const updatedData = {
+            name,
+            description: description || '',
+            updatedAt: new Date().toISOString(),
+        };
+        await conceptRef.update(updatedData);
+        res.status(200).json({ id: conceptoId, ...updatedData });
+    } catch (error) {
+        console.error('Error updating concept:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });

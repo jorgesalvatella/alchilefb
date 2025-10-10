@@ -94,12 +94,6 @@ export function AddEditBusinessUnitDialog({
         : '/api/control/unidades-de-negocio';
       const method = businessUnit ? 'PUT' : 'POST';
 
-      if (method === 'PUT') {
-        console.warn("Editar no implementado.");
-        onOpenChange(false);
-        return;
-      }
-
       const response = await fetch(url, {
         method: method,
         headers: {

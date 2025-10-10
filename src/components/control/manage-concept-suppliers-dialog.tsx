@@ -64,7 +64,8 @@ export function ManageConceptSuppliersDialog({
       }
     };
     fetchData();
-  }, [concept, isOpen, user, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [concept, isOpen, user]);
 
   const handleSubmit = async () => {
     if (!concept || !user) return;
@@ -124,9 +125,11 @@ export function ManageConceptSuppliersDialog({
                 <p>Cargando...</p>
             ) : (
                 <MultiSelect
+                    key={selectedSupplierIds.join(',')}
                     options={options}
-                    selected={selectedSupplierIds}
-                    onChange={setSelectedSupplierIds}
+                    defaultValue={selectedSupplierIds}
+                    onValueChange={setSelectedSupplierIds}
+                    placeholder="Selecciona proveedores..."
                     className="w-full"
                 />
             )}

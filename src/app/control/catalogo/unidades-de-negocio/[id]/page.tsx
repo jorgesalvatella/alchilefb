@@ -1,33 +1,73 @@
 'use client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, doc } from 'firebase/firestore';
 import type { Department, BusinessUnit } from '@/lib/data';
 import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AddEditDepartmentDialog } from '@/components/admin/add-edit-department-dialog';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import Link from 'next/link';
-import { useDoc } from '@/firebase/firestore/use-doc';
+import { useUser } from '@/firebase/provider';
 
 export default function AdminDepartmentsPage({ params }: { params: { id: string } }) {
-  const firestore = useFirestore();
+  const { user } = useUser();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
 
-  const businessUnitDoc = useMemoFirebase(
-    () => (firestore ? doc(firestore, `business_units/${params.id}`) : null),
-    [firestore, params.id]
-  );
-  const { data: businessUnit } = useDoc<BusinessUnit>(businessUnitDoc);
+  const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const departmentsCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, `business_units/${params.id}/departments`) : null),
-    [firestore, params.id]
-  );
-  const { data: departments, isLoading } = useCollection<Department>(departmentsCollection);
+  // Fetch business unit data
+  useEffect(() => {
+    const fetchBusinessUnit = async () => {
+      if (!user || !params.id) return;
+
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch(`/api/control/unidades-de-negocio/${params.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (response.ok) {
+          setBusinessUnit(await response.json());
+        }
+      } catch (err) {
+        console.error('Error fetching business unit:', err);
+      }
+    };
+
+    fetchBusinessUnit();
+  }, [user, params.id]);
+
+  // Fetch departments data
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      if (!user || !params.id) return;
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch(`/api/control/unidades-de-negocio/${params.id}/departamentos`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          throw new Error('No se pudo obtener los departamentos.');
+        }
+
+        const data = await response.json();
+        setDepartments(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDepartments();
+  }, [user, params.id]);
 
   const handleEdit = (item: Department) => {
     setSelectedDepartment(item);
@@ -40,9 +80,7 @@ export default function AdminDepartmentsPage({ params }: { params: { id: string 
   };
 
   const handleDelete = (id: string) => {
-    if (!firestore) return;
-    const docRef = doc(collection(firestore, `business_units/${params.id}/departments`), id);
-    deleteDocumentNonBlocking(docRef);
+    console.log(`TODO: Implementar borrado para el ID: ${id} a través de la API`);
   };
 
 
@@ -79,7 +117,14 @@ export default function AdminDepartmentsPage({ params }: { params: { id: string 
                   </TableCell>
                 </TableRow>
               )}
-              {departments && departments.map((dept) => (
+              {error && (
+                <TableRow className="border-b-0">
+                  <TableCell colSpan={2} className="text-center text-red-500 py-12">
+                    Error: {error}
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && !error && departments.map((dept) => (
                 <TableRow key={dept.id} className="border-b border-white/10 hover:bg-white/5">
                   <TableCell className="font-medium text-white">{dept.name}</TableCell>
                   <TableCell className="text-right">
