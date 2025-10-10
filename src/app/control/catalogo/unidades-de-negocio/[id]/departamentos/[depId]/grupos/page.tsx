@@ -4,14 +4,13 @@ import { Button } from '@/components/ui/button';
 import type { Group } from '@/lib/data';
 import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/firebase/provider';
+import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-
-// TODO: Crear el diálogo para añadir/editar grupos
+import { AddEditGroupDialog } from '@/components/control/add-edit-group-dialog';
 
 export default function AdminGroupsPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const params = useParams();
   const businessUnitId = params.id as string;
   const departmentId = params.depId as string;
@@ -19,6 +18,9 @@ export default function AdminGroupsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,11 +56,13 @@ export default function AdminGroupsPage() {
   }, [user, businessUnitId, departmentId]);
 
   const handleAddNew = () => {
-    console.log("TODO: Implementar añadir nuevo grupo");
+    setSelectedGroup(null);
+    setDialogOpen(true);
   };
 
   const handleEdit = (item: Group) => {
-    console.log("TODO: Implementar editar grupo", item);
+    setSelectedGroup(item);
+    setDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
@@ -69,14 +73,14 @@ export default function AdminGroupsPage() {
     <>
       <div className="text-center mb-12">
         <h1 className="text-5xl md:text-7xl font-black text-white">
-          <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-teal-400 via-cyan-500 to-blue-600 bg-clip-text text-transparent">
             Grupos
           </span>
         </h1>
       </div>
 
       <div className="flex justify-end mb-8">
-        <Button onClick={handleAddNew} className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white font-bold py-6 px-8 rounded-full hover:scale-105 transition-transform duration-300">
+        <Button onClick={handleAddNew} className="bg-gradient-to-r from-teal-400 via-cyan-500 to-blue-600 text-white font-bold py-6 px-8 rounded-full hover:scale-105 transition-transform duration-300">
           <PlusCircle className="mr-2 h-5 w-5" />
           Añadir Grupo
         </Button>
@@ -87,20 +91,21 @@ export default function AdminGroupsPage() {
           <TableHeader>
             <TableRow className="border-b border-white/10 hover:bg-transparent">
               <TableHead className="text-white/80">Nombre</TableHead>
+              <TableHead className="text-white/80">Descripción</TableHead>
               <TableHead className="text-right text-white/80">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow className="border-b-0">
-                <TableCell colSpan={2} className="text-center text-white/60 py-12">
+                <TableCell colSpan={3} className="text-center text-white/60 py-12">
                   Cargando grupos...
                 </TableCell>
               </TableRow>
             )}
             {error && (
               <TableRow className="border-b-0">
-                <TableCell colSpan={2} className="text-center text-red-500 py-12">
+                <TableCell colSpan={3} className="text-center text-red-500 py-12">
                   Error: {error}
                 </TableCell>
               </TableRow>
@@ -108,6 +113,7 @@ export default function AdminGroupsPage() {
             {!isLoading && !error && groups.map((group) => (
               <TableRow key={group.id} className="border-b border-white/10 hover:bg-white/5">
                 <TableCell className="font-medium text-white">{group.name}</TableCell>
+                <TableCell className="text-white/80">{group.description}</TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="ghost"
@@ -125,11 +131,11 @@ export default function AdminGroupsPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                  <Link href={`/admin/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos/${group.id}/conceptos`}>
+                  <Link href={`/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos/${group.id}/conceptos`}>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-white/60 hover:text-blue-400"
+                      className="text-white/60 hover:text-green-400"
                     >
                       <FolderKanban className="h-4 w-4" />
                     </Button>
@@ -140,6 +146,14 @@ export default function AdminGroupsPage() {
           </TableBody>
         </Table>
       </div>
+      
+      <AddEditGroupDialog
+        isOpen={dialogOpen}
+        onOpenChange={setDialogOpen}
+        group={selectedGroup}
+        businessUnitId={businessUnitId}
+        departmentId={departmentId}
+      />
     </>
   );
 }

@@ -122,7 +122,7 @@ app.post('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddlew
     }
 
     const { unidadId } = req.params;
-    const { name } = req.body;
+    const { name, description } = req.body;
 
     // Validar campos requeridos
     if (!name) {
@@ -132,6 +132,7 @@ app.post('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddlew
     const db = admin.firestore();
     const newDepartment = {
       name,
+      description: description || '',
       businessUnitId: unidadId,
       deleted: false,
       createdAt: new Date().toISOString(),
@@ -144,6 +145,97 @@ app.post('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddlew
     console.error('Error creating department:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
+});
+
+// GET all departments for a business unit
+app.get('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { unidadId } = req.params;
+        const db = admin.firestore();
+        const snapshot = await db.collection('departamentos')
+            .where('businessUnitId', '==', unidadId)
+            .where('deleted', '==', false)
+            .get();
+
+        if (snapshot.empty) {
+            return res.status(200).json([]);
+        }
+
+        const departments = [];
+        snapshot.forEach(doc => {
+            departments.push({ id: doc.id, ...doc.data() });
+        });
+
+        res.status(200).json(departments);
+    } catch (error) {
+        console.error('Error fetching departments:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// GET all groups for a department
+app.get('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { deptoId } = req.params;
+        const db = admin.firestore();
+        const snapshot = await db.collection('grupos')
+            .where('departmentId', '==', deptoId)
+            .where('deleted', '==', false)
+            .get();
+
+        if (snapshot.empty) {
+            return res.status(200).json([]);
+        }
+
+        const groups = [];
+        snapshot.forEach(doc => {
+            groups.push({ id: doc.id, ...doc.data() });
+        });
+
+        res.status(200).json(groups);
+    } catch (error) {
+        console.error('Error fetching groups:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// POST a new group for a department
+app.post('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+
+        const { unidadId, deptoId } = req.params;
+        const { name, description } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ message: 'Missing required field: name' });
+        }
+
+        const db = admin.firestore();
+        const newGroup = {
+            name,
+            description: description || '',
+            businessUnitId: unidadId,
+            departmentId: deptoId,
+            deleted: false,
+            createdAt: new Date().toISOString(),
+        };
+
+        const docRef = await db.collection('grupos').add(newGroup);
+        res.status(201).json({ id: docRef.id, ...newGroup });
+
+    } catch (error) {
+        console.error('Error creating group:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
 });
 
 // ... (otros endpoints)
