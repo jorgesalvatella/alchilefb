@@ -5,39 +5,21 @@ import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/comp
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Building, Briefcase, Users, Lightbulb, Truck, PlusCircle } from 'lucide-react';
-import { AddEditBusinessUnitDialog } from '@/components/admin/add-edit-business-unit-dialog';
+import { AddEditBusinessUnitDialog } from '@/components/control/add-edit-business-unit-dialog';
 
 const catalogs = [
   {
     name: 'Unidades de Negocio',
-    description: 'Gestiona las diferentes unidades de negocio.',
+    description: 'Gestiona sucursales, y desde ahí sus departamentos, grupos y conceptos.',
     icon: Building,
-    href: '/admin/catalogo/unidades-de-negocio',
+    href: '/control/catalogo/unidades-de-negocio',
     action: 'openBusinessUnitDialog',
   },
   {
-    name: 'Departamentos',
-    description: 'Gestiona los departamentos de cada unidad de negocio.',
-    icon: Briefcase,
-    href: '/admin/catalogo/departamentos'
-  },
-  {
-    name: 'Grupos',
-    description: 'Gestiona los grupos de cada departamento.',
-    icon: Users,
-    href: '/admin/catalogo/grupos'
-  },
-  {
-    name: 'Conceptos',
-    description: 'Gestiona los conceptos de cada grupo.',
-    icon: Lightbulb,
-    href: '/admin/catalogo/conceptos'
-  },
-  {
     name: 'Proveedores',
-    description: 'Gestiona los proveedores.',
+    description: 'Gestiona la lista global de todos los proveedores.',
     icon: Truck,
-    href: '/admin/finance/suppliers'
+    href: '/control/finanzas/proveedores'
   }
 ];
 

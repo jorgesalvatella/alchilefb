@@ -347,11 +347,12 @@
       "properties": {
         "id": { "type": "string", "description": "Unique identifier for the Business Unit." },
         "name": { "type": "string", "description": "Name of the business unit." },
+        "razonSocial": { "type": "string", "description": "The legal name of the business." },
         "address": { "type": "string", "description": "Physical address of the business unit." },
         "phone": { "type": "string", "description": "Business unit's phone number." },
         "taxIdUrl": { "type": "string", "format": "uri", "description": "URL of the uploaded tax ID document." }
       },
-      "required": ["id", "name", "address", "phone"]
+      "required": ["id", "name", "razonSocial", "address", "phone"]
     }
   },
   "auth": {

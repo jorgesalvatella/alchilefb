@@ -85,7 +85,7 @@ export function AddEditDepartmentDialog({
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="business-unit" className="text-white/80">Unidad de Negocio</Label>
-            <Select onValueChange={setSelectedBusinessUnitId} defaultValue={selectedBusinessUnitId} disabled={!!department}>
+            <Select onValueChange={setSelectedBusinessUnitId} defaultValue={selectedBusinessUnitId}>
               <SelectTrigger className="w-full bg-white/5 border-white/20">
                 <SelectValue placeholder="Selecciona una unidad de negocio" />
               </SelectTrigger>

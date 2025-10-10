@@ -27,14 +27,30 @@ export function initializeFirebase() {
       firebaseApp = initializeApp(firebaseConfig);
     }
     
-    // Initialize App Check
-    if (process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
-      initializeAppCheck(firebaseApp, {
-        provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
-        isTokenAutoRefreshEnabled: true
-      });
-    } else {
+    // Initialize App Check - TEMPORALMENTE DESHABILITADO PARA DESARROLLO
+    // TODO: Configurar correctamente App Check antes de producción
+    if (process.env.NEXT_PUBLIC_ENABLE_APP_CHECK === 'true') {
+      if (process.env.NODE_ENV !== 'production') {
+        // If you want to use a debug token in development, set this variable.
+        // The debug token can be generated from the Firebase Console.
+        if (process.env.NEXT_PUBLIC_FIREBASE_APP_CHECK_DEBUG_TOKEN) {
+          (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = process.env.NEXT_PUBLIC_FIREBASE_APP_CHECK_DEBUG_TOKEN;
+        } else {
+          // For convenience, this is enabled by default for development builds.
+          (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+        }
+      }
+
+      if (process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+        initializeAppCheck(firebaseApp, {
+          provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
+          isTokenAutoRefreshEnabled: true
+        });
+      } else {
         console.warn('Firebase App Check: NEXT_PUBLIC_RECAPTCHA_SITE_KEY is not set. App Check will not be initialized.');
+      }
+    } else {
+      console.log('Firebase App Check is disabled for development');
     }
 
 
