@@ -67,13 +67,28 @@ export function AddEditBusinessUnitDialog({
 
     try {
       const token = await user.getIdToken();
+      let taxIdUrl = businessUnit?.taxIdUrl || '';
 
-      // Crear la unidad de negocio SIN archivo (funcionalidad removida temporalmente)
-      const businessUnitData = {
-        ...data,
-        taxIdUrl: '' // Sin upload por ahora
-      };
+      // 1. Subir el archivo si existe
+      if (taxIdFile) {
+        const fileFormData = new FormData();
+        fileFormData.append('file', taxIdFile);
 
+        const uploadResponse = await fetch('/api/control/upload', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: fileFormData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Error al subir el archivo.');
+        }
+        const uploadResult = await uploadResponse.json();
+        taxIdUrl = uploadResult.url;
+      }
+
+      // 2. Crear la unidad de negocio con la URL del archivo
+      const businessUnitData = { ...data, taxIdUrl };
       const url = businessUnit
         ? `/api/control/unidades-de-negocio/${businessUnit.id}`
         : '/api/control/unidades-de-negocio';
@@ -126,7 +141,11 @@ export function AddEditBusinessUnitDialog({
             <FormField control={form.control} name="razonSocial" render={({ field }) => (<FormItem><FormLabel className="text-white/80">Razón Social</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/20" /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="address" render={({ field }) => (<FormItem><FormLabel className="text-white/80">Dirección</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/20" /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel className="text-white/80">Teléfono</FormLabel><FormControl><Input {...field} className="bg-white/5 border-white/20" /></FormControl><FormMessage /></FormItem>)} />
-            {/* CAMPO DE ARCHIVO REMOVIDO TEMPORALMENTE - CAUSABA ERROR 500 */}
+            <FormItem>
+              <FormLabel className="text-white/80">Cédula Fiscal (Opcional)</FormLabel>
+              <FormControl><Input type="file" onChange={(e) => setTaxIdFile(e.target.files ? e.target.files[0] : null)} className="bg-white/5 border-white/20" /></FormControl>
+              <FormMessage />
+            </FormItem>
             
             {form.formState.errors.root && <p className="text-red-500 text-sm text-center">{form.formState.errors.root.message}</p>}
             <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">

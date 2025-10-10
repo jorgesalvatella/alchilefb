@@ -9,7 +9,7 @@ const { getStorage } = require('firebase-admin/storage');
 initializeApp({
   credential: applicationDefault(),
   projectId: 'studio-9824031244-700aa',
-  storageBucket: 'studio-9824031244-700aa.appspot.com',
+  storageBucket: 'studio-9824031244-700aa.firebasestorage.app',
 });
 
 const app = express();
@@ -44,9 +44,7 @@ app.post('/api/control/upload', authMiddleware, upload.single('file'), async (re
       metadata: { contentType: req.file.mimetype },
     });
 
-    // Hacer el archivo público
-    await fileRef.makePublic();
-
+    // La URL pública funciona gracias a las reglas de Storage
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileRef.name}`;
     res.status(200).send({ url: publicUrl });
   } catch (error) {
@@ -111,6 +109,39 @@ app.post('/api/control/unidades-de-negocio', authMiddleware, async (req, res) =>
     res.status(201).json({ id: docRef.id, ...newBusinessUnit });
   } catch (error) {
     console.error('Error creating business unit:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// POST a new department for a business unit
+app.post('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddleware, async (req, res) => {
+  try {
+    // Verificar que el usuario sea admin o super_admin
+    if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+      return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+    }
+
+    const { unidadId } = req.params;
+    const { name } = req.body;
+
+    // Validar campos requeridos
+    if (!name) {
+      return res.status(400).json({ message: 'Missing required field: name' });
+    }
+
+    const db = admin.firestore();
+    const newDepartment = {
+      name,
+      businessUnitId: unidadId,
+      deleted: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    const docRef = await db.collection('departamentos').add(newDepartment);
+
+    res.status(201).json({ id: docRef.id, ...newDepartment });
+  } catch (error) {
+    console.error('Error creating department:', error);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
