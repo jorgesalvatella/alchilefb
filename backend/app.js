@@ -238,6 +238,257 @@ app.post('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grup
     }
 });
 
+// GET all concepts for a group
+app.get('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId/conceptos', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { grupoId } = req.params;
+        const db = admin.firestore();
+        const snapshot = await db.collection('conceptos')
+            .where('groupId', '==', grupoId)
+            .where('deleted', '==', false)
+            .get();
+
+        if (snapshot.empty) {
+            return res.status(200).json([]);
+        }
+
+        const concepts = [];
+        snapshot.forEach(doc => {
+            concepts.push({ id: doc.id, ...doc.data() });
+        });
+
+        res.status(200).json(concepts);
+    } catch (error) {
+        console.error('Error fetching concepts:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// POST a new concept for a group
+app.post('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId/conceptos', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+
+        const { unidadId, deptoId, grupoId } = req.params;
+        const { name, description } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ message: 'Missing required field: name' });
+        }
+
+        const db = admin.firestore();
+        const newConcept = {
+            name,
+            description: description || '',
+            businessUnitId: unidadId,
+            departmentId: deptoId,
+            groupId: grupoId,
+            proveedoresIds: [], // Inicializar como array vacío
+            deleted: false,
+            createdAt: new Date().toISOString(),
+        };
+
+        const docRef = await db.collection('conceptos').add(newConcept);
+        res.status(201).json({ id: docRef.id, ...newConcept });
+
+    } catch (error) {
+        console.error('Error creating concept:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// --- Supplier and Relationship Management ---
+
+// GET all suppliers
+app.get('/api/control/proveedores', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const db = admin.firestore();
+        const snapshot = await db.collection('proveedores')
+            .where('deleted', '==', false)
+            .get();
+
+        if (snapshot.empty) {
+            return res.status(200).json([]);
+        }
+
+        const suppliers = [];
+        snapshot.forEach(doc => {
+            suppliers.push({ id: doc.id, ...doc.data() });
+        });
+
+        res.status(200).json(suppliers);
+    } catch (error) {
+        console.error('Error fetching suppliers:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// POST a new supplier
+app.post('/api/control/proveedores', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { name, contactName, phone, email } = req.body;
+        if (!name) {
+            return res.status(400).json({ message: 'Missing required field: name' });
+        }
+        const db = admin.firestore();
+        const newSupplier = {
+            name,
+            contactName: contactName || '',
+            phone: phone || '',
+            email: email || '',
+            deleted: false,
+            createdAt: new Date().toISOString(),
+        };
+        const docRef = await db.collection('proveedores').add(newSupplier);
+        res.status(201).json({ id: docRef.id, ...newSupplier });
+    } catch (error) {
+        console.error('Error creating supplier:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// PUT to update a supplier
+app.put('/api/control/proveedores/:proveedorId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { proveedorId } = req.params;
+        const { name, contactName, phone, email } = req.body;
+        if (!name) {
+            return res.status(400).json({ message: 'Missing required field: name' });
+        }
+        const db = admin.firestore();
+        const supplierRef = db.collection('proveedores').doc(proveedorId);
+        const updatedData = {
+            name,
+            contactName,
+            phone,
+            email,
+            updatedAt: new Date().toISOString(),
+        };
+        await supplierRef.update(updatedData);
+        res.status(200).json({ id: proveedorId, ...updatedData });
+    } catch (error) {
+        console.error('Error updating supplier:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// DELETE a supplier (soft delete)
+app.delete('/api/control/proveedores/:proveedorId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { proveedorId } = req.params;
+        const db = admin.firestore();
+        const supplierRef = db.collection('proveedores').doc(proveedorId);
+        await supplierRef.update({
+            deleted: true,
+            deletedAt: new Date().toISOString(),
+        });
+        res.status(200).json({ message: 'Supplier deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting supplier:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// GET associated suppliers for a concept
+app.get('/api/control/conceptos/:conceptoId/proveedores', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { conceptoId } = req.params;
+        const db = admin.firestore();
+
+        // Get the concept to retrieve proveedoresIds
+        const conceptDoc = await db.collection('conceptos').doc(conceptoId).get();
+        if (!conceptDoc.exists) {
+            return res.status(404).json({ message: 'Concept not found' });
+        }
+
+        const conceptData = conceptDoc.data();
+        const proveedoresIds = conceptData.proveedoresIds || [];
+
+        if (proveedoresIds.length === 0) {
+            return res.status(200).json([]);
+        }
+
+        // Fetch all suppliers with those IDs
+        const suppliers = [];
+        for (const supplierId of proveedoresIds) {
+            const supplierDoc = await db.collection('proveedores').doc(supplierId).get();
+            if (supplierDoc.exists) {
+                suppliers.push({ id: supplierDoc.id, ...supplierDoc.data() });
+            }
+        }
+
+        res.status(200).json(suppliers);
+    } catch (error) {
+        console.error('Error fetching associated suppliers:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// POST to associate a supplier with a concept
+app.post('/api/control/conceptos/:conceptoId/proveedores', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { conceptoId } = req.params;
+        const { proveedorId } = req.body;
+
+        if (!proveedorId) {
+            return res.status(400).json({ message: 'Missing required field: proveedorId' });
+        }
+
+        const db = admin.firestore();
+        const conceptRef = db.collection('conceptos').doc(conceptoId);
+        await conceptRef.update({
+            proveedoresIds: admin.firestore.FieldValue.arrayUnion(proveedorId)
+        });
+        res.status(200).json({ message: 'Supplier associated successfully' });
+    } catch (error) {
+        console.error('Error associating supplier:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// DELETE to disassociate a supplier from a concept
+app.delete('/api/control/conceptos/:conceptoId/proveedores/:proveedorId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { conceptoId, proveedorId } = req.params;
+        const db = admin.firestore();
+        const conceptRef = db.collection('conceptos').doc(conceptoId);
+        await conceptRef.update({
+            proveedoresIds: admin.firestore.FieldValue.arrayRemove(proveedorId)
+        });
+        res.status(200).json({ message: 'Supplier disassociated successfully' });
+    } catch (error) {
+        console.error('Error disassociating supplier:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+
 // ... (otros endpoints)
 
 module.exports = app;

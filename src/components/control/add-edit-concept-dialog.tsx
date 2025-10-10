@@ -12,147 +12,153 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
+import { useUser, useFirestore } from '@/firebase/provider';
 import { collection, doc } from 'firebase/firestore';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Concept, Group, Department, BusinessUnit } from '@/lib/data';
-import { setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { Concept, Group, Department, BusinessUnit } from '@/lib/data';
+import type { Concept } from '@/lib/data';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
 
 interface AddEditConceptDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   concept: Concept | null;
+  businessUnitId: string;
+  departmentId: string;
+  groupId: string;
 }
 
-export function AddEditConceptDialog({ 
-    isOpen, 
-    onOpenChange, 
+export function AddEditConceptDialog({
+    isOpen,
+    onOpenChange,
     concept,
+    businessUnitId,
+    departmentId,
+    groupId,
 }: AddEditConceptDialogProps) {
-  const firestore = useFirestore();
+  const firestore = useFirestore(); // Needed for editing
+  const { user } = useUser();
+  const { toast } = useToast();
   const [name, setName] = useState('');
-  const [selectedBusinessUnitId, setSelectedBusinessUnitId] = useState<string | undefined>();
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | undefined>();
-  const [selectedGroupId, setSelectedGroupId] = useState<string | undefined>();
-
-  const businessUnitsCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'business_units') : null),
-    [firestore]
-  );
-  const { data: businessUnits } = useCollection<BusinessUnit>(businessUnitsCollection);
-
-  const departmentsCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'departments') : null),
-    [firestore]
-  );
-  const { data: departments } = useCollection<Department>(departmentsCollection);
-
-  const groupsCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'groups') : null),
-    [firestore]
-  );
-  const { data: groups } = useCollection<Group>(groupsCollection);
+  const [description, setDescription] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
         if (concept) {
             setName(concept.name || '');
-            // You might want to fetch the parent group, department and business unit to set the initial values
+            setDescription(concept.description || '');
         } else {
             setName('');
-            setSelectedBusinessUnitId(undefined);
-            setSelectedDepartmentId(undefined);
-            setSelectedGroupId(undefined);
+            setDescription('');
         }
     }
   }, [concept, isOpen]);
 
   const handleSubmit = async () => {
-    if (!firestore || !selectedGroupId) return;
-    const conceptsCollection = collection(firestore, 'concepts');
+    if (!name.trim()) {
+        toast({
+            title: 'Error',
+            description: 'El nombre del concepto no puede estar vacío.',
+            variant: 'destructive',
+        });
+        return;
+    }
+
+    setIsLoading(true);
 
     const conceptData = {
-      name,
-      groupId: selectedGroupId,
+        name,
+        description,
+        businessUnitId,
+        departmentId,
+        groupId,
     };
 
     if (concept) {
+      // --- Lógica de edición (TODO: migrar a API) ---
+      if (!firestore) return;
+      const conceptsCollection = collection(firestore, 'conceptos');
       const docRef = doc(conceptsCollection, concept.id);
-      setDocumentNonBlocking(docRef, conceptData, { merge: true });
+      await setDocumentNonBlocking(docRef, conceptData, { merge: true });
+      toast({
+        title: 'Concepto Actualizado',
+        description: 'Los cambios se han guardado correctamente.',
+      });
+      window.location.reload();
     } else {
-      await addDocumentNonBlocking(conceptsCollection, conceptData);
+      // --- Lógica de creación usando la API ---
+      if (!user) {
+        toast({
+            title: 'Error de autenticación',
+            description: 'No se pudo verificar el usuario.',
+            variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch(`/api/control/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos/${groupId}/conceptos`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({ name, description }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Error al crear el concepto');
+        }
+
+        toast({
+            title: 'Concepto Creado',
+            description: 'El nuevo concepto se ha añadido correctamente.',
+        });
+        onOpenChange(false);
+        window.location.reload();
+
+      } catch (error) {
+        console.error('Error creating concept:', error);
+        toast({
+            title: 'Error',
+            description: (error as Error).message || 'Ocurrió un problema al contactar el servidor.',
+            variant: 'destructive',
+        });
+      }
     }
-    onOpenChange(false);
+    setIsLoading(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="bg-black/80 backdrop-blur-lg border-white/10 text-white sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-headline bg-gradient-to-r from-pink-400 via-purple-500 to-indigo-600 bg-clip-text text-transparent">
+          <DialogTitle className="text-2xl font-headline bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600 bg-clip-text text-transparent">
             {concept ? 'Editar Concepto' : 'Añadir Concepto'}
           </DialogTitle>
           <DialogDescription className="text-white/60">
-            {concept ? 'Edita los detalles del concepto.' : 'Añade un nuevo concepto a un grupo.'}
+            {concept ? 'Edita los detalles del concepto.' : 'Añade un nuevo concepto a este grupo.'}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {!concept && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="business-unit" className="text-white/80">Unidad de Negocio</Label>
-                <Select onValueChange={setSelectedBusinessUnitId} defaultValue={selectedBusinessUnitId}>
-                  <SelectTrigger className="w-full bg-white/5 border-white/20">
-                    <SelectValue placeholder="Selecciona una unidad de negocio" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-black/80 text-white">
-                    {businessUnits?.map((unit) => (
-                      <SelectItem key={unit.id} value={unit.id}>{unit.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="department" className="text-white/80">Departamento</Label>
-                <Select onValueChange={setSelectedDepartmentId} defaultValue={selectedDepartmentId} disabled={!selectedBusinessUnitId}>
-                  <SelectTrigger className="w-full bg-white/5 border-white/20">
-                    <SelectValue placeholder="Selecciona un departamento" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-black/80 text-white">
-                    {departments?.filter(d => d.businessUnitId === selectedBusinessUnitId).map((dept) => (
-                      <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="group" className="text-white/80">Grupo</Label>
-                <Select onValueChange={setSelectedGroupId} defaultValue={selectedGroupId} disabled={!selectedDepartmentId}>
-                  <SelectTrigger className="w-full bg-white/5 border-white/20">
-                    <SelectValue placeholder="Selecciona un grupo" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-black/80 text-white">
-                    {groups?.filter(g => g.departmentId === selectedDepartmentId).map((group) => (
-                      <SelectItem key={group.id} value={group.id}>{group.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </>
-          )}
           <div className="space-y-2">
             <Label htmlFor="name" className="text-white/80">Nombre del Concepto</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="bg-white/5 border-white/20" />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-white/80">Descripción (Opcional)</Label>
+            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="bg-white/5 border-white/20" />
+          </div>
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-white/60 hover:text-white">Cancelar</Button>
-          <Button onClick={handleSubmit} className="bg-gradient-to-r from-pink-400 via-purple-500 to-indigo-600 text-white font-bold hover:scale-105 transition-transform duration-300">Guardar Cambios</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-white/60 hover:text-white" disabled={isLoading}>Cancelar</Button>
+          <Button onClick={handleSubmit} className="bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600 text-white font-bold hover:scale-105 transition-transform duration-300" disabled={isLoading}>
+            {isLoading ? 'Guardando...' : 'Guardar Cambios'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
