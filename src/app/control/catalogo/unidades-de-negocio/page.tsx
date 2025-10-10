@@ -1,4 +1,5 @@
 'use client';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import type { BusinessUnit } from '@/lib/data';
@@ -7,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { AddEditBusinessUnitDialog } from '@/components/control/add-edit-business-unit-dialog';
 import { useUser } from '@/firebase/provider'; // Hook correcto para el estado del usuario
 import Link from 'next/link';
+import { Breadcrumbs } from '@/components/ui/breadcrumb';
 
 export default function AdminBusinessUnitsPage() {
   const { user, isUserLoading } = useUser(); // Obtener el usuario y el estado de carga
@@ -16,6 +18,11 @@ export default function AdminBusinessUnitsPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedBusinessUnit, setSelectedBusinessUnit] = useState<BusinessUnit | null>(null);
+
+  const breadcrumbItems = [
+    { label: 'Catálogos', href: '/control/catalogo' },
+    { label: 'Unidades de Negocio', href: '/control/catalogo/unidades-de-negocio' },
+  ];
 
   useEffect(() => {
     // El useEffect ahora espera a que la carga del usuario termine
@@ -73,6 +80,7 @@ export default function AdminBusinessUnitsPage() {
 
   return (
     <>
+        <Breadcrumbs items={breadcrumbItems} />
         <div className="text-center mb-12">
             <h1 className="text-5xl md:text-7xl font-black text-white">
                 <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
@@ -92,7 +100,57 @@ export default function AdminBusinessUnitsPage() {
             </Button>
         </div>
 
-        <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+        {/* Mobile View: Cards */}
+        <div className="md:hidden space-y-4">
+          {(isLoading || isUserLoading) ? (
+            <p className="text-center text-white/60 py-12">Cargando...</p>
+          ) : error ? (
+            <p className="text-center text-red-500 py-12">Error: {error}</p>
+          ) : (
+            businessUnits.map((unit) => (
+              <Card key={unit.id} className="bg-black/50 backdrop-blur-sm border-white/10 text-white">
+                <CardHeader>
+                  <CardTitle className="text-orange-400">{unit.name}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm">
+                  <p><span className="font-semibold">Razón Social:</span> {unit.razonSocial}</p>
+                  <p><span className="font-semibold">Dirección:</span> {unit.address}</p>
+                  <p><span className="font-semibold">Teléfono:</span> {unit.phone}</p>
+                </CardContent>
+                <CardFooter className="flex justify-end space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(unit as BusinessUnit)}
+                    className="text-white/60 hover:text-orange-400"
+                  >
+                    <Pen className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(unit.id)}
+                    className="text-white/60 hover:text-red-500"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <Link href={`/control/catalogo/unidades-de-negocio/${unit.id}/departamentos`}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-white/60 hover:text-blue-400"
+                    >
+                      <FolderKanban className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </CardFooter>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden md:block bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="border-b border-white/10 hover:bg-transparent">

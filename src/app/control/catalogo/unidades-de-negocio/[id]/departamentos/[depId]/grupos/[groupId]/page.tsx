@@ -1,44 +1,92 @@
 'use client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, doc } from 'firebase/firestore';
 import type { Concept, Group, Department, BusinessUnit } from '@/lib/data';
 import { PlusCircle, Pen, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AddEditConceptDialog } from '@/components/admin/add-edit-concept-dialog';
-import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { useDoc } from '@/firebase/firestore/use-doc';
+import { useUser } from '@/firebase/provider';
 
 export default function AdminConceptsPage({ params }: { params: { id: string, depId: string, groupId: string } }) {
-  const firestore = useFirestore();
+  const { user } = useUser();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null);
 
-  const businessUnitDoc = useMemoFirebase(
-    () => (firestore ? doc(firestore, `business_units/${params.id}`) : null),
-    [firestore, params.id]
-  );
-  const { data: businessUnit } = useDoc<BusinessUnit>(businessUnitDoc);
+  const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
+  const [department, setDepartment] = useState<Department | null>(null);
+  const [group, setGroup] = useState<Group | null>(null);
+  const [concepts, setConcepts] = useState<Concept[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const departmentDoc = useMemoFirebase(
-    () => (firestore ? doc(firestore, `business_units/${params.id}/departments/${params.depId}`) : null),
-    [firestore, params.id, params.depId]
-  );
-  const { data: department } = useDoc<Department>(departmentDoc);
+  // Fetch business unit, department, and group data
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!user || !params.id || !params.depId || !params.groupId) return;
 
-  const groupDoc = useMemoFirebase(
-    () => (firestore ? doc(firestore, `business_units/${params.id}/departments/${params.depId}/groups/${params.groupId}`) : null),
-    [firestore, params.id, params.depId, params.groupId]
-  );
-  const { data: group } = useDoc<Group>(groupDoc);
+      try {
+        const token = await user.getIdToken();
 
-  const conceptsCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, `business_units/${params.id}/departments/${params.depId}/groups/${params.groupId}/concepts`) : null),
-    [firestore, params.id, params.depId, params.groupId]
-  );
-  const { data: concepts, isLoading } = useCollection<Concept>(conceptsCollection);
+        // Fetch business unit
+        const buResponse = await fetch(`/api/control/unidades-de-negocio/${params.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (buResponse.ok) {
+          setBusinessUnit(await buResponse.json());
+        }
+
+        // Fetch department
+        const deptResponse = await fetch(`/api/control/departamentos/${params.depId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (deptResponse.ok) {
+          setDepartment(await deptResponse.json());
+        }
+
+        // Fetch group
+        const groupResponse = await fetch(`/api/control/grupos/${params.groupId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (groupResponse.ok) {
+          setGroup(await groupResponse.json());
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+      }
+    };
+
+    fetchData();
+  }, [user, params.id, params.depId, params.groupId]);
+
+  // Fetch concepts data
+  useEffect(() => {
+    const fetchConcepts = async () => {
+      if (!user || !params.id || !params.depId || !params.groupId) return;
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch(`/api/control/unidades-de-negocio/${params.id}/departamentos/${params.depId}/grupos/${params.groupId}/conceptos`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (!response.ok) {
+          throw new Error('No se pudo obtener los conceptos.');
+        }
+
+        const data = await response.json();
+        setConcepts(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchConcepts();
+  }, [user, params.id, params.depId, params.groupId]);
 
   const handleEdit = (item: Concept) => {
     setSelectedConcept(item);
@@ -51,9 +99,7 @@ export default function AdminConceptsPage({ params }: { params: { id: string, de
   };
 
   const handleDelete = (id: string) => {
-    if (!firestore) return;
-    const docRef = doc(collection(firestore, `business_units/${params.id}/departments/${params.depId}/groups/${params.groupId}/concepts`), id);
-    deleteDocumentNonBlocking(docRef);
+    console.log(`TODO: Implementar borrado para el ID: ${id} a través de la API`);
   };
 
 
@@ -91,7 +137,14 @@ export default function AdminConceptsPage({ params }: { params: { id: string, de
                   </TableCell>
                 </TableRow>
               )}
-              {concepts && concepts.map((concept) => (
+              {error && (
+                <TableRow className="border-b-0">
+                  <TableCell colSpan={2} className="text-center text-red-500 py-12">
+                    Error: {error}
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && !error && concepts.map((concept) => (
                 <TableRow key={concept.id} className="border-b border-white/10 hover:bg-white/5">
                   <TableCell className="font-medium text-white">{concept.name}</TableCell>
                   <TableCell className="text-right">

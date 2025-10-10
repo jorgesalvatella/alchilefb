@@ -1,4 +1,5 @@
 'use client';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import type { Supplier } from '@/lib/data';
@@ -6,6 +7,7 @@ import { PlusCircle, Pen, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
 import { AddEditSupplierDialog } from '@/components/control/add-edit-supplier-dialog';
+import { Breadcrumbs } from '@/components/ui/breadcrumb';
 
 export default function AdminSuppliersPage() {
   const { user, isUserLoading } = useUser();
@@ -70,8 +72,14 @@ export default function AdminSuppliersPage() {
     }
   };
 
+  const breadcrumbItems = [
+    { label: 'Catálogos', href: '/control/catalogo' },
+    { label: 'Proveedores', href: '/control/finanzas/proveedores' },
+  ];
+
   return (
     <>
+      <Breadcrumbs items={breadcrumbItems} />
       <div className="text-center mb-12">
         <h1 className="text-5xl md:text-7xl font-black text-white">
           <span className="bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
@@ -87,7 +95,34 @@ export default function AdminSuppliersPage() {
         </Button>
       </div>
 
-      <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+      {/* Mobile View: Cards */}
+      <div className="md:hidden space-y-4">
+        {(isLoading || isUserLoading) ? (
+          <p className="text-center text-white/60 py-12">Cargando...</p>
+        ) : error ? (
+          <p className="text-center text-red-500 py-12">Error: {error}</p>
+        ) : (
+          suppliers.map((supplier) => (
+            <Card key={supplier.id} className="bg-black/50 backdrop-blur-sm border-white/10 text-white">
+              <CardHeader>
+                <CardTitle className="text-purple-400">{supplier.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm space-y-1">
+                <p><span className="font-semibold">Contacto:</span> {supplier.contactName}</p>
+                <p><span className="font-semibold">Teléfono:</span> {supplier.phone}</p>
+                <p><span className="font-semibold">Email:</span> {supplier.email}</p>
+              </CardContent>
+              <CardFooter className="flex justify-end space-x-2">
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(supplier)} className="text-white/60 hover:text-orange-400"><Pen className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(supplier.id)} className="text-white/60 hover:text-red-500"><Trash2 className="h-4 w-4" /></Button>
+              </CardFooter>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-b border-white/10 hover:bg-transparent">

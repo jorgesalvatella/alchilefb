@@ -37,9 +37,12 @@ export default function CatalogoPage() {
         <p className="text-white/60 mt-4 text-lg md:text-xl">Gestiona la información maestra de la aplicación.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {catalogs.map((catalog) => (
-          <Card key={catalog.name} className="bg-black/50 backdrop-blur-sm border-white/10 text-white flex flex-col">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        {catalogs.map((catalog, index) => (
+          <Card 
+            key={catalog.name} 
+            className={`bg-black/50 backdrop-blur-sm border-white/10 text-white flex flex-col ${index === 0 ? 'lg:col-start-2' : ''}`}
+          >
             <CardHeader className="flex-grow">
               <div className="flex items-center gap-4">
                 <catalog.icon className="h-8 w-8 text-orange-400" />

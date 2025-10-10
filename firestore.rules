@@ -212,13 +212,58 @@ service cloud.firestore {
       allow delete: if isAdmin() || isSuperAdmin();
     }
 
-    match /business_units/{businessUnitId} {
+    match /businessUnits/{businessUnitId} {
       /**
        * @description Manages business unit information. Accessible only by admins and super-admins.
-       * @path /business_units/{businessUnitId}
+       * @path /businessUnits/{businessUnitId}
        * @allow (get, list, create, update, delete) Only admins and super-admins can access and modify business unit information.
        * @deny (get, list, create, update, delete) Regular users cannot access business unit information.
        * @principle Restricts business unit management to authorized personnel.
+       */
+      allow get: if isAdmin() || isSuperAdmin();
+      allow list: if isAdmin() || isSuperAdmin();
+      allow create: if isAdmin() || isSuperAdmin();
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
+    }
+
+    match /departamentos/{departmentId} {
+      /**
+       * @description Manages department information. Accessible only by admins and super-admins.
+       * @path /departamentos/{departmentId}
+       * @allow (get, list, create, update, delete) Only admins and super-admins can access and modify department information.
+       * @deny (get, list, create, update, delete) Regular users cannot access department information.
+       * @principle Restricts department management to authorized personnel.
+       */
+      allow get: if isAdmin() || isSuperAdmin();
+      allow list: if isAdmin() || isSuperAdmin();
+      allow create: if isAdmin() || isSuperAdmin();
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
+    }
+
+    match /grupos/{groupId} {
+      /**
+       * @description Manages group information. Accessible only by admins and super-admins.
+       * @path /grupos/{groupId}
+       * @allow (get, list, create, update, delete) Only admins and super-admins can access and modify group information.
+       * @deny (get, list, create, update, delete) Regular users cannot access group information.
+       * @principle Restricts group management to authorized personnel.
+       */
+      allow get: if isAdmin() || isSuperAdmin();
+      allow list: if isAdmin() || isSuperAdmin();
+      allow create: if isAdmin() || isSuperAdmin();
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
+    }
+
+    match /conceptos/{conceptId} {
+      /**
+       * @description Manages concept information. Accessible only by admins and super-admins.
+       * @path /conceptos/{conceptId}
+       * @allow (get, list, create, update, delete) Only admins and super-admins can access and modify concept information.
+       * @deny (get, list, create, update, delete) Regular users cannot access concept information.
+       * @principle Restricts concept management to authorized personnel.
        */
       allow get: if isAdmin() || isSuperAdmin();
       allow list: if isAdmin() || isSuperAdmin();

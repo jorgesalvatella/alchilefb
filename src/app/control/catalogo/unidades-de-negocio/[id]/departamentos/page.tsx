@@ -1,18 +1,45 @@
 'use client';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import type { Department } from '@/lib/data';
+import type { Department, BusinessUnit } from '@/lib/data';
 import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AddEditDepartmentDialog } from '@/components/control/add-edit-department-dialog';
+import { Breadcrumbs } from '@/components/ui/breadcrumb';
 
 export default function AdminDepartmentsPage() {
   const { user } = useUser();
   const params = useParams();
   const businessUnitId = params.id as string;
+
+  const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
+
+  // Fetch business unit data from API
+  useEffect(() => {
+    const fetchBusinessUnit = async () => {
+      if (!user || !businessUnitId) return;
+
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch(`/api/control/unidades-de-negocio/${businessUnitId}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setBusinessUnit(data);
+        }
+      } catch (err) {
+        console.error('Error fetching business unit:', err);
+      }
+    };
+
+    fetchBusinessUnit();
+  }, [user, businessUnitId]);
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,6 +47,12 @@ export default function AdminDepartmentsPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+
+  const breadcrumbItems = [
+    { label: 'Catálogos', href: '/control/catalogo' },
+    { label: 'Unidades de Negocio', href: '/control/catalogo/unidades-de-negocio' },
+    { label: businessUnit?.name || '...', href: `/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos` },
+  ];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,13 +103,13 @@ export default function AdminDepartmentsPage() {
 
   return (
     <>
+      <Breadcrumbs items={breadcrumbItems} />
       <div className="text-center mb-12">
         <h1 className="text-5xl md:text-7xl font-black text-white">
           <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
-            Departamentos
+            Departamentos de {businessUnit?.name}
           </span>
         </h1>
-        {/* Podríamos añadir el nombre de la unidad de negocio aquí si lo pasamos como prop o lo cargamos */}
       </div>
 
       <div className="flex justify-end mb-8">
@@ -86,7 +119,55 @@ export default function AdminDepartmentsPage() {
         </Button>
       </div>
 
-      <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+      {/* Mobile View: Cards */}
+      <div className="md:hidden space-y-4">
+        {isLoading ? (
+          <p className="text-center text-white/60 py-12">Cargando departamentos...</p>
+        ) : error ? (
+          <p className="text-center text-red-500 py-12">Error: {error}</p>
+        ) : (
+          departments.map((dept) => (
+            <Card key={dept.id} className="bg-black/50 backdrop-blur-sm border-white/10 text-white">
+              <CardHeader>
+                <CardTitle className="text-orange-400">{dept.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm">
+                <p>{dept.description}</p>
+              </CardContent>
+              <CardFooter className="flex justify-end space-x-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleEdit(dept as Department)}
+                  className="text-white/60 hover:text-orange-400"
+                >
+                  <Pen className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDelete(dept.id)}
+                  className="text-white/60 hover:text-red-500"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Link href={`/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${dept.id}/grupos`}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-white/60 hover:text-blue-400"
+                  >
+                    <FolderKanban className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </CardFooter>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Desktop View: Table */}
+      <div className="hidden md:block bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-b border-white/10 hover:bg-transparent">

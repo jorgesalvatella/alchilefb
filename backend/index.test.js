@@ -389,4 +389,117 @@ describe('API Endpoints', () => {
 // ... (existing relationship DELETE tests remain unchanged) ...
     });
   });
+
+  // --- PRUEBAS PARA ENDPOINTS PUT ---
+
+  describe('PUT /api/control/unidades-de-negocio/:unidadId', () => {
+    const unidadId = 'test-unidad-id';
+    const updateData = { name: 'Updated Name', razonSocial: 'Updated RS' };
+
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .put(`/api/control/unidades-de-negocio/${unidadId}`)
+        .set('Authorization', 'Bearer test-regular-user-token')
+        .send(updateData);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 400 if required fields are missing', async () => {
+      const res = await request(app)
+        .put(`/api/control/unidades-de-negocio/${unidadId}`)
+        .set('Authorization', 'Bearer test-admin-token')
+        .send({ name: 'Only Name' }); // Falta razonSocial
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should return 200 and update the document for admin user', async () => {
+      const res = await request(app)
+        .put(`/api/control/unidades-de-negocio/${unidadId}`)
+        .set('Authorization', 'Bearer test-admin-token')
+        .send(updateData);
+      expect(res.statusCode).toBe(200);
+      expect(admin.__mockUpdate).toHaveBeenCalledWith(expect.objectContaining(updateData));
+      expect(res.body).toEqual(expect.objectContaining(updateData));
+    });
+  });
+
+  describe('PUT /api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId', () => {
+    const unidadId = 'test-unidad-id';
+    const deptoId = 'test-depto-id';
+    const updateData = { name: 'Updated Dept Name' };
+
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .put(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}`)
+        .set('Authorization', 'Bearer test-regular-user-token')
+        .send(updateData);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 400 if name is missing', async () => {
+      const res = await request(app)
+        .put(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}`)
+        .set('Authorization', 'Bearer test-admin-token')
+        .send({ description: 'no name' });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should return 200 and update the document for admin user', async () => {
+      const res = await request(app)
+        .put(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}`)
+        .set('Authorization', 'Bearer test-admin-token')
+        .send(updateData);
+      expect(res.statusCode).toBe(200);
+      expect(admin.__mockUpdate).toHaveBeenCalledWith(expect.objectContaining(updateData));
+    });
+  });
+
+  describe('PUT /api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId', () => {
+    const unidadId = 'test-unidad-id';
+    const deptoId = 'test-depto-id';
+    const grupoId = 'test-grupo-id';
+    const updateData = { name: 'Updated Group Name' };
+
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .put(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}/grupos/${grupoId}`)
+        .set('Authorization', 'Bearer test-regular-user-token')
+        .send(updateData);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 200 and update the document for admin user', async () => {
+      const res = await request(app)
+        .put(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}/grupos/${grupoId}`)
+        .set('Authorization', 'Bearer test-admin-token')
+        .send(updateData);
+      expect(res.statusCode).toBe(200);
+      expect(admin.__mockUpdate).toHaveBeenCalledWith(expect.objectContaining(updateData));
+    });
+  });
+
+  describe('PUT /api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId/conceptos/:conceptoId', () => {
+    const unidadId = 'test-unidad-id';
+    const deptoId = 'test-depto-id';
+    const grupoId = 'test-grupo-id';
+    const conceptoId = 'test-concepto-id';
+    const updateData = { name: 'Updated Concept Name' };
+
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .put(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}/grupos/${grupoId}/conceptos/${conceptoId}`)
+        .set('Authorization', 'Bearer test-regular-user-token')
+        .send(updateData);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 200 and update the document for admin user', async () => {
+      const res = await request(app)
+        .put(`/api/control/unidades-de-negocio/${unidadId}/departamentos/${deptoId}/grupos/${grupoId}/conceptos/${conceptoId}`)
+        .set('Authorization', 'Bearer test-admin-token')
+        .send(updateData);
+      expect(res.statusCode).toBe(200);
+      expect(admin.__mockUpdate).toHaveBeenCalledWith(expect.objectContaining(updateData));
+    });
+  });
 });
