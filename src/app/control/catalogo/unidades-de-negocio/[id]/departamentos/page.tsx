@@ -4,15 +4,13 @@ import { Button } from '@/components/ui/button';
 import type { Department } from '@/lib/data';
 import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/firebase/provider';
+import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-
-// TODO: Crear el diálogo para añadir/editar departamentos
-// import { AddEditDepartmentDialog } from '@/components/admin/add-edit-department-dialog';
+import { AddEditDepartmentDialog } from '@/components/control/add-edit-department-dialog';
 
 export default function AdminDepartmentsPage() {
-  const { user } = useAuth();
+  const { user } = useUser();
   const params = useParams();
   const businessUnitId = params.id as string;
 
@@ -20,8 +18,8 @@ export default function AdminDepartmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // const [dialogOpen, setDialogOpen] = useState(false);
-  // const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -57,15 +55,13 @@ export default function AdminDepartmentsPage() {
   }, [user, businessUnitId]);
 
   const handleAddNew = () => {
-    // setSelectedDepartment(null);
-    // setDialogOpen(true);
-    console.log("TODO: Implementar añadir nuevo departamento");
+    setSelectedDepartment(null);
+    setDialogOpen(true);
   };
 
   const handleEdit = (item: Department) => {
-    // setSelectedDepartment(item);
-    // setDialogOpen(true);
-    console.log("TODO: Implementar editar departamento", item);
+    setSelectedDepartment(item);
+    setDialogOpen(true);
   };
 
   const handleDelete = (id: string) => {
@@ -95,20 +91,21 @@ export default function AdminDepartmentsPage() {
           <TableHeader>
             <TableRow className="border-b border-white/10 hover:bg-transparent">
               <TableHead className="text-white/80">Nombre</TableHead>
+              <TableHead className="text-white/80">Descripción</TableHead>
               <TableHead className="text-right text-white/80">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow className="border-b-0">
-                <TableCell colSpan={2} className="text-center text-white/60 py-12">
+                <TableCell colSpan={3} className="text-center text-white/60 py-12">
                   Cargando departamentos...
                 </TableCell>
               </TableRow>
             )}
             {error && (
               <TableRow className="border-b-0">
-                <TableCell colSpan={2} className="text-center text-red-500 py-12">
+                <TableCell colSpan={3} className="text-center text-red-500 py-12">
                   Error: {error}
                 </TableCell>
               </TableRow>
@@ -116,6 +113,7 @@ export default function AdminDepartmentsPage() {
             {!isLoading && !error && departments.map((dept) => (
               <TableRow key={dept.id} className="border-b border-white/10 hover:bg-white/5">
                 <TableCell className="font-medium text-white">{dept.name}</TableCell>
+                <TableCell className="text-white/80">{dept.description}</TableCell>
                 <TableCell className="text-right">
                   <Button
                     variant="ghost"
@@ -133,7 +131,7 @@ export default function AdminDepartmentsPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                  <Link href={`/admin/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${dept.id}/grupos`}>
+                  <Link href={`/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${dept.id}/grupos`}>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -149,14 +147,12 @@ export default function AdminDepartmentsPage() {
         </Table>
       </div>
       
-      {/* 
       <AddEditDepartmentDialog
         isOpen={dialogOpen}
         onOpenChange={setDialogOpen}
         department={selectedDepartment}
         businessUnitId={businessUnitId}
-      /> 
-      */}
+      />
     </>
   );
 }
