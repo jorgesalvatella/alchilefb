@@ -50,23 +50,41 @@ Este plan se enfoca exclusivamente en el **Catálogo de Productos de Venta**.
 -   **FR4 - Eliminación de Productos de Venta:** Los administradores deben poder eliminar (soft delete) un producto de venta.
 -   **FR5 - Visualización Pública:** Los usuarios (autenticados o no) deben poder ver el menú de productos disponibles.
 
-### Modelo de Datos (Firestore)
+### Modelo de Datos: Colección `productosDeVenta`
 
--   **Agente Consultor:** Pyra
--   **Colección:** `productosDeVenta`
--   **Campos del Documento:**
-    -   `name` (string) - *Requerido*
-    -   `description` (string)
-    -   `price` (number) - *Requerido*
-    -   `category` (string) - *Requerido (ej. "Bebidas", "Tacos", "Postres")*
-    -   `imageUrl` (string) - *Opcional*
-    -   `stock` (number) - *Opcional. **Nota de Arquitectura:** Este campo es opcional en la fase inicial del CRUD. La lógica completa de gestión de inventario (descontar stock con pedidos, reposición, etc.) se implementará en una futura versión.*
-    -   `isAvailable` (boolean) - Para marcar si el producto está disponible en el menú.
-    -   `deleted` (boolean) - Para soft deletes.
-    -   `createdAt` (string) - ISO Timestamp.
-    -   `updatedAt` (string) - ISO Timestamp.
+Esta colección contendrá todos los artículos que se pueden vender a los clientes.
+
+**Campos del Documento:**
+
+*   `id` (string) - *Autogenerado*
+*   `name` (string) - *Requerido*
+*   `description` (string) - *Opcional*
+*   `price` (number) - *Requerido. **Nota de Arquitectura:** Este es el precio final que ve el cliente (IVA incluido). El administrador solo necesita introducir este valor.*
+*   `basePrice` (number) - *Requerido. **Nota de Arquitectura:** Este es el precio antes de impuestos. Será calculado y guardado automáticamente por el backend. Si `isTaxable` es true, el cálculo es `price / 1.16`; si es false, `basePrice` es igual a `price`.*
+*   `cost` (number) - *Opcional. Costo de producción del producto.*
+*   `platformFeePercent` (number) - *Opcional. Comisión de la plataforma de venta (ej. 20 para 20%).*
+*   `businessUnitId` (string) - *Requerido. ID de la Unidad de Negocio a la que pertenece.*
+*   `departmentId` (string) - *Requerido. ID del Departamento al que pertenece.*
+*   `categoriaVentaId` (string) - *Requerido. ID de la Categoría de Venta a la que pertenece.*
+*   `isTaxable` (boolean) - *Requerido. Indica si al producto se le deben aplicar impuestos.*
+*   `isAvailable` (boolean) - *Requerido, indica si el producto está disponible para la venta*
+*   `createdAt` (timestamp) - *Autogenerado*
+--- 
+### Nuevo Catálogo: Colección `categoriasDeVenta`
+
+Esta colección define las categorías a las que pueden pertenecer los productos de venta, creando una jerarquía organizacional.
+
+**Campos del Documento:**
+
+*   `id` (string) - *Autogenerado*
+*   `name` (string) - *Requerido*
+*   `description` (string) - *Opcional*
+*   `businessUnitId` (string) - *Requerido. ID de la Unidad de Negocio a la que está asociada.*
+*   `departmentId` (string) - *Requerido. ID del Departamento al que está asociada.*
+*   `deletedAt` (timestamp) - *Opcional, para borrado lógico*
 
 ---
+**Funcionalidad Adicional: Calculadora de Rentabilidad (UI del Admin)**
 
 ## 4. Plan de Pruebas
 

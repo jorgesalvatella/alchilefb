@@ -1,108 +1,171 @@
 'use client';
-import Link from 'next/link';
+
+import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { MinusCircle, PlusCircle, Trash2, ShoppingCart } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { Input } from '@/components/ui/input';
-import { Minus, Plus, Trash2 } from 'lucide-react';
 
-const cartItems = [
-  { id: 1, name: 'Tacos al Pastor', price: 3.50, quantity: 2, imageId: 'taco-al-pastor' },
-  { id: 2, name: 'Burrito de Carne Asada', price: 12.99, quantity: 1, imageId: 'burrito-asada' },
-  { id: 3, name: 'Horchata Clásica', price: 4.00, quantity: 2, imageId: 'horchata' },
+// TODO: Reemplazar esto con un hook de estado global (Zustand, Context, etc.)
+const mockCartItems = [
+  {
+    id: '1',
+    name: 'Taco de Pastor',
+    description: 'Carne de cerdo marinada, piña, cilantro y cebolla.',
+    price: 25,
+    imageUrl: PlaceHolderImages.getRandomImage('Taco de Pastor').imageUrl,
+    quantity: 2,
+  },
+  {
+    id: '2',
+    name: 'Agua de Horchata',
+    description: 'Bebida refrescante de arroz con canela.',
+    price: 20,
+    imageUrl: PlaceHolderImages.getRandomImage('Agua de Horchata').imageUrl,
+    quantity: 1,
+  },
 ];
 
-const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-const tax = subtotal * 0.08;
-const total = subtotal + tax;
-
 export default function CartPage() {
-  return (
-    <div className="relative min-h-screen bg-black text-white pt-32">
-        <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-            <div className="absolute top-20 left-10 w-72 h-72 bg-chile-red rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-            <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-red-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
-        </div>
+  // TODO: Este estado debe venir de un hook global
+  const [cartItems, setCartItems] = useState(mockCartItems);
 
-      <div className="relative container mx-auto px-4 pb-12 md:pb-20">
-        <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-7xl font-black text-white mb-3">
-                <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
-                    Tu Carrito
-                </span>
-            </h1>
-        </div>
-      
-      {cartItems.length === 0 ? (
-        <div className="text-center">
-            <p className="text-xl text-white/60 mb-4">Tu carrito está vacío.</p>
-            <Button asChild className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white hover:scale-105 transition-transform duration-300">
-                <Link href="/menu">Comenzar un Pedido</Link>
+  const handleQuantityChange = (id: string, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    setCartItems(
+      cartItems.map((item) =>
+        item.id === id ? { ...item, quantity: newQuantity } : item
+      )
+    );
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setCartItems(cartItems.filter((item) => item.id !== id));
+  };
+
+  const subtotal = cartItems.reduce(
+    (acc, item) => acc + item.price * item.quantity,
+    0
+  );
+  
+  // TODO: Calcular impuestos y envío en una fase posterior
+  const total = subtotal;
+
+  if (cartItems.length === 0) {
+    return (
+        <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 text-center">
+            <ShoppingCart className="mx-auto h-24 w-24 text-gray-400" />
+            <h1 className="mt-4 text-3xl font-bold tracking-tight">Tu Carrito está Vacío</h1>
+            <p className="mt-2 text-lg text-gray-500">
+                Parece que aún no has añadido nada. ¡Explora nuestro menú!
+            </p>
+            <Button asChild className="mt-6 bg-fresh-green text-black hover:bg-fresh-green/80">
+                <Link href="/menu">Ir al Menú</Link>
             </Button>
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-3 gap-8 items-start">
-            <div className="md:col-span-2 space-y-4">
-            {cartItems.map((item) => {
-                const image = PlaceHolderImages.find((img) => img.id === item.imageId);
-                return (
-                <div key={item.id} className="flex items-center p-4 bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl">
-                    <div className="relative h-24 w-24 rounded-lg overflow-hidden mr-4">
-                    {image && (
-                        <Image
-                        src={image.imageUrl}
-                        alt={item.name}
-                        fill
-                        className="object-cover"
-                        data-ai-hint={image.imageHint}
-                        />
-                    )}
-                    </div>
-                    <div className="flex-grow">
-                    <h3 className="font-headline text-xl text-white">{item.name}</h3>
-                    <p className="text-white/60 text-sm">${item.price.toFixed(2)}</p>
-                    </div>
-                    <div className="flex items-center gap-2 mx-4">
-                        <Button variant="outline" size="icon" className="h-8 w-8 bg-white/5 border-white/20 text-white hover:bg-white/10"><Minus className="h-4 w-4" /></Button>
-                        <span className="font-bold text-lg w-5 text-center">{item.quantity}</span>
-                        <Button variant="outline" size="icon" className="h-8 w-8 bg-white/5 border-white/20 text-white hover:bg-white/10"><Plus className="h-4 w-4" /></Button>
-                    </div>
-                    <p className="font-bold text-lg w-20 text-right">${(item.price * item.quantity).toFixed(2)}</p>
-                    <Button variant="ghost" size="icon" className="ml-2 text-white/50 hover:text-red-500 transition-colors">
-                        <Trash2 className="h-5 w-5" />
-                    </Button>
-                </div>
-                );
-            })}
-            </div>
+        </main>
+    )
+  }
 
-            <div className="sticky top-32 bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl p-6">
-                <h2 className="font-headline text-3xl text-white mb-4">Resumen</h2>
-                <div className="space-y-4">
-                    <div className="flex justify-between text-white/80">
-                        <span>Subtotal</span>
-                        <span>${subtotal.toFixed(2)}</span>
+  return (
+    <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
+      <div className="text-center mb-12">
+        <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl">Tu Carrito</h1>
+        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
+          Revisa tu pedido y prepárate para disfrutar.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-12 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Resumen de tu Pedido</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {cartItems.map((item) => (
+                <div key={item.id} className="flex items-start space-x-4">
+                  <Image
+                    src={item.imageUrl}
+                    alt={item.name}
+                    width={80}
+                    height={80}
+                    className="rounded-md object-cover"
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{item.name}</h3>
+                    <p className="text-sm text-gray-500">${item.price.toFixed(2)}</p>
+                    <div className="mt-2 flex items-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                      >
+                        <MinusCircle className="h-5 w-5" data-testid="minus-circle-icon" />
+                      </Button>
+                      <Input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10) || 1)}
+                        className="w-16 text-center"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                      >
+                        <PlusCircle className="h-5 w-5" data-testid="plus-circle-icon" />
+                      </Button>
                     </div>
-                    <div className="flex justify-between text-white/80">
-                        <span>Impuestos y Tarifas</span>
-                        <span>${tax.toFixed(2)}</span>
-                    </div>
-                    <Separator className="bg-white/20" />
-                    <div className="flex justify-between font-bold text-xl text-white">
-                        <span>Total</span>
-                        <span>${total.toFixed(2)}</span>
-                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">${(item.price * item.quantity).toFixed(2)}</p>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="mt-2 text-gray-500 hover:text-red-500"
+                      onClick={() => handleRemoveItem(item.id)}
+                    >
+                      <Trash2 className="h-5 w-5" data-testid="trash-2-icon" />
+                    </Button>
+                  </div>
                 </div>
-                <Button asChild size="lg" className="w-full font-headline text-lg mt-6 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white hover:scale-105 transition-transform duration-300">
-                    <Link href="/checkout">Proceder al Pago</Link>
-                </Button>
-            </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
-      )}
-    </div>
-    </div>
+
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Total del Pedido</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>${subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-gray-500">
+                <span>Envío</span>
+                <span>Calculado al pagar</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between text-xl font-bold">
+                <span>Total</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button className="w-full bg-fresh-green text-black hover:bg-fresh-green/80 text-lg py-6">
+                Proceder al Pago
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    </main>
   );
 }

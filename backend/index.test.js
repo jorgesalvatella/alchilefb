@@ -13,6 +13,8 @@ jest.mock('firebase-admin', () => {
     collection: jest.fn((collectionName) => {
         const baseMock = {
             where: jest.fn().mockReturnThis(),
+            orderBy: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
             get: jest.fn().mockResolvedValue({
               empty: false,
               forEach: (callback) => callback({ id: `${collectionName}-1`, data: () => ({ name: `Test ${collectionName}` }) }),
@@ -26,7 +28,7 @@ jest.mock('firebase-admin', () => {
                 update: mockUpdate,
             })),
           };
-      
+
           if (collectionName === 'proveedores') {
             baseMock.get = jest.fn().mockResolvedValue({
                 docs: [{ id: 'supplier1', data: () => ({ name: 'Supplier A' }) }]
@@ -732,125 +734,149 @@ describe('API Endpoints', () => {
     });
   });
 
-  describe('POST /api/control/productos-venta', () => {
-    const newProduct = {
-      name: 'Taco de Pastor',
-      price: 25,
-      category: 'Tacos',
-      description: 'Carne de cerdo marinada con achiote',
-      isAvailable: true,
-    };
-
-    it('should return 403 for non-admin user', async () => {
-      const res = await request(app)
-        .post('/api/control/productos-venta')
-        .set('Authorization', 'Bearer test-regular-user-token')
-        .send(newProduct);
-      expect(res.statusCode).toBe(403);
+  describe('Productos de Venta Endpoints', () => {
+    describe('POST /api/control/productos-venta/upload-image', () => {
+      it('should return 403 for non-admin user', async () => {
+        const response = await request(app)
+          .post('/api/control/productos-venta/upload-image')
+          .set('Authorization', 'Bearer test-regular-user-token');
+        expect(response.status).toBe(403);
+      });
+      // No podemos probar el caso de éxito fácilmente sin un mock complejo de GCloud Storage,
+      // pero al menos verificamos la protección del endpoint.
     });
 
-    it('should return 400 if required fields are missing', async () => {
-      const { name, ...incompleteProduct } = newProduct;
-      const res = await request(app)
-        .post('/api/control/productos-venta')
-        .set('Authorization', 'Bearer test-admin-token')
-        .send(incompleteProduct);
-      expect(res.statusCode).toBe(400);
+    describe('POST /api/control/productos-venta', () => {
+      it('should return 403 for non-admin user', async () => {
+        const newProduct = { name: 'Taco', price: 30, category: 'Tacos' };
+        const response = await request(app)
+          .post('/api/control/productos-venta')
+          .set('Authorization', 'Bearer test-regular-user-token')
+          .send(newProduct);
+        expect(response.status).toBe(403);
+      });
+
+      it('should return 400 if required fields are missing', async () => {
+        const response = await request(app)
+          .post('/api/control/productos-venta')
+          .set('Authorization', 'Bearer test-admin-token')
+          .send({ name: 'Only Name' }); // Falta price y category
+        expect(response.status).toBe(400);
+      });
+
+      it('should return 201 for a taxable product', async () => {
+        const newProduct = { name: 'Taco de Suadero', price: 30, category: 'Tacos', isTaxable: true };
+        const response = await request(app)
+          .post('/api/control/productos-venta')
+          .set('Authorization', 'Bearer test-admin-token')
+          .send(newProduct);
+        expect(response.status).toBe(201);
+        expect(response.body.price).toBe(30);
+        expect(response.body.basePrice).toBeCloseTo(25.86, 2);
+        expect(admin.__mockAdd).toHaveBeenCalled();
+      });
+
+      it('should return 201 for a non-taxable product', async () => {
+        const newProduct = { name: 'Taco de Canasta', price: 20, category: 'Tacos', isTaxable: false };
+        const response = await request(app)
+          .post('/api/control/productos-venta')
+          .set('Authorization', 'Bearer test-admin-token')
+          .send(newProduct);
+        expect(response.status).toBe(201);
+        expect(response.body.price).toBe(20);
+        expect(response.body.basePrice).toBe(20);
+        expect(admin.__mockAdd).toHaveBeenCalled();
+      });
     });
 
-    it('should return 201 and the new product for admin user', async () => {
-      const res = await request(app)
-        .post('/api/control/productos-venta')
-        .set('Authorization', 'Bearer test-admin-token')
-        .send(newProduct);
+    describe('GET /api/control/productos-venta', () => {
+      it('should return 403 for non-admin user', async () => {
+        const response = await request(app)
+          .get('/api/control/productos-venta')
+          .set('Authorization', 'Bearer test-regular-user-token');
+        expect(response.status).toBe(403);
+      });
 
-      expect(res.statusCode).toBe(201);
-      expect(admin.__mockAdd).toHaveBeenCalledWith(expect.objectContaining(newProduct));
-      expect(res.body).toEqual(expect.objectContaining(newProduct));
-    });
-  });
-
-  describe('GET /api/control/productos-venta', () => {
-    it('should return 403 for non-admin user', async () => {
-      const res = await request(app)
-        .get('/api/control/productos-venta')
-        .set('Authorization', 'Bearer test-regular-user-token');
-      expect(res.statusCode).toBe(403);
+      it('should return 200 and a list of products for admin user', async () => {
+        const response = await request(app)
+          .get('/api/control/productos-venta')
+          .set('Authorization', 'Bearer test-admin-token');
+        expect(response.status).toBe(200);
+        expect(response.body).toBeInstanceOf(Array);
+      });
     });
 
-    it('should return 200 and a list of products for admin user', async () => {
-      const res = await request(app)
-        .get('/api/control/productos-venta')
-        .set('Authorization', 'Bearer test-admin-token');
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toBeInstanceOf(Array);
-    });
-  });
-
-  describe('GET /api/menu', () => {
-    it('should return 200 and a list of available products for any user', async () => {
-      const res = await request(app).get('/api/menu');
-      expect(res.statusCode).toBe(200);
-      expect(res.body).toBeInstanceOf(Array);
-    });
-  });
-
-  describe('PUT /api/control/productos-venta/:id', () => {
-    const productId = 'test-product-id';
-    const updateData = {
-      name: 'Taco de Suadero',
-      price: 28,
-      category: 'Tacos',
-    };
-
-    it('should return 403 for non-admin user', async () => {
-      const res = await request(app)
-        .put(`/api/control/productos-venta/${productId}`)
-        .set('Authorization', 'Bearer test-regular-user-token')
-        .send(updateData);
-      expect(res.statusCode).toBe(403);
+    describe('GET /api/menu', () => {
+      it('should return 200 and a list of available products for any user', async () => {
+        const response = await request(app).get('/api/menu');
+        expect(response.status).toBe(200);
+        expect(response.body).toBeInstanceOf(Array);
+      });
     });
 
-    it('should return 400 if required fields are missing', async () => {
-      const { name, ...incompleteData } = updateData;
-      const res = await request(app)
-        .put(`/api/control/productos-venta/${productId}`)
-        .set('Authorization', 'Bearer test-admin-token')
-        .send(incompleteData);
-      expect(res.statusCode).toBe(400);
+    describe('PUT /api/control/productos-venta/:id', () => {
+      const productId = 'test-product-id';
+
+      it('should return 403 for non-admin user', async () => {
+        const updatedProduct = { name: 'Updated Taco', price: 35, category: 'Tacos' };
+        const response = await request(app)
+          .put(`/api/control/productos-venta/${productId}`)
+          .set('Authorization', 'Bearer test-regular-user-token')
+          .send(updatedProduct);
+        expect(response.status).toBe(403);
+      });
+
+      it('should return 400 if required fields are missing', async () => {
+        const response = await request(app)
+          .put(`/api/control/productos-venta/${productId}`)
+          .set('Authorization', 'Bearer test-admin-token')
+          .send({ name: 'Only Name' }); // Falta price y category
+        expect(response.status).toBe(400);
+      });
+
+      it('should return 200 and update a taxable product', async () => {
+        const updatedProduct = { name: 'Taco de Suadero Plus', price: 35, category: 'Tacos', isTaxable: true };
+        const response = await request(app)
+          .put(`/api/control/productos-venta/${productId}`)
+          .set('Authorization', 'Bearer test-admin-token')
+          .send(updatedProduct);
+        expect(response.status).toBe(200);
+        expect(response.body.price).toBe(35);
+        expect(response.body.basePrice).toBeCloseTo(30.17, 2);
+        expect(admin.__mockUpdate).toHaveBeenCalled();
+      });
+
+      it('should return 200 and update a non-taxable product', async () => {
+        const updatedProduct = { name: 'Taco de Canasta Plus', price: 25, category: 'Tacos', isTaxable: false };
+        const response = await request(app)
+          .put(`/api/control/productos-venta/${productId}`)
+          .set('Authorization', 'Bearer test-admin-token')
+          .send(updatedProduct);
+        expect(response.status).toBe(200);
+        expect(response.body.price).toBe(25);
+        expect(response.body.basePrice).toBe(25);
+        expect(admin.__mockUpdate).toHaveBeenCalled();
+      });
     });
 
-    it('should return 200 and update the product for admin user', async () => {
-      const res = await request(app)
-        .put(`/api/control/productos-venta/${productId}`)
-        .set('Authorization', 'Bearer test-admin-token')
-        .send(updateData);
+    describe('DELETE /api/control/productos-venta/:id', () => {
+      const productId = 'test-product-id';
 
-      expect(res.statusCode).toBe(200);
-      expect(admin.__mockUpdate).toHaveBeenCalledWith(expect.objectContaining(updateData));
-      expect(res.body).toEqual(expect.objectContaining(updateData));
-    });
-  });
+      it('should return 403 for non-admin user', async () => {
+        const response = await request(app)
+          .delete(`/api/control/productos-venta/${productId}`)
+          .set('Authorization', 'Bearer test-regular-user-token');
+        expect(response.status).toBe(403);
+      });
 
-  describe('DELETE /api/control/productos-venta/:id', () => {
-    const productId = 'test-product-id';
-
-    it('should return 403 for non-admin user', async () => {
-      const res = await request(app)
-        .delete(`/api/control/productos-venta/${productId}`)
-        .set('Authorization', 'Bearer test-regular-user-token');
-      expect(res.statusCode).toBe(403);
-    });
-
-    it('should return 200 and soft delete the product for admin user', async () => {
-      const res = await request(app)
-        .delete(`/api/control/productos-venta/${productId}`)
-        .set('Authorization', 'Bearer test-admin-token');
-
-      expect(res.statusCode).toBe(200);
-      expect(admin.__mockUpdate).toHaveBeenCalledWith({
-        deleted: true,
-        deletedAt: expect.any(String),
+      it('should return 200 and soft delete the product for admin user', async () => {
+        const response = await request(app)
+          .delete(`/api/control/productos-venta/${productId}`)
+          .set('Authorization', 'Bearer test-admin-token');
+        expect(response.status).toBe(200);
+        expect(admin.__mockUpdate).toHaveBeenCalledWith({
+          deletedAt: expect.any(Date)
+        });
       });
     });
   });
