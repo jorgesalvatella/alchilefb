@@ -52,7 +52,7 @@ body {
   .dark {
     --background: 0 0% 0%; /* #000000 */
     --foreground: 0 0% 98%;
-    --card: 0 0% 13%;
+    --card: 0 0% 0%; /* Negro puro para las tarjetas */
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 98%;

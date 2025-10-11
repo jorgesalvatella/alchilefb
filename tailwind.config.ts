@@ -10,14 +10,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Alegreya', 'serif'],
-        headline: ['Belleza', 'sans-serif'],
-        code: ['monospace'],
-        caveat: ['Caveat', 'cursive'],
+        sans: ["var(--font-sans)", "sans-serif"],
       },
       colors: {
         'chile-red': '#C11B17',
-        'dark-charcoal': '#1A1A1A',
         'fresh-green': '#A8C951',
         'light-gray': '#F3F4F6',
         background: 'hsl(var(--background))',

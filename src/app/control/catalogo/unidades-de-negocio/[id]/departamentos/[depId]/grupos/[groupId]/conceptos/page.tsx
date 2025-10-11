@@ -10,11 +10,13 @@ import { useParams } from 'next/navigation';
 import { AddEditConceptDialog } from '@/components/control/add-edit-concept-dialog';
 import { ManageConceptSuppliersDialog } from '@/components/control/manage-concept-suppliers-dialog';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
+import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
 export default function AdminConceptsPage() {
   const { user } = useUser();
   const params = useParams();
+  const { toast } = useToast();
   const businessUnitId = params.id as string;
   const departmentId = params.depId as string;
   const groupId = params.groupId as string;
@@ -90,8 +92,36 @@ export default function AdminConceptsPage() {
     setDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    console.log(`TODO: Implementar borrado para el ID: ${id} a través de la API`);
+  const handleDelete = async (id: string) => {
+    if (!user || !confirm('¿Estás seguro de que quieres eliminar este concepto?')) {
+      return;
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/control/conceptos/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo eliminar el concepto.');
+      }
+
+      toast({
+        title: 'Concepto Eliminado',
+        description: 'El concepto se ha eliminado correctamente.',
+      });
+      window.location.reload();
+    } catch (err: any) {
+      toast({
+        title: 'Error al eliminar',
+        description: err.message,
+        variant: 'destructive',
+      });
+      console.error('Error deleting concept:', err);
+    }
   };
   
   const handleManageSuppliers = (item: Concept) => {

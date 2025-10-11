@@ -4,6 +4,9 @@ const admin = require('firebase-admin');
 const { initializeApp, applicationDefault } = require('firebase-admin/app');
 const multer = require('multer');
 const { getStorage } = require('firebase-admin/storage');
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
+const path = require('path');
 
 // Initialize Firebase Admin SDK
 initializeApp({
@@ -16,20 +19,99 @@ const app = express();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+// --- Swagger Configuration ---
+const swaggerOptions = {
+  swaggerDefinition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Al Chile FB API',
+      version: '1.0.0',
+      description: 'API para la gestión de catálogos, pedidos y más.',
+    },
+    servers: [
+      {
+        url: 'http://localhost:8080',
+        description: 'Servidor de Desarrollo',
+      },
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+    },
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
+  },
+  apis: [path.join(__dirname, '*.js')], // Archivos que contienen anotaciones para la documentación
+};
+
+const swaggerDocs = swaggerJsdoc(swaggerOptions);
+
+// Middleware to ensure only super_admins can access Swagger docs
+const checkSuperAdminForSwagger = (req, res, next) => {
+  if (req.user && req.user.super_admin) {
+    return next();
+  }
+  return res.status(403).send('Forbidden: Access to API docs requires super_admin role.');
+};
+
+const authMiddleware = require('./authMiddleware');
+
+app.use('/api-docs', authMiddleware, checkSuperAdminForSwagger, swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-const authMiddleware = require('./authMiddleware');
-
 // --- API Routes ---
 
-// Health check endpoint
+/**
+ * @swagger
+ * /:
+ *   get:
+ *     summary: Health check
+ *     description: Verifica que el servicio de backend esté funcionando correctamente.
+ *     tags: [Health]
+ *     responses:
+ *       '200':
+ *         description: El servicio está activo.
+ */
 app.get('/', (req, res) => {
   res.status(200).send('Hello from the Al Chile API Backend!');
 });
 
-// Endpoint para subir archivos
+/**
+ * @swagger
+ * /api/control/upload:
+ *   post:
+ *     summary: Sube un archivo a Firebase Storage
+ *     tags: [Files]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       '200':
+ *         description: Archivo subido exitosamente
+ *       '400':
+ *         description: No se subió ningún archivo
+ */
 app.post('/api/control/upload', authMiddleware, upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).send({ message: 'No file uploaded.' });
@@ -54,7 +136,18 @@ app.post('/api/control/upload', authMiddleware, upload.single('file'), async (re
 });
 
 
-// GET all business units
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio:
+ *   get:
+ *     summary: Obtiene todas las unidades de negocio
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Lista de unidades de negocio
+ */
 app.get('/api/control/unidades-de-negocio', authMiddleware, async (req, res) => {
   try {
     const db = admin.firestore();
@@ -78,7 +171,26 @@ app.get('/api/control/unidades-de-negocio', authMiddleware, async (req, res) => 
   }
 });
 
-// GET a single business unit by ID
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{id}:
+ *   get:
+ *     summary: Obtiene una unidad de negocio por ID
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Detalles de la unidad de negocio
+ *       '404':
+ *         description: Unidad de negocio no encontrada
+ */
 app.get('/api/control/unidades-de-negocio/:id', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -100,7 +212,31 @@ app.get('/api/control/unidades-de-negocio/:id', authMiddleware, async (req, res)
     }
 });
 
-// POST a new business unit
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio:
+ *   post:
+ *     summary: Crea una nueva unidad de negocio
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               razonSocial:
+ *                 type: string
+ *     responses:
+ *       '201':
+ *         description: Unidad de negocio creada
+ *       '403':
+ *         description: No autorizado
+ */
 app.post('/api/control/unidades-de-negocio', authMiddleware, async (req, res) => {
   try {
     // Verificar que el usuario sea super_admin
@@ -135,7 +271,86 @@ app.post('/api/control/unidades-de-negocio', authMiddleware, async (req, res) =>
   }
 });
 
-// POST a new department for a business unit
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}:
+ *   delete:
+ *     summary: Elimina una unidad de negocio (soft delete)
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Unidad de negocio eliminada
+ *       '403':
+ *         description: No autorizado
+ */
+app.delete('/api/control/unidades-de-negocio/:unidadId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || !req.user.super_admin) {
+            return res.status(403).json({ message: 'Forbidden: super_admin role required' });
+        }
+        const { unidadId } = req.params;
+        const db = admin.firestore();
+
+        // Check for active departments in this business unit
+        const departmentsSnapshot = await db.collection('departamentos')
+            .where('businessUnitId', '==', unidadId)
+            .where('deleted', '==', false)
+            .limit(1)
+            .get();
+
+        if (!departmentsSnapshot.empty) {
+            return res.status(400).json({ message: 'No se puede eliminar la unidad de negocio porque contiene departamentos activos. Por favor, elimine los departamentos primero.' });
+        }
+
+        const businessUnitRef = db.collection('businessUnits').doc(unidadId);
+        await businessUnitRef.update({
+            deleted: true,
+            deletedAt: new Date().toISOString(),
+        });
+        res.status(200).json({ message: 'Business unit deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting business unit:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}/departamentos:
+ *   post:
+ *     summary: Crea un nuevo departamento para una unidad de negocio
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       '201':
+ *         description: Departamento creado
+ *       '403':
+ *         description: No autorizado
+ */
 app.post('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddleware, async (req, res) => {
   try {
     // Verificar que el usuario sea admin o super_admin
@@ -169,7 +384,26 @@ app.post('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddlew
   }
 });
 
-// GET all departments for a business unit
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}/departamentos:
+ *   get:
+ *     summary: Obtiene todos los departamentos de una unidad de negocio
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Lista de departamentos
+ *       '403':
+ *         description: No autorizado
+ */
 app.get('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -198,7 +432,26 @@ app.get('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddlewa
     }
 });
 
-// GET a single department by ID
+/**
+ * @swagger
+ * /api/control/departamentos/{id}:
+ *   get:
+ *     summary: Obtiene un departamento por ID
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Detalles del departamento
+ *       '404':
+ *         description: Departamento no encontrado
+ */
 app.get('/api/control/departamentos/:id', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -220,7 +473,82 @@ app.get('/api/control/departamentos/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// GET all groups for a department
+/**
+ * @swagger
+ * /api/control/departamentos/{deptoId}:
+ *   delete:
+ *     summary: Elimina un departamento (soft delete)
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Departamento eliminado
+ *       '403':
+ *         description: No autorizado
+ */
+app.delete('/api/control/departamentos/:deptoId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { deptoId } = req.params;
+        const db = admin.firestore();
+
+        // Check for active groups in this department
+        const groupsSnapshot = await db.collection('grupos')
+            .where('departmentId', '==', deptoId)
+            .where('deleted', '==', false)
+            .limit(1)
+            .get();
+
+        if (!groupsSnapshot.empty) {
+            return res.status(400).json({ message: 'No se puede eliminar el departamento porque contiene grupos activos. Por favor, elimine los grupos primero.' });
+        }
+
+        const departmentRef = db.collection('departamentos').doc(deptoId);
+        await departmentRef.update({
+            deleted: true,
+            deletedAt: new Date().toISOString(),
+        });
+        res.status(200).json({ message: 'Department deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting department:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}/departamentos/{deptoId}/grupos:
+ *   get:
+ *     summary: Obtiene todos los grupos de un departamento
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: deptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Lista de grupos
+ *       '403':
+ *         description: No autorizado
+ */
 app.get('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -249,7 +577,26 @@ app.get('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupo
     }
 });
 
-// GET a single group by ID
+/**
+ * @swagger
+ * /api/control/grupos/{id}:
+ *   get:
+ *     summary: Obtiene un grupo por ID
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Detalles del grupo
+ *       '404':
+ *         description: Grupo no encontrado
+ */
 app.get('/api/control/grupos/:id', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -271,7 +618,40 @@ app.get('/api/control/grupos/:id', authMiddleware, async (req, res) => {
     }
 });
 
-// POST a new group for a department
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}/departamentos/{deptoId}/grupos:
+ *   post:
+ *     summary: Crea un nuevo grupo para un departamento
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: deptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       '201':
+ *         description: Grupo creado
+ *       '403':
+ *         description: No autorizado
+ */
 app.post('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -304,7 +684,87 @@ app.post('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grup
     }
 });
 
-// GET all concepts for a group
+/**
+ * @swagger
+ * /api/control/grupos/{grupoId}:
+ *   delete:
+ *     summary: Elimina un grupo (soft delete)
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: grupoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Grupo eliminado
+ *       '403':
+ *         description: No autorizado
+ */
+app.delete('/api/control/grupos/:grupoId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { grupoId } = req.params;
+        const db = admin.firestore();
+
+        // Check for active concepts in this group
+        const conceptsSnapshot = await db.collection('conceptos')
+            .where('groupId', '==', grupoId)
+            .where('deleted', '==', false)
+            .limit(1)
+            .get();
+
+        if (!conceptsSnapshot.empty) {
+            return res.status(400).json({ message: 'No se puede eliminar el grupo porque contiene conceptos activos. Por favor, elimine los conceptos primero.' });
+        }
+
+        const groupRef = db.collection('grupos').doc(grupoId);
+        await groupRef.update({
+            deleted: true,
+            deletedAt: new Date().toISOString(),
+        });
+        res.status(200).json({ message: 'Group deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting group:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}/departamentos/{deptoId}/grupos/{grupoId}/conceptos:
+ *   get:
+ *     summary: Obtiene todos los conceptos de un grupo
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: deptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: grupoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Lista de conceptos
+ *       '403':
+ *         description: No autorizado
+ */
 app.get('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId/conceptos', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -333,7 +793,45 @@ app.get('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupo
     }
 });
 
-// POST a new concept for a group
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}/departamentos/{deptoId}/grupos/{grupoId}/conceptos:
+ *   post:
+ *     summary: Crea un nuevo concepto para un grupo
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: deptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: grupoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       '201':
+ *         description: Concepto creado
+ *       '403':
+ *         description: No autorizado
+ */
 app.post('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId/conceptos', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -368,7 +866,37 @@ app.post('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grup
     }
 });
 
-// PUT to update a business unit
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}:
+ *   put:
+ *     summary: Actualiza una unidad de negocio
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               razonSocial:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Unidad de negocio actualizada
+ *       '403':
+ *         description: No autorizado
+ */
 app.put('/api/control/unidades-de-negocio/:unidadId', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -399,7 +927,40 @@ app.put('/api/control/unidades-de-negocio/:unidadId', authMiddleware, async (req
     }
 });
 
-// PUT to update a department
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}/departamentos/{deptoId}:
+ *   put:
+ *     summary: Actualiza un departamento
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: deptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Departamento actualizado
+ *       '403':
+ *         description: No autorizado
+ */
 app.put('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -427,7 +988,45 @@ app.put('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId', aut
     }
 });
 
-// PUT to update a group
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}/departamentos/{deptoId}/grupos/{grupoId}:
+ *   put:
+ *     summary: Actualiza un grupo
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: deptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: grupoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Grupo actualizado
+ *       '403':
+ *         description: No autorizado
+ */
 app.put('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -455,7 +1054,50 @@ app.put('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupo
     }
 });
 
-// PUT to update a concept
+/**
+ * @swagger
+ * /api/control/unidades-de-negocio/{unidadId}/departamentos/{deptoId}/grupos/{grupoId}/conceptos/{conceptoId}:
+ *   put:
+ *     summary: Actualiza un concepto
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: unidadId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: deptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: grupoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: conceptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Concepto actualizado
+ *       '403':
+ *         description: No autorizado
+ */
 app.put('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId/conceptos/:conceptoId', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -483,9 +1125,61 @@ app.put('/api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupo
     }
 });
 
+/**
+ * @swagger
+ * /api/control/conceptos/{conceptoId}:
+ *   delete:
+ *     summary: Elimina un concepto (soft delete)
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: conceptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Concepto eliminado
+ *       '403':
+ *         description: No autorizado
+ */
+app.delete('/api/control/conceptos/:conceptoId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { conceptoId } = req.params;
+        const db = admin.firestore();
+        const conceptRef = db.collection('conceptos').doc(conceptoId);
+        await conceptRef.update({
+            deleted: true,
+            deletedAt: new Date().toISOString(),
+        });
+        res.status(200).json({ message: 'Concept deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting concept:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 // --- Supplier and Relationship Management ---
 
-// GET all suppliers
+/**
+ * @swagger
+ * /api/control/proveedores:
+ *   get:
+ *     summary: Obtiene todos los proveedores
+ *     tags: [Proveedores]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Lista de proveedores
+ *       '403':
+ *         description: No autorizado
+ */
 app.get('/api/control/proveedores', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -512,7 +1206,29 @@ app.get('/api/control/proveedores', authMiddleware, async (req, res) => {
     }
 });
 
-// POST a new supplier
+/**
+ * @swagger
+ * /api/control/proveedores:
+ *   post:
+ *     summary: Crea un nuevo proveedor
+ *     tags: [Proveedores]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       '201':
+ *         description: Proveedor creado
+ *       '403':
+ *         description: No autorizado
+ */
 app.post('/api/control/proveedores', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -539,7 +1255,35 @@ app.post('/api/control/proveedores', authMiddleware, async (req, res) => {
     }
 });
 
-// PUT to update a supplier
+/**
+ * @swagger
+ * /api/control/proveedores/{proveedorId}:
+ *   put:
+ *     summary: Actualiza un proveedor
+ *     tags: [Proveedores]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: proveedorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Proveedor actualizado
+ *       '403':
+ *         description: No autorizado
+ */
 app.put('/api/control/proveedores/:proveedorId', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -567,7 +1311,26 @@ app.put('/api/control/proveedores/:proveedorId', authMiddleware, async (req, res
     }
 });
 
-// DELETE a supplier (soft delete)
+/**
+ * @swagger
+ * /api/control/proveedores/{proveedorId}:
+ *   delete:
+ *     summary: Elimina un proveedor (soft delete)
+ *     tags: [Proveedores]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: proveedorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Proveedor eliminado
+ *       '403':
+ *         description: No autorizado
+ */
 app.delete('/api/control/proveedores/:proveedorId', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -587,7 +1350,26 @@ app.delete('/api/control/proveedores/:proveedorId', authMiddleware, async (req, 
     }
 });
 
-// GET associated suppliers for a concept
+/**
+ * @swagger
+ * /api/control/conceptos/{conceptoId}/proveedores:
+ *   get:
+ *     summary: Obtiene los proveedores asociados a un concepto
+ *     tags: [Proveedores]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: conceptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Lista de proveedores asociados
+ *       '403':
+ *         description: No autorizado
+ */
 app.get('/api/control/conceptos/:conceptoId/proveedores', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -625,7 +1407,35 @@ app.get('/api/control/conceptos/:conceptoId/proveedores', authMiddleware, async 
     }
 });
 
-// POST to associate a supplier with a concept
+/**
+ * @swagger
+ * /api/control/conceptos/{conceptoId}/proveedores:
+ *   post:
+ *     summary: Asocia un proveedor a un concepto
+ *     tags: [Proveedores]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: conceptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               proveedorId:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Proveedor asociado
+ *       '403':
+ *         description: No autorizado
+ */
 app.post('/api/control/conceptos/:conceptoId/proveedores', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -650,7 +1460,31 @@ app.post('/api/control/conceptos/:conceptoId/proveedores', authMiddleware, async
     }
 });
 
-// DELETE to disassociate a supplier from a concept
+/**
+ * @swagger
+ * /api/control/conceptos/{conceptoId}/proveedores/{proveedorId}:
+ *   delete:
+ *     summary: Desasocia un proveedor de un concepto
+ *     tags: [Proveedores]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: conceptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: proveedorId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Proveedor desasociado
+ *       '403':
+ *         description: No autorizado
+ */
 app.delete('/api/control/conceptos/:conceptoId/proveedores/:proveedorId', authMiddleware, async (req, res) => {
     try {
         if (!req.user || (!req.user.admin && !req.user.super_admin)) {
@@ -672,4 +1506,1377 @@ app.delete('/api/control/conceptos/:conceptoId/proveedores/:proveedorId', authMi
 
 // ... (otros endpoints)
 
-module.exports = app;
+
+
+
+
+// --- Sale Products Management ---
+
+
+
+
+
+/**
+
+
+ * @swagger
+
+
+ * /api/control/productos-venta:
+
+
+ *   post:
+
+
+ *     summary: Crea un nuevo producto de venta
+
+
+ *     tags: [Productos de Venta]
+
+
+ *     security:
+
+
+ *       - bearerAuth: []
+
+
+ *     requestBody:
+
+
+ *       required: true
+
+
+ *       content:
+
+
+ *         application/json:
+
+
+ *           schema:
+
+
+ *             type: object
+
+
+ *             properties:
+
+
+ *               name:
+
+
+ *                 type: string
+
+
+ *               description:
+
+
+ *                 type: string
+
+
+ *               price:
+
+
+ *                 type: number
+
+
+ *               category:
+
+
+ *                 type: string
+
+
+ *               imageUrl:
+
+
+ *                 type: string
+
+
+ *               isAvailable:
+
+
+ *                 type: boolean
+
+
+ *             required:
+
+
+ *               - name
+
+
+ *               - price
+
+
+ *               - category
+
+
+ *     responses:
+
+
+ *       '201':
+
+
+ *         description: Producto de venta creado exitosamente
+
+
+ *       '400':
+
+
+ *         description: Faltan campos requeridos
+
+
+ *       '403':
+
+
+ *         description: No autorizado
+
+
+ */
+
+
+app.post('/api/control/productos-venta', authMiddleware, async (req, res) => {
+
+
+    try {
+
+
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+
+
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+
+
+        }
+
+
+
+
+
+        const { name, price, category, description, imageUrl, isAvailable } = req.body;
+
+
+
+
+
+        if (!name || price === undefined || !category) {
+
+
+            return res.status(400).json({ message: 'Missing required fields: name, price, category' });
+
+
+        }
+
+
+
+
+
+        const db = admin.firestore();
+
+
+        const newSaleProduct = {
+
+
+            name,
+
+
+            price,
+
+
+            category,
+
+
+            description: description || '',
+
+
+            imageUrl: imageUrl || '',
+
+
+            isAvailable: isAvailable === undefined ? true : isAvailable,
+
+
+            deleted: false,
+
+
+            createdAt: new Date().toISOString(),
+
+
+        };
+
+
+
+
+
+        const docRef = await db.collection('productosDeVenta').add(newSaleProduct);
+
+
+        res.status(201).json({ id: docRef.id, ...newSaleProduct });
+
+
+
+
+
+        } catch (error) {
+
+
+
+
+
+            console.error('Error creating sale product:', error);
+
+
+
+
+
+            res.status(500).json({ message: 'Internal Server Error' });
+
+
+
+
+
+        }
+
+
+
+
+
+    });
+
+
+
+
+
+    
+
+
+
+
+
+    /**
+
+
+
+
+
+     * @swagger
+
+
+
+
+
+     * /api/control/productos-venta:
+
+
+
+
+
+     *   get:
+
+
+
+
+
+     *     summary: Obtiene todos los productos de venta (para administradores)
+
+
+
+
+
+     *     tags: [Productos de Venta]
+
+
+
+
+
+     *     security:
+
+
+
+
+
+     *       - bearerAuth: []
+
+
+
+
+
+     *     responses:
+
+
+
+
+
+     *       '200':
+
+
+
+
+
+     *         description: Lista de todos los productos de venta
+
+
+
+
+
+     *       '403':
+
+
+
+
+
+     *         description: No autorizado
+
+
+
+
+
+     */
+
+
+
+
+
+    app.get('/api/control/productos-venta', authMiddleware, async (req, res) => {
+
+
+
+
+
+        try {
+
+
+
+
+
+            if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+
+
+
+
+
+                return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+
+
+
+
+
+            }
+
+
+
+
+
+            const db = admin.firestore();
+
+
+
+
+
+            const snapshot = await db.collection('productosDeVenta').where('deleted', '==', false).get();
+
+
+
+
+
+            const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+
+
+
+
+            res.status(200).json(products);
+
+
+
+
+
+        } catch (error) {
+
+
+
+
+
+            console.error('Error fetching sale products:', error);
+
+
+
+
+
+            res.status(500).json({ message: 'Internal Server Error' });
+
+
+
+
+
+        }
+
+
+
+
+
+    });
+
+
+
+
+
+    
+
+
+
+
+
+    /**
+
+
+
+
+
+     * @swagger
+
+
+
+
+
+     * /api/menu:
+
+
+
+
+
+     *   get:
+
+
+
+
+
+     *     summary: Obtiene el menú de productos de venta disponibles (público)
+
+
+
+
+
+     *     tags: [Menu]
+
+
+
+
+
+     *     responses:
+
+
+
+
+
+     *       '200':
+
+
+
+
+
+     *         description: Lista de productos de venta disponibles
+
+
+
+
+
+     */
+
+
+
+
+
+    app.get('/api/menu', async (req, res) => {
+
+
+
+
+
+        try {
+
+
+
+
+
+            const db = admin.firestore();
+
+
+
+
+
+            const snapshot = await db.collection('productosDeVenta')
+
+
+
+
+
+                .where('deleted', '==', false)
+
+
+
+
+
+                .where('isAvailable', '==', true)
+
+
+
+
+
+                .get();
+
+
+
+
+
+            const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+
+
+
+
+            res.status(200).json(products);
+
+
+
+
+
+        } catch (error) {
+
+
+
+
+
+            console.error('Error fetching menu:', error);
+
+
+
+
+
+                    res.status(500).json({ message: 'Internal Server Error' });
+
+
+
+
+
+                }
+
+
+
+
+
+            });
+
+
+
+
+
+            
+
+
+
+
+
+            /**
+
+
+
+
+
+             * @swagger
+
+
+
+
+
+             * /api/control/productos-venta/{id}:
+
+
+
+
+
+             *   put:
+
+
+
+
+
+             *     summary: Actualiza un producto de venta existente
+
+
+
+
+
+             *     tags: [Productos de Venta]
+
+
+
+
+
+             *     security:
+
+
+
+
+
+             *       - bearerAuth: []
+
+
+
+
+
+             *     parameters:
+
+
+
+
+
+             *       - in: path
+
+
+
+
+
+             *         name: id
+
+
+
+
+
+             *         required: true
+
+
+
+
+
+             *         schema:
+
+
+
+
+
+             *           type: string
+
+
+
+
+
+             *         description: El ID del producto de venta a actualizar
+
+
+
+
+
+             *     requestBody:
+
+
+
+
+
+             *       required: true
+
+
+
+
+
+             *       content:
+
+
+
+
+
+             *         application/json:
+
+
+
+
+
+             *           schema:
+
+
+
+
+
+             *             type: object
+
+
+
+
+
+             *             properties:
+
+
+
+
+
+             *               name:
+
+
+
+
+
+             *                 type: string
+
+
+
+
+
+             *               price:
+
+
+
+
+
+             *                 type: number
+
+
+
+
+
+             *               category:
+
+
+
+
+
+             *                 type: string
+
+
+
+
+
+             *             required:
+
+
+
+
+
+             *               - name
+
+
+
+
+
+             *               - price
+
+
+
+
+
+             *               - category
+
+
+
+
+
+             *     responses:
+
+
+
+
+
+             *       '200':
+
+
+
+
+
+             *         description: Producto de venta actualizado exitosamente
+
+
+
+
+
+             *       '400':
+
+
+
+
+
+             *         description: Faltan campos requeridos
+
+
+
+
+
+             *       '403':
+
+
+
+
+
+             *         description: No autorizado
+
+
+
+
+
+             *       '404':
+
+
+
+
+
+             *         description: Producto de venta no encontrado
+
+
+
+
+
+             */
+
+
+
+
+
+            app.put('/api/control/productos-venta/:id', authMiddleware, async (req, res) => {
+
+
+
+
+
+                try {
+
+
+
+
+
+                    if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+
+
+
+
+
+                        return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+
+
+
+
+
+                    }
+
+
+
+
+
+            
+
+
+
+
+
+                    const { id } = req.params;
+
+
+
+
+
+                    const { name, price, category, description, imageUrl, isAvailable } = req.body;
+
+
+
+
+
+            
+
+
+
+
+
+                    if (!name || price === undefined || !category) {
+
+
+
+
+
+                        return res.status(400).json({ message: 'Missing required fields: name, price, category' });
+
+
+
+
+
+                    }
+
+
+
+
+
+            
+
+
+
+
+
+                    const db = admin.firestore();
+
+
+
+
+
+                    const productRef = db.collection('productosDeVenta').doc(id);
+
+
+
+
+
+            
+
+
+
+
+
+                    const docSnap = await productRef.get();
+
+
+
+
+
+                    if (!docSnap.exists) {
+
+
+
+
+
+                        return res.status(404).json({ message: 'Product not found' });
+
+
+
+
+
+                    }
+
+
+
+
+
+            
+
+
+
+
+
+                    const updatedData = {
+
+
+
+
+
+                        name,
+
+
+
+
+
+                        price,
+
+
+
+
+
+                        category,
+
+
+
+
+
+                        description: description || '',
+
+
+
+
+
+                        imageUrl: imageUrl || '',
+
+
+
+
+
+                        isAvailable: isAvailable === undefined ? true : isAvailable,
+
+
+
+
+
+                        updatedAt: new Date().toISOString(),
+
+
+
+
+
+                    };
+
+
+
+
+
+            
+
+
+
+
+
+                    await productRef.update(updatedData);
+
+
+
+
+
+                    res.status(200).json({ id, ...updatedData });
+
+
+
+
+
+            
+
+
+
+
+
+                } catch (error) {
+
+
+
+
+
+                    console.error('Error updating sale product:', error);
+
+
+
+
+
+                            res.status(500).json({ message: 'Internal Server Error' });
+
+
+
+
+
+                        }
+
+
+
+
+
+                    });
+
+
+
+
+
+                    
+
+
+
+
+
+                    /**
+
+
+
+
+
+                     * @swagger
+
+
+
+
+
+                     * /api/control/productos-venta/{id}:
+
+
+
+
+
+                     *   delete:
+
+
+
+
+
+                     *     summary: Elimina un producto de venta (soft delete)
+
+
+
+
+
+                     *     tags: [Productos de Venta]
+
+
+
+
+
+                     *     security:
+
+
+
+
+
+                     *       - bearerAuth: []
+
+
+
+
+
+                     *     parameters:
+
+
+
+
+
+                     *       - in: path
+
+
+
+
+
+                     *         name: id
+
+
+
+
+
+                     *         required: true
+
+
+
+
+
+                     *         schema:
+
+
+
+
+
+                     *           type: string
+
+
+
+
+
+                     *         description: El ID del producto de venta a eliminar
+
+
+
+
+
+                     *     responses:
+
+
+
+
+
+                     *       '200':
+
+
+
+
+
+                     *         description: Producto de venta eliminado exitosamente
+
+
+
+
+
+                     *       '403':
+
+
+
+
+
+                     *         description: No autorizado
+
+
+
+
+
+                     *       '404':
+
+
+
+
+
+                     *         description: Producto de venta no encontrado
+
+
+
+
+
+                     */
+
+
+
+
+
+                    app.delete('/api/control/productos-venta/:id', authMiddleware, async (req, res) => {
+
+
+
+
+
+                        try {
+
+
+
+
+
+                            if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+
+
+
+
+
+                                return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+
+
+
+
+
+                            }
+
+
+
+
+
+                    
+
+
+
+
+
+                            const { id } = req.params;
+
+
+
+
+
+                            const db = admin.firestore();
+
+
+
+
+
+                            const productRef = db.collection('productosDeVenta').doc(id);
+
+
+
+
+
+                    
+
+
+
+
+
+                            const docSnap = await productRef.get();
+
+
+
+
+
+                            if (!docSnap.exists) {
+
+
+
+
+
+                                return res.status(404).json({ message: 'Product not found' });
+
+
+
+
+
+                            }
+
+
+
+
+
+                    
+
+
+
+
+
+                            await productRef.update({
+
+
+
+
+
+                                deleted: true,
+
+
+
+
+
+                                deletedAt: new Date().toISOString(),
+
+
+
+
+
+                            });
+
+
+
+
+
+                    
+
+
+
+
+
+                            res.status(200).json({ message: 'Sale product deleted successfully' });
+
+
+
+
+
+                    
+
+
+
+
+
+                        } catch (error) {
+
+
+
+
+
+                            console.error('Error deleting sale product:', error);
+
+
+
+
+
+                            res.status(500).json({ message: 'Internal Server Error' });
+
+
+
+
+
+                        }
+
+
+
+
+
+                    });
+
+
+
+
+
+                    
+
+
+
+
+
+                    
+
+
+
+
+
+                    module.exports = app;
+

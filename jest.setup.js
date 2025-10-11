@@ -12,5 +12,6 @@ jest.mock('lucide-react', () => ({
   Trash2: () => <span data-testid="trash-icon" />,
   FolderKanban: () => <span data-testid="folder-icon" />,
   X: () => <span data-testid="x-icon" />,
-  Link2: () => <span data-testid="link2-icon" />, // Añadido para la página de conceptos
+  Link2: () => <span data-testid="link2-icon" />,
+  ChevronRight: () => <span data-testid="chevron-right-icon" />,
 }));

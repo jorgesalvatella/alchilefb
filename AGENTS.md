@@ -436,7 +436,8 @@ npm install && cd backend && npm install
 │  🎯 Especialidad:                           │
 │     • Tailwind CSS                          │
 │     • shadcn/ui components                  │
-│     • Responsive design                     │
+│     • Diseño responsive y mobile-first      │
+│     • E-commerce y food delivery            │
 │                                             │
 │  📞 Invócame cuando:                        │
 │     • Crees componentes visuales           │

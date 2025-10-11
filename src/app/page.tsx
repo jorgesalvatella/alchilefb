@@ -55,7 +55,7 @@ export default function Home() {
             <p className="text-2xl md:text-3xl font-bold mb-4 text-white drop-shadow-xl">
               Mexican creations, <br />picantes y no picantes
             </p>
-            <p className="text-xl md:text-xl text-white/80 mb-12 max-w-2xl mx-auto font-caveat">
+            <p className="text-xl md:text-xl text-white/80 mb-12 max-w-2xl mx-auto">
               Experimenta el sabor auténtico de México con nuestra propuesta contemporánea
             </p>
           </div>
