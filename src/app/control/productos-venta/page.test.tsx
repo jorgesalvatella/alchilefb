@@ -81,12 +81,11 @@ describe('AdminSaleProductsPage', () => {
 
   it('should open the dialog when "Añadir Producto" is clicked', async () => {
     render(<AdminSaleProductsPage />);
-    await waitFor(() => {
-      expect(screen.getByText('Añadir Producto')).toBeInTheDocument();
-    });
 
-    // Hacer clic en el botón específicamente (no en el texto del diálogo)
-    const addButton = screen.getByRole('button', { name: /añadir producto/i });
+    // Usar getByRole para buscar específicamente el botón
+    const addButton = await screen.findByRole('button', { name: /añadir producto/i });
+    expect(addButton).toBeInTheDocument();
+
     fireEvent.click(addButton);
 
     await waitFor(() => {
@@ -94,6 +93,83 @@ describe('AdminSaleProductsPage', () => {
       // Verificar que ahora hay 2 instancias del texto (botón + título del diálogo)
       const addProductTexts = screen.getAllByText('Añadir Producto');
       expect(addProductTexts.length).toBeGreaterThan(1);
+    });
+  });
+
+  it('should show profitability calculations in the dialog', async () => {
+    render(<AdminSaleProductsPage />);
+
+    const addButton = await screen.findByRole('button', { name: /añadir producto/i });
+    fireEvent.click(addButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Análisis de Rentabilidad')).toBeInTheDocument();
+    });
+
+    // Simular entrada del usuario
+    const priceInput = screen.getByLabelText('Precio de Venta (IVA Incl.)');
+    const costInput = screen.getByLabelText('Costo del Producto');
+    const feeInput = screen.getByLabelText('Comisión de Plataforma (%)');
+
+    fireEvent.change(priceInput, { target: { value: '100' } });
+    fireEvent.change(costInput, { target: { value: '30' } });
+    fireEvent.change(feeInput, { target: { value: '20' } });
+
+    // Verificar que los campos tienen los valores correctos
+    await waitFor(() => {
+      expect(priceInput).toHaveValue(100);
+      expect(costInput).toHaveValue(30);
+      expect(feeInput).toHaveValue(20);
+    });
+
+    // Verificar que la sección de Análisis de Rentabilidad está visible
+    expect(screen.getByText('Análisis de Rentabilidad')).toBeInTheDocument();
+    expect(screen.getByText('Precio Base (Subtotal):')).toBeInTheDocument();
+    expect(screen.getByText('IVA (16%):')).toBeInTheDocument();
+    expect(screen.getByText('Utilidad Bruta:')).toBeInTheDocument();
+  });
+
+  it('should submit the new fields when creating a product', async () => {
+    render(<AdminSaleProductsPage />);
+
+    const addButton = await screen.findByRole('button', { name: /añadir producto/i });
+    fireEvent.click(addButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    // Llenar el formulario
+    fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Test Product' } });
+    fireEvent.change(screen.getByLabelText('Precio de Venta (IVA Incl.)'), { target: { value: '100' } });
+    fireEvent.change(screen.getByLabelText('Costo del Producto'), { target: { value: '30' } });
+    fireEvent.change(screen.getByLabelText('Comisión de Plataforma (%)'), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText('Categoría'), { target: { value: 'Test Category' } });
+    
+    // Simular clic en el switch de IVA (si es necesario cambiarlo)
+    // fireEvent.click(screen.getByLabelText('¿Lleva IVA?'));
+
+    fireEvent.click(screen.getByText('Guardar Cambios'));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith('/api/control/productos-venta', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer test-token',
+        },
+        body: JSON.stringify({
+          name: 'Test Product',
+          price: 100,
+          category: 'Test Category',
+          description: '',
+          imageUrl: '',
+          isAvailable: true,
+          isTaxable: true,
+          cost: 30,
+          platformFeePercent: 20,
+        }),
+      });
     });
   });
 });

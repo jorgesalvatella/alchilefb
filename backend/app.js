@@ -19,6 +19,17 @@ const app = express();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+// Initialize Firestore DB instance
+const db = admin.firestore();
+
+// Middleware to require admin or super_admin role
+const requireAdmin = (req, res, next) => {
+  if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+    return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+  }
+  next();
+};
+
 // --- Swagger Configuration ---
 const swaggerOptions = {
   swaggerDefinition: {
@@ -73,46 +84,11 @@ app.use(express.json());
 
 // --- API Routes ---
 
-/**
- * @swagger
- * /:
- *   get:
- *     summary: Health check
- *     description: Verifica que el servicio de backend esté funcionando correctamente.
- *     tags: [Health]
- *     responses:
- *       '200':
- *         description: El servicio está activo.
- */
 app.get('/', (req, res) => {
   res.status(200).send('Hello from the Al Chile API Backend!');
 });
 
-/**
- * @swagger
- * /api/control/upload:
- *   post:
- *     summary: Sube un archivo a Firebase Storage
- *     tags: [Files]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *     responses:
- *       '200':
- *         description: Archivo subido exitosamente
- *       '400':
- *         description: No se subió ningún archivo
- */
-app.post('/api/control/upload', authMiddleware, upload.single('file'), async (req, res) => {
+app.post('/api/control/productos-venta/upload-image', authMiddleware, requireAdmin, upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).send({ message: 'No file uploaded.' });
   }
@@ -120,17 +96,16 @@ app.post('/api/control/upload', authMiddleware, upload.single('file'), async (re
   try {
     const bucket = getStorage().bucket();
     const fileName = `${Date.now()}-${req.file.originalname}`;
-    const fileRef = bucket.file(`tax_ids/${fileName}`);
+    const fileRef = bucket.file(`productos/${fileName}`);
 
     await fileRef.save(req.file.buffer, {
       metadata: { contentType: req.file.mimetype },
     });
 
-    // La URL pública funciona gracias a las reglas de Storage
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileRef.name}`;
     res.status(200).send({ url: publicUrl });
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('Error uploading product image:', error);
     res.status(500).send({ message: 'Internal Server Error', error: error.message });
   }
 });
@@ -1510,1357 +1485,661 @@ app.delete('/api/control/conceptos/:conceptoId/proveedores/:proveedorId', authMi
 
 
 
-// --- Sale Products Management ---
+// --- Productos de Venta Endpoints ---
 
 
 
 
 
-/**
 
 
- * @swagger
 
 
- * /api/control/productos-venta:
 
 
- *   post:
+// POST (Crear)
 
 
- *     summary: Crea un nuevo producto de venta
 
 
- *     tags: [Productos de Venta]
 
+app.post('/api/control/productos-venta', authMiddleware, requireAdmin, async (req, res) => {
 
- *     security:
 
 
- *       - bearerAuth: []
 
 
- *     requestBody:
+  const { name, price, category, description, imageUrl, isAvailable, cost, platformFeePercent, isTaxable } = req.body;
 
 
- *       required: true
 
 
- *       content:
 
+  if (!name || !price || !category) {
 
- *         application/json:
 
 
- *           schema:
 
 
- *             type: object
+    return res.status(400).send('Missing required fields: name, price, category');
 
 
- *             properties:
 
 
- *               name:
 
+  }
 
- *                 type: string
 
 
- *               description:
 
 
- *                 type: string
 
 
- *               price:
 
 
- *                 type: number
 
 
- *               category:
+  try {
 
 
- *                 type: string
 
 
- *               imageUrl:
 
+    const finalPrice = parseFloat(price);
 
- *                 type: string
 
 
- *               isAvailable:
 
 
- *                 type: boolean
+    const basePrice = isTaxable ? finalPrice / 1.16 : finalPrice;
 
 
- *             required:
 
 
- *               - name
 
 
- *               - price
 
 
- *               - category
 
 
- *     responses:
 
+    const newProduct = {
 
- *       '201':
 
 
- *         description: Producto de venta creado exitosamente
 
 
- *       '400':
+      name,
 
 
- *         description: Faltan campos requeridos
 
 
- *       '403':
 
+      price: finalPrice,
 
- *         description: No autorizado
 
 
- */
 
 
-app.post('/api/control/productos-venta', authMiddleware, async (req, res) => {
+      basePrice,
+
+
+
+
+
+      category,
+
+
+
+
+
+      description: description || '',
+
+
+
+
+
+      imageUrl: imageUrl || '',
+
+
+
+
+
+      isAvailable: isAvailable !== undefined ? isAvailable : true,
+
+
+
+
+
+      cost: cost ? parseFloat(cost) : 0,
+
+
+
+
+
+      platformFeePercent: platformFeePercent ? parseFloat(platformFeePercent) : 0,
+
+
+
+
+
+      isTaxable: isTaxable !== undefined ? isTaxable : true,
+
+
+
+
+
+      createdAt: new Date(),
+
+
+
+
+
+      updatedAt: new Date(),
+
+
+
+
+
+      deletedAt: null,
+
+
+
+
+
+    };
+
+
+
+
+
+    const docRef = await db.collection('productosDeVenta').add(newProduct);
+
+
+
+
+
+    res.status(201).send({ id: docRef.id, ...newProduct });
+
+
+
+
+
+  } catch (error) {
+
+
+
+
+
+    console.error("Error creating sale product:", error);
+
+
+
+
+
+    res.status(500).send('Internal Server Error');
+
+
+
+
+
+  }
+
+
+
+
+
+});
+
+
+
+
+
+
+
+
+
+
+
+// GET (Listar)
+
+
+
+
+
+app.get('/api/control/productos-venta', authMiddleware, requireAdmin, async (req, res) => {
+
+
+
+
+
+  try {
+
+
+
+
+
+    const snapshot = await db.collection('productosDeVenta').where('deletedAt', '==', null).orderBy('createdAt', 'desc').get();
+
+
+
+
+
+    const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+
+
+
+
+    res.status(200).json(products);
+
+
+
+
+
+  } catch (error) {
+
+
+
+
+
+    console.error("Error fetching sale products:", error);
+
+
+
+
+
+    res.status(500).send('Internal Server Error');
+
+
+
+
+
+  }
+
+
+
+
+
+});
+
+
+
+
+
+
+
+
+
+
+
+// GET (Público - Menú)
+
+
+
+
+
+app.get('/api/menu', async (req, res) => {
+
+
+
 
 
     try {
 
 
-        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
 
 
-            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
 
+        const snapshot = await db.collection('productosDeVenta')
 
-        }
 
 
 
 
+            .where('deletedAt', '==', null)
 
-        const { name, price, category, description, imageUrl, isAvailable } = req.body;
 
 
 
 
+            .where('isAvailable', '==', true)
 
-        if (!name || price === undefined || !category) {
 
 
-            return res.status(400).json({ message: 'Missing required fields: name, price, category' });
 
 
-        }
+            .orderBy('createdAt', 'desc')
 
 
 
 
 
-        const db = admin.firestore();
+            .get();
 
 
-        const newSaleProduct = {
 
 
-            name,
 
+        const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            price,
 
 
-            category,
 
 
-            description: description || '',
+        res.status(200).json(products);
 
 
-            imageUrl: imageUrl || '',
 
 
-            isAvailable: isAvailable === undefined ? true : isAvailable,
 
+    } catch (error) {
 
-            deleted: false,
 
 
-            createdAt: new Date().toISOString(),
 
 
-        };
+        console.error("Error fetching menu:", error);
 
 
 
 
 
-        const docRef = await db.collection('productosDeVenta').add(newSaleProduct);
+        res.status(500).send('Internal Server Error');
 
 
-        res.status(201).json({ id: docRef.id, ...newSaleProduct });
 
 
 
+    }
 
 
-        } catch (error) {
 
 
 
+});
 
 
-            console.error('Error creating sale product:', error);
 
 
 
 
 
-            res.status(500).json({ message: 'Internal Server Error' });
 
 
 
 
+// PUT (Actualizar)
 
-        }
 
 
 
 
+app.put('/api/control/productos-venta/:id', authMiddleware, requireAdmin, async (req, res) => {
 
-    });
 
 
 
 
+  const { id } = req.params;
 
-    
 
 
 
 
+  const { name, price, category, description, imageUrl, isAvailable, cost, platformFeePercent, isTaxable } = req.body;
 
-    /**
 
 
 
 
+  if (!name || !price || !category) {
 
-     * @swagger
 
 
 
 
+    return res.status(400).send('Missing required fields: name, price, category');
 
-     * /api/control/productos-venta:
 
 
 
 
+  }
 
-     *   get:
 
 
 
 
 
-     *     summary: Obtiene todos los productos de venta (para administradores)
 
 
 
 
 
-     *     tags: [Productos de Venta]
+  try {
 
 
 
 
 
-     *     security:
+    const docRef = db.collection('productosDeVenta').doc(id);
 
 
 
 
 
-     *       - bearerAuth: []
+    const finalPrice = parseFloat(price);
 
 
 
 
 
-     *     responses:
+    const basePrice = isTaxable ? finalPrice / 1.16 : finalPrice;
 
 
 
 
 
-     *       '200':
 
 
 
 
 
-     *         description: Lista de todos los productos de venta
 
+    const updatedProduct = {
 
 
 
 
-     *       '403':
 
+      name,
 
 
 
 
-     *         description: No autorizado
 
+      price: finalPrice,
 
 
 
 
-     */
 
+      basePrice,
 
 
 
 
-    app.get('/api/control/productos-venta', authMiddleware, async (req, res) => {
 
+      category,
 
 
 
 
-        try {
 
+      description: description || '',
 
 
 
 
-            if (!req.user || (!req.user.admin && !req.user.super_admin)) {
 
+      imageUrl: imageUrl || '',
 
 
 
 
-                return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
 
+      isAvailable: isAvailable !== undefined ? isAvailable : true,
 
 
 
 
-            }
 
+      cost: cost ? parseFloat(cost) : 0,
 
 
 
 
-            const db = admin.firestore();
 
+      platformFeePercent: platformFeePercent ? parseFloat(platformFeePercent) : 0,
 
 
 
 
-            const snapshot = await db.collection('productosDeVenta').where('deleted', '==', false).get();
 
+      isTaxable: isTaxable !== undefined ? isTaxable : true,
 
 
 
 
-            const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+      updatedAt: new Date(),
 
 
 
 
-            res.status(200).json(products);
 
+    };
 
 
 
 
-        } catch (error) {
 
+    await docRef.update(updatedProduct);
 
 
 
 
-            console.error('Error fetching sale products:', error);
 
+    res.status(200).send({ id, ...updatedProduct });
 
 
 
 
-            res.status(500).json({ message: 'Internal Server Error' });
 
+  } catch (error) {
 
 
 
 
-        }
 
+    console.error("Error updating sale product:", error);
 
 
 
 
-    });
 
+    res.status(500).send('Internal Server Error');
 
 
 
 
-    
 
+  }
 
 
 
 
-    /**
 
+});
 
 
 
 
-     * @swagger
 
 
 
 
 
-     * /api/menu:
 
 
+// DELETE (Borrado Lógico)
 
 
 
-     *   get:
 
 
+app.delete('/api/control/productos-venta/:id', authMiddleware, requireAdmin, async (req, res) => {
 
 
 
-     *     summary: Obtiene el menú de productos de venta disponibles (público)
 
 
+  const { id } = req.params;
 
 
 
-     *     tags: [Menu]
 
 
+  try {
 
 
 
-     *     responses:
 
 
+    const docRef = db.collection('productosDeVenta').doc(id);
 
 
 
-     *       '200':
 
 
+    await docRef.update({ deletedAt: new Date() });
 
 
 
-     *         description: Lista de productos de venta disponibles
 
 
+    res.status(200).send({ id, message: 'Product soft deleted' });
 
 
 
-     */
 
 
+  } catch (error) {
 
 
 
-    app.get('/api/menu', async (req, res) => {
 
 
+    console.error("Error soft deleting sale product:", error);
 
 
 
-        try {
 
 
+    res.status(500).send('Internal Server Error');
 
 
 
-            const db = admin.firestore();
 
 
+  }
 
 
 
-            const snapshot = await db.collection('productosDeVenta')
 
 
-
-
-
-                .where('deleted', '==', false)
-
-
-
-
-
-                .where('isAvailable', '==', true)
-
-
-
-
-
-                .get();
-
-
-
-
-
-            const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-
-
-
-
-            res.status(200).json(products);
-
-
-
-
-
-        } catch (error) {
-
-
-
-
-
-            console.error('Error fetching menu:', error);
-
-
-
-
-
-                    res.status(500).json({ message: 'Internal Server Error' });
-
-
-
-
-
-                }
-
-
-
-
-
-            });
-
-
-
-
-
-            
-
-
-
-
-
-            /**
-
-
-
-
-
-             * @swagger
-
-
-
-
-
-             * /api/control/productos-venta/{id}:
-
-
-
-
-
-             *   put:
-
-
-
-
-
-             *     summary: Actualiza un producto de venta existente
-
-
-
-
-
-             *     tags: [Productos de Venta]
-
-
-
-
-
-             *     security:
-
-
-
-
-
-             *       - bearerAuth: []
-
-
-
-
-
-             *     parameters:
-
-
-
-
-
-             *       - in: path
-
-
-
-
-
-             *         name: id
-
-
-
-
-
-             *         required: true
-
-
-
-
-
-             *         schema:
-
-
-
-
-
-             *           type: string
-
-
-
-
-
-             *         description: El ID del producto de venta a actualizar
-
-
-
-
-
-             *     requestBody:
-
-
-
-
-
-             *       required: true
-
-
-
-
-
-             *       content:
-
-
-
-
-
-             *         application/json:
-
-
-
-
-
-             *           schema:
-
-
-
-
-
-             *             type: object
-
-
-
-
-
-             *             properties:
-
-
-
-
-
-             *               name:
-
-
-
-
-
-             *                 type: string
-
-
-
-
-
-             *               price:
-
-
-
-
-
-             *                 type: number
-
-
-
-
-
-             *               category:
-
-
-
-
-
-             *                 type: string
-
-
-
-
-
-             *             required:
-
-
-
-
-
-             *               - name
-
-
-
-
-
-             *               - price
-
-
-
-
-
-             *               - category
-
-
-
-
-
-             *     responses:
-
-
-
-
-
-             *       '200':
-
-
-
-
-
-             *         description: Producto de venta actualizado exitosamente
-
-
-
-
-
-             *       '400':
-
-
-
-
-
-             *         description: Faltan campos requeridos
-
-
-
-
-
-             *       '403':
-
-
-
-
-
-             *         description: No autorizado
-
-
-
-
-
-             *       '404':
-
-
-
-
-
-             *         description: Producto de venta no encontrado
-
-
-
-
-
-             */
-
-
-
-
-
-            app.put('/api/control/productos-venta/:id', authMiddleware, async (req, res) => {
-
-
-
-
-
-                try {
-
-
-
-
-
-                    if (!req.user || (!req.user.admin && !req.user.super_admin)) {
-
-
-
-
-
-                        return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
-
-
-
-
-
-                    }
-
-
-
-
-
-            
-
-
-
-
-
-                    const { id } = req.params;
-
-
-
-
-
-                    const { name, price, category, description, imageUrl, isAvailable } = req.body;
-
-
-
-
-
-            
-
-
-
-
-
-                    if (!name || price === undefined || !category) {
-
-
-
-
-
-                        return res.status(400).json({ message: 'Missing required fields: name, price, category' });
-
-
-
-
-
-                    }
-
-
-
-
-
-            
-
-
-
-
-
-                    const db = admin.firestore();
-
-
-
-
-
-                    const productRef = db.collection('productosDeVenta').doc(id);
-
-
-
-
-
-            
-
-
-
-
-
-                    const docSnap = await productRef.get();
-
-
-
-
-
-                    if (!docSnap.exists) {
-
-
-
-
-
-                        return res.status(404).json({ message: 'Product not found' });
-
-
-
-
-
-                    }
-
-
-
-
-
-            
-
-
-
-
-
-                    const updatedData = {
-
-
-
-
-
-                        name,
-
-
-
-
-
-                        price,
-
-
-
-
-
-                        category,
-
-
-
-
-
-                        description: description || '',
-
-
-
-
-
-                        imageUrl: imageUrl || '',
-
-
-
-
-
-                        isAvailable: isAvailable === undefined ? true : isAvailable,
-
-
-
-
-
-                        updatedAt: new Date().toISOString(),
-
-
-
-
-
-                    };
-
-
-
-
-
-            
-
-
-
-
-
-                    await productRef.update(updatedData);
-
-
-
-
-
-                    res.status(200).json({ id, ...updatedData });
-
-
-
-
-
-            
-
-
-
-
-
-                } catch (error) {
-
-
-
-
-
-                    console.error('Error updating sale product:', error);
-
-
-
-
-
-                            res.status(500).json({ message: 'Internal Server Error' });
-
-
-
-
-
-                        }
-
-
-
-
-
-                    });
-
-
-
-
-
-                    
-
-
-
-
-
-                    /**
-
-
-
-
-
-                     * @swagger
-
-
-
-
-
-                     * /api/control/productos-venta/{id}:
-
-
-
-
-
-                     *   delete:
-
-
-
-
-
-                     *     summary: Elimina un producto de venta (soft delete)
-
-
-
-
-
-                     *     tags: [Productos de Venta]
-
-
-
-
-
-                     *     security:
-
-
-
-
-
-                     *       - bearerAuth: []
-
-
-
-
-
-                     *     parameters:
-
-
-
-
-
-                     *       - in: path
-
-
-
-
-
-                     *         name: id
-
-
-
-
-
-                     *         required: true
-
-
-
-
-
-                     *         schema:
-
-
-
-
-
-                     *           type: string
-
-
-
-
-
-                     *         description: El ID del producto de venta a eliminar
-
-
-
-
-
-                     *     responses:
-
-
-
-
-
-                     *       '200':
-
-
-
-
-
-                     *         description: Producto de venta eliminado exitosamente
-
-
-
-
-
-                     *       '403':
-
-
-
-
-
-                     *         description: No autorizado
-
-
-
-
-
-                     *       '404':
-
-
-
-
-
-                     *         description: Producto de venta no encontrado
-
-
-
-
-
-                     */
-
-
-
-
-
-                    app.delete('/api/control/productos-venta/:id', authMiddleware, async (req, res) => {
-
-
-
-
-
-                        try {
-
-
-
-
-
-                            if (!req.user || (!req.user.admin && !req.user.super_admin)) {
-
-
-
-
-
-                                return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
-
-
-
-
-
-                            }
-
-
-
-
-
-                    
-
-
-
-
-
-                            const { id } = req.params;
-
-
-
-
-
-                            const db = admin.firestore();
-
-
-
-
-
-                            const productRef = db.collection('productosDeVenta').doc(id);
-
-
-
-
-
-                    
-
-
-
-
-
-                            const docSnap = await productRef.get();
-
-
-
-
-
-                            if (!docSnap.exists) {
-
-
-
-
-
-                                return res.status(404).json({ message: 'Product not found' });
-
-
-
-
-
-                            }
-
-
-
-
-
-                    
-
-
-
-
-
-                            await productRef.update({
-
-
-
-
-
-                                deleted: true,
-
-
-
-
-
-                                deletedAt: new Date().toISOString(),
-
-
-
-
-
-                            });
-
-
-
-
-
-                    
-
-
-
-
-
-                            res.status(200).json({ message: 'Sale product deleted successfully' });
-
-
-
-
-
-                    
-
-
-
-
-
-                        } catch (error) {
-
-
-
-
-
-                            console.error('Error deleting sale product:', error);
-
-
-
-
-
-                            res.status(500).json({ message: 'Internal Server Error' });
-
-
-
-
-
-                        }
-
-
-
-
-
-                    });
+});
 
 
 
