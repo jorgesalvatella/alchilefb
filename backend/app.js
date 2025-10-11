@@ -76,8 +76,6 @@ const checkSuperAdminForSwagger = (req, res, next) => {
 const authMiddleware = require('./authMiddleware');
 
 app.use('/api-docs', authMiddleware, checkSuperAdminForSwagger, swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-
-
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -109,8 +107,6 @@ app.post('/api/control/productos-venta/upload-image', authMiddleware, requireAdm
     res.status(500).send({ message: 'Internal Server Error', error: error.message });
   }
 });
-
-
 /**
  * @swagger
  * /api/control/unidades-de-negocio:
@@ -125,10 +121,15 @@ app.post('/api/control/productos-venta/upload-image', authMiddleware, requireAdm
  */
 app.get('/api/control/unidades-de-negocio', authMiddleware, async (req, res) => {
   try {
+    console.log('[GET /api/control/unidades-de-negocio] Request received from user:', req.user?.uid);
     const db = admin.firestore();
+    console.log('[GET /api/control/unidades-de-negocio] Querying Firestore...');
+
     const snapshot = await db.collection('businessUnits')
       .where('deleted', '==', false)
       .get();
+
+    console.log('[GET /api/control/unidades-de-negocio] Query successful, documents found:', snapshot.size);
 
     if (snapshot.empty) {
       return res.status(200).json([]);
@@ -139,10 +140,12 @@ app.get('/api/control/unidades-de-negocio', authMiddleware, async (req, res) => 
       businessUnits.push({ id: doc.id, ...doc.data() });
     });
 
+    console.log('[GET /api/control/unidades-de-negocio] Sending response with', businessUnits.length, 'units');
     res.status(200).json(businessUnits);
   } catch (error) {
-    console.error('Error fetching business units:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error('[GET /api/control/unidades-de-negocio] ERROR:', error);
+    console.error('[GET /api/control/unidades-de-negocio] Error stack:', error.stack);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 });
 
@@ -403,6 +406,47 @@ app.get('/api/control/unidades-de-negocio/:unidadId/departamentos', authMiddlewa
         res.status(200).json(departments);
     } catch (error) {
         console.error('Error fetching departments:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/departamentos/{id}:
+ *   get:
+ *     summary: Obtiene un departamento por ID
+ *     tags: [Catalogos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Detalles del departamento
+ *       '404':
+ *         description: Departamento no encontrado
+ */
+app.get('/api/control/departamentos/:id', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { id } = req.params;
+        const db = admin.firestore();
+        const docRef = db.collection('departamentos').doc(id);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            return res.status(404).json({ message: 'Department not found' });
+        }
+
+        res.status(200).json({ id: docSnap.id, ...docSnap.data() });
+    } catch (error) {
+        console.error('Error fetching department:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
@@ -1478,684 +1522,541 @@ app.delete('/api/control/conceptos/:conceptoId/proveedores/:proveedorId', authMi
     }
 });
 
+// --- Sale Categories (categoriasDeVenta) Endpoints ---
 
+/**
+ * @swagger
+ * /api/control/catalogo/categorias-venta:
+ *   post:
+ *     summary: Crea una nueva categoría de venta
+ *     tags: [Catalogo de Venta]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               businessUnitId:
+ *                 type: string
+ *               departmentId:
+ *                 type: string
+ *     responses:
+ *       '201':
+ *         description: Categoría de venta creada
+ *       '400':
+ *         description: Faltan campos requeridos
+ *       '403':
+ *         description: No autorizado
+ */
+app.post('/api/control/catalogo/categorias-venta', authMiddleware, requireAdmin, async (req, res) => {
+    try {
+        const { name, description, businessUnitId, departmentId } = req.body;
+
+        if (!name || !businessUnitId || !departmentId) {
+            return res.status(400).json({ message: 'Missing required fields: name, businessUnitId, departmentId' });
+        }
+
+        const newCategory = {
+            name,
+            description: description || '',
+            businessUnitId,
+            departmentId,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            deletedAt: null,
+        };
+
+        const docRef = await db.collection('categoriasDeVenta').add(newCategory);
+        res.status(201).json({ id: docRef.id, ...newCategory });
+    } catch (error) {
+        console.error('Error creating sale category:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/catalogo/categorias-venta:
+ *   get:
+ *     summary: Obtiene todas las categorías de venta
+ *     tags: [Catalogo de Venta]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Lista de categorías de venta
+ *       '403':
+ *         description: No autorizado
+ */
+app.get('/api/control/catalogo/categorias-venta', authMiddleware, requireAdmin, async (req, res) => {
+    try {
+        const snapshot = await db.collection('categoriasDeVenta')
+            .where('deletedAt', '==', null)
+            .orderBy('createdAt', 'desc')
+            .get();
+
+        const categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.status(200).json(categories);
+    } catch (error) {
+        console.error('Error fetching sale categories:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/departamentos/{deptoId}/categorias-venta:
+ *   get:
+ *     summary: Obtiene todas las categorías de venta de un departamento específico
+ *     tags: [Catalogo de Venta]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: deptoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Lista de categorías de venta para el departamento
+ *       '403':
+ *         description: No autorizado
+ */
+app.get('/api/control/departamentos/:deptoId/categorias-venta', authMiddleware, requireAdmin, async (req, res) => {
+    try {
+        const { deptoId } = req.params;
+        const snapshot = await db.collection('categoriasDeVenta')
+            .where('departmentId', '==', deptoId)
+            .where('deletedAt', '==', null)
+            .orderBy('createdAt', 'desc')
+            .get();
+
+        const categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.status(200).json(categories);
+    } catch (error) {
+        console.error('Error fetching sale categories for department:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/catalogo/categorias-venta/{id}:
+ *   put:
+ *     summary: Actualiza una categoría de venta
+ *     tags: [Catalogo de Venta]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               businessUnitId:
+ *                 type: string
+ *               departmentId:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Categoría de venta actualizada
+ *       '400':
+ *         description: Faltan campos requeridos
+ *       '403':
+ *         description: No autorizado
+ */
+app.put('/api/control/catalogo/categorias-venta/:id', authMiddleware, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, description, businessUnitId, departmentId } = req.body;
+
+        if (!name || !businessUnitId || !departmentId) {
+            return res.status(400).json({ message: 'Missing required fields: name, businessUnitId, departmentId' });
+        }
+
+        const categoryRef = db.collection('categoriasDeVenta').doc(id);
+        const updatedData = {
+            name,
+            description: description || '',
+            businessUnitId,
+            departmentId,
+            updatedAt: new Date(),
+        };
+
+        await categoryRef.update(updatedData);
+        res.status(200).json({ id, ...updatedData });
+    } catch (error) {
+        console.error('Error updating sale category:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/catalogo/categorias-venta/{id}:
+ *   delete:
+ *     summary: Elimina una categoría de venta (soft delete)
+ *     tags: [Catalogo de Venta]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Categoría de venta eliminada
+ *       '400':
+ *         description: No se puede eliminar porque tiene productos asociados
+ *       '403':
+ *         description: No autorizado
+ */
+app.delete('/api/control/catalogo/categorias-venta/:id', authMiddleware, requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Protection against deleting a category that has products
+        const productsSnapshot = await db.collection('productosDeVenta')
+            .where('categoriaVentaId', '==', id)
+            .where('deletedAt', '==', null)
+            .limit(1)
+            .get();
+
+        if (!productsSnapshot.empty) {
+            return res.status(400).json({ message: 'Cannot delete category with active products. Please delete products first.' });
+        }
+
+        const categoryRef = db.collection('categoriasDeVenta').doc(id);
+        await categoryRef.update({
+            deletedAt: new Date(),
+        });
+
+        res.status(200).json({ message: 'Sale category deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting sale category:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
 // ... (otros endpoints)
-
-
-
-
 
 // --- Productos de Venta Endpoints ---
 
-
-
-
-
-
-
-
-
-
-
 // POST (Crear)
-
-
-
-
 
 app.post('/api/control/productos-venta', authMiddleware, requireAdmin, async (req, res) => {
 
+  const { 
 
+    name, 
 
+    price, 
 
+    description, 
 
-  const { name, price, category, description, imageUrl, isAvailable, cost, platformFeePercent, isTaxable } = req.body;
+    imageUrl, 
 
+    isAvailable, 
 
+    cost, 
 
+    platformFeePercent, 
 
+    isTaxable,
 
-  if (!name || !price || !category) {
+    businessUnitId,
 
+    departmentId,
 
+    categoriaVentaId 
 
+  } = req.body;
 
+  if (!name || !price || !businessUnitId || !departmentId || !categoriaVentaId) {
 
-    return res.status(400).send('Missing required fields: name, price, category');
-
-
-
-
+    return res.status(400).send('Missing required fields: name, price, businessUnitId, departmentId, categoriaVentaId');
 
   }
 
-
-
-
-
-
-
-
-
-
-
   try {
-
-
-
-
 
     const finalPrice = parseFloat(price);
 
-
-
-
-
     const basePrice = isTaxable ? finalPrice / 1.16 : finalPrice;
-
-
-
-
-
-
-
-
-
-
 
     const newProduct = {
 
-
-
-
-
       name,
-
-
-
-
 
       price: finalPrice,
 
-
-
-
-
       basePrice,
-
-
-
-
-
-      category,
-
-
-
-
 
       description: description || '',
 
-
-
-
-
       imageUrl: imageUrl || '',
-
-
-
-
 
       isAvailable: isAvailable !== undefined ? isAvailable : true,
 
-
-
-
-
       cost: cost ? parseFloat(cost) : 0,
-
-
-
-
 
       platformFeePercent: platformFeePercent ? parseFloat(platformFeePercent) : 0,
 
-
-
-
-
       isTaxable: isTaxable !== undefined ? isTaxable : true,
 
+      businessUnitId,
 
+      departmentId,
 
-
+      categoriaVentaId,
 
       createdAt: new Date(),
 
-
-
-
-
       updatedAt: new Date(),
-
-
-
-
 
       deletedAt: null,
 
-
-
-
-
     };
-
-
-
-
 
     const docRef = await db.collection('productosDeVenta').add(newProduct);
 
-
-
-
-
     res.status(201).send({ id: docRef.id, ...newProduct });
 
-
-
-
-
   } catch (error) {
-
-
-
-
 
     console.error("Error creating sale product:", error);
 
-
-
-
-
     res.status(500).send('Internal Server Error');
-
-
-
-
 
   }
 
-
-
-
-
 });
-
-
-
-
-
-
-
-
-
-
 
 // GET (Listar)
 
-
-
-
-
 app.get('/api/control/productos-venta', authMiddleware, requireAdmin, async (req, res) => {
-
-
-
-
 
   try {
 
-
-
-
-
     const snapshot = await db.collection('productosDeVenta').where('deletedAt', '==', null).orderBy('createdAt', 'desc').get();
-
-
-
-
 
     const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-
-
-
-
     res.status(200).json(products);
-
-
-
-
 
   } catch (error) {
 
-
-
-
-
     console.error("Error fetching sale products:", error);
-
-
-
-
 
     res.status(500).send('Internal Server Error');
 
-
-
-
-
   }
-
-
-
-
 
 });
 
 
 
+// GET (Single by ID)
 
+app.get('/api/control/productos-venta/:id', authMiddleware, requireAdmin, async (req, res) => {
 
+  try {
 
+    const { id } = req.params;
 
+    const docRef = db.collection('productosDeVenta').doc(id);
 
+    const docSnap = await docRef.get();
 
 
 
-// GET (Público - Menú)
+    if (!docSnap.exists) {
 
-
-
-
-
-app.get('/api/menu', async (req, res) => {
-
-
-
-
-
-    try {
-
-
-
-
-
-        const snapshot = await db.collection('productosDeVenta')
-
-
-
-
-
-            .where('deletedAt', '==', null)
-
-
-
-
-
-            .where('isAvailable', '==', true)
-
-
-
-
-
-            .orderBy('createdAt', 'desc')
-
-
-
-
-
-            .get();
-
-
-
-
-
-        const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-
-
-
-
-        res.status(200).json(products);
-
-
-
-
-
-    } catch (error) {
-
-
-
-
-
-        console.error("Error fetching menu:", error);
-
-
-
-
-
-        res.status(500).send('Internal Server Error');
-
-
-
-
+      return res.status(404).json({ message: 'Product not found' });
 
     }
 
 
 
+    res.status(200).json({ id: docSnap.id, ...docSnap.data() });
 
+  } catch (error) {
+
+    console.error("Error fetching sale product:", error);
+
+    res.status(500).send('Internal Server Error');
+
+  }
 
 });
 
+// GET (Público - Menú)
 
+app.get('/api/menu', async (req, res) => {
 
+    try {
 
+        const snapshot = await db.collection('productosDeVenta')
 
+            .where('deletedAt', '==', null)
 
+            .where('isAvailable', '==', true)
 
+            .orderBy('createdAt', 'desc')
 
+            .get();
 
+        const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+        res.status(200).json(products);
+
+    } catch (error) {
+
+        console.error("Error fetching menu:", error);
+
+        res.status(500).send('Internal Server Error');
+
+    }
+
+});
 
 // PUT (Actualizar)
 
-
-
-
-
 app.put('/api/control/productos-venta/:id', authMiddleware, requireAdmin, async (req, res) => {
-
-
-
-
 
   const { id } = req.params;
 
+  const { 
 
+    name, 
 
+    price, 
 
+    description, 
 
-  const { name, price, category, description, imageUrl, isAvailable, cost, platformFeePercent, isTaxable } = req.body;
+    imageUrl, 
 
+    isAvailable, 
 
+    cost, 
 
+    platformFeePercent, 
 
+    isTaxable,
 
-  if (!name || !price || !category) {
+    businessUnitId,
 
+    departmentId,
 
+    categoriaVentaId 
 
+  } = req.body;
 
+  if (!name || !price || !businessUnitId || !departmentId || !categoriaVentaId) {
 
-    return res.status(400).send('Missing required fields: name, price, category');
-
-
-
-
+    return res.status(400).send('Missing required fields: name, price, businessUnitId, departmentId, categoriaVentaId');
 
   }
 
-
-
-
-
-
-
-
-
-
-
   try {
 
-
-
-
-
     const docRef = db.collection('productosDeVenta').doc(id);
-
-
-
-
 
     const finalPrice = parseFloat(price);
 
-
-
-
-
     const basePrice = isTaxable ? finalPrice / 1.16 : finalPrice;
-
-
-
-
-
-
-
-
-
-
 
     const updatedProduct = {
 
-
-
-
-
       name,
-
-
-
-
 
       price: finalPrice,
 
-
-
-
-
       basePrice,
-
-
-
-
-
-      category,
-
-
-
-
 
       description: description || '',
 
-
-
-
-
       imageUrl: imageUrl || '',
-
-
-
-
 
       isAvailable: isAvailable !== undefined ? isAvailable : true,
 
-
-
-
-
       cost: cost ? parseFloat(cost) : 0,
-
-
-
-
 
       platformFeePercent: platformFeePercent ? parseFloat(platformFeePercent) : 0,
 
-
-
-
-
       isTaxable: isTaxable !== undefined ? isTaxable : true,
 
+      businessUnitId,
 
+      departmentId,
 
-
+      categoriaVentaId,
 
       updatedAt: new Date(),
 
-
-
-
-
     };
-
-
-
-
 
     await docRef.update(updatedProduct);
 
-
-
-
-
     res.status(200).send({ id, ...updatedProduct });
 
-
-
-
-
   } catch (error) {
-
-
-
-
 
     console.error("Error updating sale product:", error);
 
-
-
-
-
     res.status(500).send('Internal Server Error');
-
-
-
-
 
   }
 
-
-
-
-
 });
-
-
-
-
-
-
-
-
-
-
 
 // DELETE (Borrado Lógico)
 
-
-
-
-
 app.delete('/api/control/productos-venta/:id', authMiddleware, requireAdmin, async (req, res) => {
-
-
-
-
 
   const { id } = req.params;
 
-
-
-
-
   try {
-
-
-
-
 
     const docRef = db.collection('productosDeVenta').doc(id);
 
-
-
-
-
     await docRef.update({ deletedAt: new Date() });
-
-
-
-
 
     res.status(200).send({ id, message: 'Product soft deleted' });
 
-
-
-
-
   } catch (error) {
-
-
-
-
 
     console.error("Error soft deleting sale product:", error);
 
-
-
-
-
     res.status(500).send('Internal Server Error');
-
-
-
-
 
   }
 
-
-
-
-
 });
 
-
-
-
-
                     
 
-
-
-
-
                     
-
-
-
-
 
                     module.exports = app;
 

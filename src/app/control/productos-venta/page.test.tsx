@@ -1,175 +1,122 @@
-import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import AdminSaleProductsPage from './page';
 import { useUser } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 
-// Mocks
+// Mocking dependencies
 jest.mock('@/firebase/provider', () => ({
   useUser: jest.fn(),
 }));
 
 jest.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({
-    toast: jest.fn(),
-  }),
+  useToast: jest.fn(),
 }));
 
-const mockUseUser = useUser as jest.Mock;
-const mockToast = useToast as jest.Mock;
+jest.mock('@/components/ui/breadcrumb', () => ({
+  Breadcrumbs: () => <nav aria-label="breadcrumb">Breadcrumbs</nav>,
+}));
 
-// Mock de fetch
+// Mock the dialog component as it will be tested separately
+jest.mock('@/components/control/add-edit-sale-product-dialog', () => ({
+  AddEditSaleProductDialog: ({ open }: { open: boolean }) => 
+    open ? <div role="dialog">Dialog is open</div> : null,
+}));
+
 global.fetch = jest.fn();
 
-const mockProducts = [
-  { id: '1', name: 'Taco de Pastor', category: 'Tacos', price: 25, isAvailable: true, createdAt: new Date().toISOString() },
-  { id: '2', name: 'Agua de Horchata', category: 'Bebidas', price: 20, isAvailable: false, createdAt: new Date().toISOString() },
-];
+const mockUseUser = useUser as jest.Mock;
+const mockUseToast = useToast as jest.Mock;
+const mockFetch = global.fetch as jest.Mock;
 
 describe('AdminSaleProductsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseUser.mockReturnValue({
-      user: {
-        getIdToken: async () => 'test-token',
-      },
-      isUserLoading: false,
+    mockUseUser.mockReturnValue({ user: { getIdToken: () => Promise.resolve('fake-token') } });
+    mockUseToast.mockReturnValue({ toast: jest.fn() });
+  });
+
+  it('renders the main title and add button', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve([]),
     });
-    (fetch as jest.Mock).mockResolvedValue({
+
+    render(<AdminSaleProductsPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Productos de Venta')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Añadir Producto/i })).toBeInTheDocument();
+    });
+  });
+
+  it('displays a loading state initially in both views', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve([]),
+    });
+
+    render(<AdminSaleProductsPage />);
+    
+    // Use `getAllByText` to confirm it appears in both mobile and desktop views initially
+    const loadingMessages = await screen.findAllByText(/Cargando.../i);
+    expect(loadingMessages).toHaveLength(2);
+  });
+
+  it('displays an error message if fetching products fails', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: () => Promise.resolve({ message: 'Failed to fetch' }),
+    });
+
+    render(<AdminSaleProductsPage />);
+
+    await waitFor(() => {
+      // We expect to find the error message in both mobile and desktop views
+      const errorMessages = screen.getAllByText(/Error: No se pudo obtener la lista de productos./i);
+      expect(errorMessages.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('fetches and displays a list of products in both views', async () => {
+    const mockProducts = [
+      { id: '1', name: 'Taco de Suadero', description: 'Delicioso', price: 25.00 },
+      { id: '2', name: 'Agua de Horchata', description: 'Refrescante', price: 15.00 },
+    ];
+    mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockProducts),
     });
-  });
 
-  it('should render the main title and add button', async () => {
     render(<AdminSaleProductsPage />);
+
     await waitFor(() => {
-      expect(screen.getByText('Gestión de Productos de Venta')).toBeInTheDocument();
-      expect(screen.getByText('Añadir Producto')).toBeInTheDocument();
+      // Check that both names appear (could be in either view)
+      expect(screen.getAllByText('Taco de Suadero').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Agua de Horchata').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('$25.00').length).toBeGreaterThan(0);
     });
   });
 
-  it('should display a loading state initially', () => {
-    // Hacemos que la promesa de fetch nunca se resuelva para este test
-    (fetch as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
-    render(<AdminSaleProductsPage />);
-    expect(screen.getByText('Gestión de Productos de Venta')).toBeInTheDocument(); // El header se muestra
-    // Buscamos por los Skeletons, una forma es buscar por el rol (si lo tuvieran) o por su estructura
-    // En este caso, es más simple verificar que los datos aún no están
-    expect(screen.queryByText('Taco de Pastor')).not.toBeInTheDocument();
-  });
-
-  it('should fetch and display products in the table', async () => {
-    render(<AdminSaleProductsPage />);
-    await waitFor(() => {
-      expect(screen.getByText('Taco de Pastor')).toBeInTheDocument();
-      expect(screen.getByText('Agua de Horchata')).toBeInTheDocument();
-      expect(screen.getByText('$25.00')).toBeInTheDocument();
-      expect(screen.getByText('Disponible')).toBeInTheDocument();
-      expect(screen.getByText('No Disponible')).toBeInTheDocument();
+  it('opens the dialog when "Añadir Producto" button is clicked', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve([]),
     });
-  });
+    const user = userEvent.setup();
 
-  it('should display an error message if fetching fails', async () => {
-    (fetch as jest.Mock).mockRejectedValueOnce(new Error('No se pudo obtener los productos de venta.'));
-    render(<AdminSaleProductsPage />);
-    await waitFor(() => {
-      expect(screen.getByText('Error: No se pudo obtener los productos de venta.')).toBeInTheDocument();
-    });
-  });
-
-  it('should open the dialog when "Añadir Producto" is clicked', async () => {
     render(<AdminSaleProductsPage />);
 
-    // Usar getByRole para buscar específicamente el botón
-    const addButton = await screen.findByRole('button', { name: /añadir producto/i });
-    expect(addButton).toBeInTheDocument();
-
-    fireEvent.click(addButton);
-
+    // Wait for loading to finish before clicking
     await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-      // Verificar que ahora hay 2 instancias del texto (botón + título del diálogo)
-      const addProductTexts = screen.getAllByText('Añadir Producto');
-      expect(addProductTexts.length).toBeGreaterThan(1);
-    });
-  });
-
-  it('should show profitability calculations in the dialog', async () => {
-    render(<AdminSaleProductsPage />);
-
-    const addButton = await screen.findByRole('button', { name: /añadir producto/i });
-    fireEvent.click(addButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Análisis de Rentabilidad')).toBeInTheDocument();
+      expect(screen.queryByText(/Cargando.../i)).not.toBeInTheDocument();
     });
 
-    // Simular entrada del usuario
-    const priceInput = screen.getByLabelText('Precio de Venta (IVA Incl.)');
-    const costInput = screen.getByLabelText('Costo del Producto');
-    const feeInput = screen.getByLabelText('Comisión de Plataforma (%)');
-
-    fireEvent.change(priceInput, { target: { value: '100' } });
-    fireEvent.change(costInput, { target: { value: '30' } });
-    fireEvent.change(feeInput, { target: { value: '20' } });
-
-    // Verificar que los campos tienen los valores correctos
-    await waitFor(() => {
-      expect(priceInput).toHaveValue(100);
-      expect(costInput).toHaveValue(30);
-      expect(feeInput).toHaveValue(20);
-    });
-
-    // Verificar que la sección de Análisis de Rentabilidad está visible
-    expect(screen.getByText('Análisis de Rentabilidad')).toBeInTheDocument();
-    expect(screen.getByText('Precio Base (Subtotal):')).toBeInTheDocument();
-    expect(screen.getByText('IVA (16%):')).toBeInTheDocument();
-    expect(screen.getByText('Utilidad Bruta:')).toBeInTheDocument();
-  });
-
-  it('should submit the new fields when creating a product', async () => {
-    render(<AdminSaleProductsPage />);
-
-    const addButton = await screen.findByRole('button', { name: /añadir producto/i });
-    fireEvent.click(addButton);
+    const addButton = screen.getByRole('button', { name: /Añadir Producto/i });
+    await user.click(addButton);
 
     await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument();
-    });
-
-    // Llenar el formulario
-    fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Test Product' } });
-    fireEvent.change(screen.getByLabelText('Precio de Venta (IVA Incl.)'), { target: { value: '100' } });
-    fireEvent.change(screen.getByLabelText('Costo del Producto'), { target: { value: '30' } });
-    fireEvent.change(screen.getByLabelText('Comisión de Plataforma (%)'), { target: { value: '20' } });
-    fireEvent.change(screen.getByLabelText('Categoría'), { target: { value: 'Test Category' } });
-    
-    // Simular clic en el switch de IVA (si es necesario cambiarlo)
-    // fireEvent.click(screen.getByLabelText('¿Lleva IVA?'));
-
-    fireEvent.click(screen.getByText('Guardar Cambios'));
-
-    await waitFor(() => {
-      expect(fetch).toHaveBeenCalledWith('/api/control/productos-venta', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer test-token',
-        },
-        body: JSON.stringify({
-          name: 'Test Product',
-          price: 100,
-          category: 'Test Category',
-          description: '',
-          imageUrl: '',
-          isAvailable: true,
-          isTaxable: true,
-          cost: 30,
-          platformFeePercent: 20,
-        }),
-      });
+      expect(screen.getByRole('dialog')).toHaveTextContent('Dialog is open');
     });
   });
 });

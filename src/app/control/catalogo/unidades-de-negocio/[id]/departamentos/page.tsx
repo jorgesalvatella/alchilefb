@@ -3,7 +3,13 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import type { Department, BusinessUnit } from '@/lib/data';
-import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
+import { PlusCircle, Pen, Trash2, FolderKanban, ClipboardList, MoreHorizontal } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
@@ -163,15 +169,27 @@ export default function AdminDepartmentsPage() {
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-                <Link href={`/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${dept.id}/grupos`}>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-white/60 hover:text-blue-400"
-                  >
-                    <FolderKanban className="h-4 w-4" />
-                  </Button>
-                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-white/60 hover:text-blue-400">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="bg-black/80 border-white/20 text-white">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${dept.id}/grupos`}>
+                        <FolderKanban className="mr-2 h-4 w-4" />
+                        <span>Grupos de Gastos</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${dept.id}/categorias-venta`}>
+                        <ClipboardList className="mr-2 h-4 w-4" />
+                        <span>Categorías de Venta</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardFooter>
             </Card>
           ))
@@ -224,15 +242,27 @@ export default function AdminDepartmentsPage() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                  <Link href={`/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${dept.id}/grupos`}>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-white/60 hover:text-blue-400"
-                    >
-                      <FolderKanban className="h-4 w-4" />
-                    </Button>
-                  </Link>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-white/60 hover:text-blue-400">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="bg-black/80 border-white/20 text-white">
+                      <DropdownMenuItem asChild>
+                        <Link href={`/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${dept.id}/grupos`}>
+                          <FolderKanban className="mr-2 h-4 w-4" />
+                          <span>Grupos de Gastos</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={`/control/catalogo/unidades-de-negocio/${businessUnitId}/departamentos/${dept.id}/categorias-venta`}>
+                          <ClipboardList className="mr-2 h-4 w-4" />
+                          <span>Categorías de Venta</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}

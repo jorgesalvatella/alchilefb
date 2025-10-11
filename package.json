@@ -62,6 +62,7 @@
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^18",
@@ -72,6 +73,7 @@
     "jest-environment-jsdom": "^30.2.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "tailwindcss-scrollbar": "^0.1.0",
     "typescript": "^5",
     "whatwg-fetch": "^3.6.20"
   }

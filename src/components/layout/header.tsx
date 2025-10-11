@@ -27,7 +27,7 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle,
 } from '@/components/ui/navigation-menu';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 function UserNav() {
   const auth = useAuth();
@@ -181,6 +181,7 @@ export function Header() {
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-full max-w-xs bg-black border-l-0 pt-20 text-white">
+        <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
         <nav className="flex flex-col gap-8 text-center text-lg font-medium">
           {baseNavigation.map((link) => (
             <Link key={link.href} href={link.href} onClick={closeSheet} className="hover:text-yellow-400">{link.label}</Link>
