@@ -60,6 +60,7 @@ Este plan se enfoca exclusivamente en el **Catálogo de Productos de Venta**.
     -   `price` (number) - *Requerido*
     -   `category` (string) - *Requerido (ej. "Bebidas", "Tacos", "Postres")*
     -   `imageUrl` (string) - *Opcional*
+    -   `stock` (number) - *Opcional. **Nota de Arquitectura:** Este campo es opcional en la fase inicial del CRUD. La lógica completa de gestión de inventario (descontar stock con pedidos, reposición, etc.) se implementará en una futura versión.*
     -   `isAvailable` (boolean) - Para marcar si el producto está disponible en el menú.
     -   `deleted` (boolean) - Para soft deletes.
     -   `createdAt` (string) - ISO Timestamp.

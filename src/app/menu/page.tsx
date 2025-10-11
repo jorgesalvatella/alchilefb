@@ -1,118 +1,138 @@
 'use client';
-import Link from 'next/link';
+
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { menuCategories } from '@/lib/data';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Flame, PlusCircle } from 'lucide-react';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection } from 'firebase/firestore';
-import type { MenuItem } from '@/lib/data';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { cn } from '@/lib/utils';
 
-function MenuItemCard({ item }: { item: MenuItem }) {
-  const image = PlaceHolderImages.find((img) => img.id === item.image);
-  const imageUrl = item.imageUrl || image?.imageUrl || 'https://placehold.co/600x400';
-  const imageHint = item.imageUrl ? item.name : image?.imageHint;
+type SaleProduct = {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  category: string;
+  imageUrl?: string;
+  isAvailable: boolean;
+};
 
+function ProductCard({ product }: { product: SaleProduct }) {
   return (
-    <div className="group relative bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 hover:shadow-primary/20 hover:scale-[1.02]">
-      <div className="relative h-56 w-full overflow-hidden">
-        <Link href={`/menu/${item.id}`}>
+    <Card className="flex flex-col overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+      <CardHeader className="p-0">
+        <div className="relative h-48 w-full">
           <Image
-            src={imageUrl}
-            alt={item.name}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-110"
-            data-ai-hint={imageHint}
+            src={product.imageUrl || PlaceHolderImages.getRandomImage(product.name).imageUrl}
+            alt={product.name}
+            layout="fill"
+            objectFit="cover"
+            className="transition-transform duration-300 group-hover:scale-110"
           />
-        </Link>
-      </div>
-      <div className="p-4 flex flex-col flex-grow">
-        <div className="flex-grow">
-          <div className="flex justify-between items-start">
-            <h3 className="font-headline text-xl text-white leading-tight">
-              <Link href={`/menu/${item.id}`}>{item.name}</Link>
-            </h3>
-            <div className="flex items-center gap-0.5 text-sm text-amber-400 shrink-0 ml-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Flame key={i} size={16} className={cn(i < item.spiceRating ? 'fill-current text-red-500' : 'text-white/20', 'transition-colors')} />
-              ))}
-            </div>
-          </div>
-          <p className="text-white/60 text-sm mt-1 mb-4 line-clamp-2">{item.description}</p>
         </div>
-        <div className="flex justify-between items-end mt-2">
-          <p className="text-2xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">${item.price.toFixed(2)}</p>
-          <Button size="sm" className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white hover:scale-105 transition-transform duration-300">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Añadir
-          </Button>
-        </div>
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col p-4">
+        <h3 className="text-lg font-bold">{product.name}</h3>
+        <p className="mt-2 flex-1 text-sm text-gray-500">{product.description}</p>
+        <p className="mt-4 text-xl font-semibold">${product.price.toFixed(2)}</p>
+      </CardContent>
+      <CardFooter className="p-4 pt-0">
+        <Button className="w-full bg-fresh-green text-black hover:bg-fresh-green/80">
+          Añadir al Carrito
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
+function ProductSkeleton() {
+  return (
+    <div className="flex flex-col space-y-3">
+      <Skeleton className="h-48 w-full rounded-xl" />
+      <div className="space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-4 w-1/2" />
+        <Skeleton className="h-8 w-1/4 mt-4" />
       </div>
+       <Skeleton className="h-10 w-full mt-4" />
     </div>
   );
 }
 
 export default function MenuPage() {
-  const firestore = useFirestore();
-  const menuItemsCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'menu_items') : null),
-    [firestore]
-  );
-  const { data: menuItems, isLoading } = useCollection<MenuItem>(menuItemsCollection);
+  const [products, setProducts] = useState<SaleProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchMenu = async () => {
+      try {
+        const response = await fetch('/api/menu');
+        if (!response.ok) {
+          throw new Error('No se pudo cargar el menú.');
+        }
+        const data = await response.json();
+        setProducts(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchMenu();
+  }, []);
+
+  const categories = products.reduce((acc, product) => {
+    if (!acc[product.category]) {
+      acc[product.category] = [];
+    }
+    acc[product.category].push(product);
+    return acc;
+  }, {} as Record<string, SaleProduct[]>);
+
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => <ProductSkeleton key={i} />)}
+        </div>
+      );
+    }
+
+    if (error) {
+      return <p className="text-center text-red-500">Error: {error}</p>;
+    }
+
+    if (Object.keys(categories).length === 0) {
+        return <p className="text-center text-gray-500">No hay productos disponibles en este momento.</p>;
+    }
+
+    return (
+      <div className="space-y-12">
+        {Object.entries(categories).map(([category, items]) => (
+          <div key={category}>
+            <h2 className="mb-6 text-3xl font-bold tracking-tight">{category}</h2>
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {items.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="relative min-h-screen bg-black text-white pt-24">
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-chile-red rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-red-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
+    <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
+      <div className="text-center mb-12">
+        <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl">Nuestro Menú</h1>
+        <p className="mt-4 max-w-2xl mx-auto text-xl bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+          Hecho con los ingredientes más frescos y el auténtico sabor de México.
+        </p>
       </div>
-
-      <div className="relative container mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-7xl font-black text-white mb-3">
-                <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
-                    Nuestro Menú
-                </span>
-            </h1>
-            <p className="text-lg text-white/60 mt-2 max-w-2xl mx-auto">
-            Desde clásicos atemporales hasta nuevas y audaces creaciones, cada platillo es una celebración de sabor.
-            </p>
-        </div>
-
-        <Tabs defaultValue={menuCategories[0]} className="w-full">
-          <div className="flex justify-center mb-8">
-            <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full max-w-lg bg-black/50 border border-white/10 rounded-full p-1">
-              {menuCategories.map((category) => (
-                <TabsTrigger 
-                  key={category} 
-                  value={category} 
-                  className="font-headline text-base text-white/60 data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:to-orange-500 data-[state=active]:text-white rounded-full"
-                >
-                  {category}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-          {menuCategories.map((category) => (
-            <TabsContent key={category} value={category}>
-              {isLoading && <p className="text-center">Cargando menú...</p>}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                {menuItems && menuItems
-                  .filter((item) => item.category === category)
-                  .map((item) => (
-                    <MenuItemCard key={item.id} item={item as MenuItem} />
-                  ))}
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
-    </div>
+      {renderContent()}
+    </main>
   );
 }

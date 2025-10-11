@@ -36,7 +36,7 @@ type ProductsTableProps = {
   // onDelete: (product: Product) => void;
 };
 
-export function ProductsTable({ data }: ProductsTableProps) {
+export function ProductsTable({ data, onEdit, onDelete }: ProductsTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -73,8 +73,8 @@ export function ProductsTable({ data }: ProductsTableProps) {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-black border-white/10 text-white">
                   <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                  <DropdownMenuItem onSelect={() => alert(`Editar: ${product.name}`)}>Editar</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => alert(`Eliminar: ${product.name}`)}>Eliminar</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => onEdit(product)}>Editar</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => onDelete(product)}>Eliminar</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </TableCell>
