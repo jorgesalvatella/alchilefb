@@ -32,6 +32,11 @@ jest.mock('firebase-admin', () => {
                 docs: [{ id: 'supplier1', data: () => ({ name: 'Supplier A' }) }]
             });
           }
+          if (collectionName === 'productosDeVenta') {
+            baseMock.get = jest.fn().mockResolvedValue({
+              docs: [{ id: 'product1', data: () => ({ name: 'Taco de Test' }) }]
+            });
+          }
 
       return baseMock;
     }),
@@ -423,6 +428,61 @@ describe('API Endpoints', () => {
     });
   });
 
+  describe('DELETE /api/control/unidades-de-negocio/:unidadId', () => {
+    const unidadId = 'test-unidad-id';
+
+    it('should return 403 for non-super-admin user', async () => {
+      const res = await request(app)
+        .delete(`/api/control/unidades-de-negocio/${unidadId}`)
+        .set('Authorization', 'Bearer test-admin-token'); // Regular admin, not super
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 400 if the business unit contains active departments', async () => {
+      const firestoreMock = admin.firestore();
+      firestoreMock.collection.mockImplementationOnce((collectionName) => {
+        if (collectionName === 'departamentos') {
+          return {
+            where: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            get: jest.fn().mockResolvedValue({ empty: false }), // Simulate finding departments
+          };
+        }
+        return jest.fn().mockReturnThis();
+      });
+
+      const res = await request(app)
+        .delete(`/api/control/unidades-de-negocio/${unidadId}`)
+        .set('Authorization', 'Bearer test-super-admin-token');
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('contiene departamentos activos');
+    });
+
+    it('should return 200 and soft delete the document for super_admin user if empty', async () => {
+      const firestoreMock = admin.firestore();
+      firestoreMock.collection.mockImplementationOnce((collectionName) => {
+        if (collectionName === 'departamentos') {
+          return {
+            where: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            get: jest.fn().mockResolvedValue({ empty: true }), // Simulate no departments found
+          };
+        }
+        return jest.fn().mockReturnThis();
+      });
+
+      const res = await request(app)
+        .delete(`/api/control/unidades-de-negocio/${unidadId}`)
+        .set('Authorization', 'Bearer test-super-admin-token');
+      expect(res.statusCode).toBe(200);
+      expect(admin.__mockUpdate).toHaveBeenCalledWith({
+        deleted: true,
+        deletedAt: expect.any(String),
+      });
+    });
+  });
+
   describe('PUT /api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId', () => {
     const unidadId = 'test-unidad-id';
     const deptoId = 'test-depto-id';
@@ -454,6 +514,61 @@ describe('API Endpoints', () => {
     });
   });
 
+  describe('DELETE /api/control/departamentos/:deptoId', () => {
+    const deptoId = 'test-depto-id';
+
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .delete(`/api/control/departamentos/${deptoId}`)
+        .set('Authorization', 'Bearer test-regular-user-token');
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 400 if the department contains active groups', async () => {
+      const firestoreMock = admin.firestore();
+      firestoreMock.collection.mockImplementationOnce((collectionName) => {
+        if (collectionName === 'grupos') {
+          return {
+            where: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            get: jest.fn().mockResolvedValue({ empty: false }), // Simulate finding groups
+          };
+        }
+        return jest.fn().mockReturnThis();
+      });
+
+      const res = await request(app)
+        .delete(`/api/control/departamentos/${deptoId}`)
+        .set('Authorization', 'Bearer test-admin-token');
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('contiene grupos activos');
+    });
+
+    it('should return 200 and soft delete the document for admin user if department is empty', async () => {
+      const firestoreMock = admin.firestore();
+      firestoreMock.collection.mockImplementationOnce((collectionName) => {
+        if (collectionName === 'grupos') {
+          return {
+            where: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            get: jest.fn().mockResolvedValue({ empty: true }), // Simulate no groups found
+          };
+        }
+        return jest.fn().mockReturnThis();
+      });
+      
+      const res = await request(app)
+        .delete(`/api/control/departamentos/${deptoId}`)
+        .set('Authorization', 'Bearer test-admin-token');
+      expect(res.statusCode).toBe(200);
+      expect(admin.__mockUpdate).toHaveBeenCalledWith({
+        deleted: true,
+        deletedAt: expect.any(String),
+      });
+    });
+  });
+
   describe('PUT /api/control/unidades-de-negocio/:unidadId/departamentos/:deptoId/grupos/:grupoId', () => {
     const unidadId = 'test-unidad-id';
     const deptoId = 'test-depto-id';
@@ -475,6 +590,74 @@ describe('API Endpoints', () => {
         .send(updateData);
       expect(res.statusCode).toBe(200);
       expect(admin.__mockUpdate).toHaveBeenCalledWith(expect.objectContaining(updateData));
+    });
+  });
+
+  describe('DELETE /api/control/grupos/:grupoId', () => {
+    const grupoId = 'test-grupo-id';
+    let originalFirestoreMock;
+
+    beforeEach(() => {
+      // Save the original mock implementation
+      originalFirestoreMock = admin.firestore().collection;
+    });
+
+    afterEach(() => {
+      // Restore the original mock after each test
+      admin.firestore().collection = originalFirestoreMock;
+      jest.clearAllMocks();
+    });
+
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .delete(`/api/control/grupos/${grupoId}`)
+        .set('Authorization', 'Bearer test-regular-user-token');
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 400 if the group contains active concepts', async () => {
+      const firestoreMock = admin.firestore();
+      firestoreMock.collection.mockImplementationOnce((collectionName) => {
+        if (collectionName === 'conceptos') {
+          return {
+            where: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            get: jest.fn().mockResolvedValue({ empty: false }), // Simulate finding concepts
+          };
+        }
+        return originalFirestoreMock(collectionName); // Use original for others
+      });
+
+      const res = await request(app)
+        .delete(`/api/control/grupos/${grupoId}`)
+        .set('Authorization', 'Bearer test-admin-token');
+      
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('contiene conceptos activos');
+    });
+
+    it('should return 200 and soft delete the document if group is empty', async () => {
+      const firestoreMock = admin.firestore();
+      firestoreMock.collection.mockImplementationOnce((collectionName) => {
+        if (collectionName === 'conceptos') {
+          return {
+            where: jest.fn().mockReturnThis(),
+            limit: jest.fn().mockReturnThis(),
+            get: jest.fn().mockResolvedValue({ empty: true }), // Simulate no concepts found
+          };
+        }
+        return originalFirestoreMock(collectionName); // Use original for others
+      });
+
+      const res = await request(app)
+        .delete(`/api/control/grupos/${grupoId}`)
+        .set('Authorization', 'Bearer test-admin-token');
+      
+      expect(res.statusCode).toBe(200);
+      expect(admin.__mockUpdate).toHaveBeenCalledWith({
+        deleted: true,
+        deletedAt: expect.any(String),
+      });
     });
   });
 
@@ -500,6 +683,175 @@ describe('API Endpoints', () => {
         .send(updateData);
       expect(res.statusCode).toBe(200);
       expect(admin.__mockUpdate).toHaveBeenCalledWith(expect.objectContaining(updateData));
+    });
+  });
+
+  describe('DELETE /api/control/conceptos/:conceptoId', () => {
+    const conceptoId = 'test-concepto-id';
+
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .delete(`/api/control/conceptos/${conceptoId}`)
+        .set('Authorization', 'Bearer test-regular-user-token');
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 200 and soft delete the document for admin user', async () => {
+      const res = await request(app)
+        .delete(`/api/control/conceptos/${conceptoId}`)
+        .set('Authorization', 'Bearer test-admin-token');
+      expect(res.statusCode).toBe(200);
+      expect(admin.__mockUpdate).toHaveBeenCalledWith({
+        deleted: true,
+        deletedAt: expect.any(String),
+      });
+    });
+  });
+
+  describe('Swagger UI Endpoint /api-docs', () => {
+    it('should return 403 Forbidden for unauthenticated users', async () => {
+      const response = await request(app).get('/api-docs');
+      // El middleware de authMiddleware no establece req.user, por lo que el siguiente middleware lo rechaza
+      expect(response.statusCode).toBe(403);
+    });
+
+    it('should return 403 Forbidden for authenticated regular users', async () => {
+      const response = await request(app)
+        .get('/api-docs')
+        .set('Authorization', 'Bearer test-regular-user-token');
+      expect(response.statusCode).toBe(403);
+    });
+
+    it('should return 200 OK for super_admin users', async () => {
+      const response = await request(app)
+        .get('/api-docs')
+        .set('Authorization', 'Bearer test-super-admin-token');
+      // swagger-ui-express redirige, por lo que un 301 o 200 es éxito.
+      // En supertest, no sigue la redirección y reporta el 301.
+      expect(response.statusCode).toBe(301);
+    });
+  });
+
+  describe('POST /api/control/productos-venta', () => {
+    const newProduct = {
+      name: 'Taco de Pastor',
+      price: 25,
+      category: 'Tacos',
+      description: 'Carne de cerdo marinada con achiote',
+      isAvailable: true,
+    };
+
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .post('/api/control/productos-venta')
+        .set('Authorization', 'Bearer test-regular-user-token')
+        .send(newProduct);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 400 if required fields are missing', async () => {
+      const { name, ...incompleteProduct } = newProduct;
+      const res = await request(app)
+        .post('/api/control/productos-venta')
+        .set('Authorization', 'Bearer test-admin-token')
+        .send(incompleteProduct);
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should return 201 and the new product for admin user', async () => {
+      const res = await request(app)
+        .post('/api/control/productos-venta')
+        .set('Authorization', 'Bearer test-admin-token')
+        .send(newProduct);
+
+      expect(res.statusCode).toBe(201);
+      expect(admin.__mockAdd).toHaveBeenCalledWith(expect.objectContaining(newProduct));
+      expect(res.body).toEqual(expect.objectContaining(newProduct));
+    });
+  });
+
+  describe('GET /api/control/productos-venta', () => {
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .get('/api/control/productos-venta')
+        .set('Authorization', 'Bearer test-regular-user-token');
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 200 and a list of products for admin user', async () => {
+      const res = await request(app)
+        .get('/api/control/productos-venta')
+        .set('Authorization', 'Bearer test-admin-token');
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toBeInstanceOf(Array);
+    });
+  });
+
+  describe('GET /api/menu', () => {
+    it('should return 200 and a list of available products for any user', async () => {
+      const res = await request(app).get('/api/menu');
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toBeInstanceOf(Array);
+    });
+  });
+
+  describe('PUT /api/control/productos-venta/:id', () => {
+    const productId = 'test-product-id';
+    const updateData = {
+      name: 'Taco de Suadero',
+      price: 28,
+      category: 'Tacos',
+    };
+
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .put(`/api/control/productos-venta/${productId}`)
+        .set('Authorization', 'Bearer test-regular-user-token')
+        .send(updateData);
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 400 if required fields are missing', async () => {
+      const { name, ...incompleteData } = updateData;
+      const res = await request(app)
+        .put(`/api/control/productos-venta/${productId}`)
+        .set('Authorization', 'Bearer test-admin-token')
+        .send(incompleteData);
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('should return 200 and update the product for admin user', async () => {
+      const res = await request(app)
+        .put(`/api/control/productos-venta/${productId}`)
+        .set('Authorization', 'Bearer test-admin-token')
+        .send(updateData);
+
+      expect(res.statusCode).toBe(200);
+      expect(admin.__mockUpdate).toHaveBeenCalledWith(expect.objectContaining(updateData));
+      expect(res.body).toEqual(expect.objectContaining(updateData));
+    });
+  });
+
+  describe('DELETE /api/control/productos-venta/:id', () => {
+    const productId = 'test-product-id';
+
+    it('should return 403 for non-admin user', async () => {
+      const res = await request(app)
+        .delete(`/api/control/productos-venta/${productId}`)
+        .set('Authorization', 'Bearer test-regular-user-token');
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('should return 200 and soft delete the product for admin user', async () => {
+      const res = await request(app)
+        .delete(`/api/control/productos-venta/${productId}`)
+        .set('Authorization', 'Bearer test-admin-token');
+
+      expect(res.statusCode).toBe(200);
+      expect(admin.__mockUpdate).toHaveBeenCalledWith({
+        deleted: true,
+        deletedAt: expect.any(String),
+      });
     });
   });
 });

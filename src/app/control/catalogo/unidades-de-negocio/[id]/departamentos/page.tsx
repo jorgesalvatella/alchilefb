@@ -10,6 +10,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AddEditDepartmentDialog } from '@/components/control/add-edit-department-dialog';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminDepartmentsPage() {
   const { user } = useUser();
@@ -18,29 +19,7 @@ export default function AdminDepartmentsPage() {
 
   const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
 
-  // Fetch business unit data from API
-  useEffect(() => {
-    const fetchBusinessUnit = async () => {
-      if (!user || !businessUnitId) return;
-
-      try {
-        const token = await user.getIdToken();
-        const response = await fetch(`/api/control/unidades-de-negocio/${businessUnitId}`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setBusinessUnit(data);
-        }
-      } catch (err) {
-        console.error('Error fetching business unit:', err);
-      }
-    };
-
-    fetchBusinessUnit();
-  }, [user, businessUnitId]);
-
+  const { toast } = useToast();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,27 +35,32 @@ export default function AdminDepartmentsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user || !businessUnitId) {
-        return;
-      }
+      if (!user || !businessUnitId) return;
 
       setIsLoading(true);
       setError(null);
 
       try {
         const token = await user.getIdToken();
-        const response = await fetch(`/api/control/unidades-de-negocio/${businessUnitId}/departamentos`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
+        const headers = { 'Authorization': `Bearer ${token}` };
 
-        if (!response.ok) {
-          throw new Error('No se pudo obtener los departamentos.');
+        const [deptsRes, buRes] = await Promise.all([
+          fetch(`/api/control/unidades-de-negocio/${businessUnitId}/departamentos`, { headers }),
+          fetch(`/api/control/unidades-de-negocio/${businessUnitId}`, { headers }),
+        ]);
+
+        if (!deptsRes.ok || !buRes.ok) {
+          throw new Error('No se pudo obtener la información necesaria.');
         }
 
-        const data = await response.json();
-        setDepartments(data);
+        const [deptsData, buData] = await Promise.all([
+          deptsRes.json(),
+          buRes.json(),
+        ]);
+
+        setDepartments(deptsData);
+        setBusinessUnit(buData);
+
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -97,8 +81,36 @@ export default function AdminDepartmentsPage() {
     setDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    console.log(`TODO: Implementar borrado para el ID: ${id} a través de la API`);
+  const handleDelete = async (id: string) => {
+    if (!user || !confirm('¿Estás seguro de que quieres eliminar este departamento?')) {
+      return;
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/control/departamentos/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo eliminar el departamento.');
+      }
+
+      toast({
+        title: 'Departamento Eliminado',
+        description: 'El departamento se ha eliminado correctamente.',
+      });
+      window.location.reload();
+    } catch (err: any) {
+      toast({
+        title: 'Error al eliminar',
+        description: err.message,
+        variant: 'destructive',
+      });
+      console.error('Error deleting department:', err);
+    }
   };
 
   return (

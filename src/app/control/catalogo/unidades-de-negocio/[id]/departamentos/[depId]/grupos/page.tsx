@@ -10,6 +10,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AddEditGroupDialog } from '@/components/control/add-edit-group-dialog';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminGroupsPage() {
   const { user } = useUser();
@@ -20,37 +21,7 @@ export default function AdminGroupsPage() {
   const [businessUnit, setBusinessUnit] = useState<BusinessUnit | null>(null);
   const [department, setDepartment] = useState<Department | null>(null);
 
-  // Fetch business unit and department data from API
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user || !businessUnitId || !departmentId) return;
-
-      try {
-        const token = await user.getIdToken();
-
-        // Fetch business unit
-        const buResponse = await fetch(`/api/control/unidades-de-negocio/${businessUnitId}`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (buResponse.ok) {
-          setBusinessUnit(await buResponse.json());
-        }
-
-        // Fetch department
-        const deptResponse = await fetch(`/api/control/departamentos/${departmentId}`, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (deptResponse.ok) {
-          setDepartment(await deptResponse.json());
-        }
-      } catch (err) {
-        console.error('Error fetching data:', err);
-      }
-    };
-
-    fetchData();
-  }, [user, businessUnitId, departmentId]);
-
+  const { toast } = useToast();
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,27 +38,35 @@ export default function AdminGroupsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!user || !businessUnitId || !departmentId) {
-        return;
-      }
+      if (!user || !businessUnitId || !departmentId) return;
 
       setIsLoading(true);
       setError(null);
 
       try {
         const token = await user.getIdToken();
-        const response = await fetch(`/api/control/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
+        const headers = { 'Authorization': `Bearer ${token}` };
 
-        if (!response.ok) {
-          throw new Error('No se pudo obtener los grupos.');
+        const [groupsRes, buRes, deptRes] = await Promise.all([
+          fetch(`/api/control/unidades-de-negocio/${businessUnitId}/departamentos/${departmentId}/grupos`, { headers }),
+          fetch(`/api/control/unidades-de-negocio/${businessUnitId}`, { headers }),
+          fetch(`/api/control/departamentos/${departmentId}`, { headers }),
+        ]);
+
+        if (!groupsRes.ok || !buRes.ok || !deptRes.ok) {
+          throw new Error('No se pudo obtener la información necesaria.');
         }
 
-        const data = await response.json();
-        setGroups(data);
+        const [groupsData, buData, deptData] = await Promise.all([
+          groupsRes.json(),
+          buRes.json(),
+          deptRes.json(),
+        ]);
+
+        setGroups(groupsData);
+        setBusinessUnit(buData);
+        setDepartment(deptData);
+
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -108,8 +87,36 @@ export default function AdminGroupsPage() {
     setDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    console.log(`TODO: Implementar borrado para el ID: ${id} a través de la API`);
+  const handleDelete = async (id: string) => {
+    if (!user || !confirm('¿Estás seguro de que quieres eliminar este grupo?')) {
+      return;
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/control/grupos/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo eliminar el grupo.');
+      }
+
+      toast({
+        title: 'Grupo Eliminado',
+        description: 'El grupo se ha eliminado correctamente.',
+      });
+      window.location.reload();
+    } catch (err: any) {
+      toast({
+        title: 'Error al eliminar',
+        description: err.message,
+        variant: 'destructive',
+      });
+      console.error('Error deleting group:', err);
+    }
   };
 
   return (

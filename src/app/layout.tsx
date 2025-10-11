@@ -1,33 +1,33 @@
-import type { Metadata, Viewport } from 'next';
-import { Toaster } from '@/components/ui/toaster';
-import { Header } from '@/components/layout/header';
-import { Footer } from '@/components/layout/footer';
-import { FirebaseClientProvider } from '@/firebase';
-import './globals.css';
+import { Roboto as FontSans } from "next/font/google"
+import './globals.css'
 
-export const metadata: Metadata = {
-  title: 'Al Chile Delivery',
-  description: 'La comida mexicana más picante y auténtica a domicilio.',
-};
+import { cn } from "@/lib/utils"
+import { Toaster } from "@/components/ui/toaster"
+import { FirebaseProvider } from '@/firebase/provider'
+import { FirebaseClientProvider } from '@/firebase/client-provider'
+import { Header } from '@/components/layout/header'
+import { Footer } from '@/components/layout/footer'
+import FirebaseErrorListener from '@/components/FirebaseErrorListener'
 
-export const viewport: Viewport = {
-  themeColor: '#C11B17',
-};
+const fontSans = FontSans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  weight: ["400", "500", "700"],
+})
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="es" className="dark">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,700;1,400&family=Belleza&family=Caveat&display=swap" rel="stylesheet" />
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.svg" />
-      </head>
-      <body className="font-body antialiased">
+    <html lang="es" suppressHydrationWarning className="dark">
+      <body
+        className={cn(
+          "min-h-screen bg-background font-sans antialiased",
+          fontSans.variable
+        )}
+      >
         <FirebaseClientProvider>
           <div className="relative flex min-h-dvh flex-col">
             <Header />

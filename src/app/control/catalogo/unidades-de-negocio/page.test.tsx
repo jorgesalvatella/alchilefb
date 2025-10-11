@@ -38,15 +38,17 @@ describe('AdminBusinessUnitsPage', () => {
   it('should display a loading message when isUserLoading is true', () => {
     mockUseUser.mockReturnValue({ user: null, isUserLoading: true });
     render(<AdminBusinessUnitsPage />);
-    expect(screen.getByText('Cargando...')).toBeInTheDocument();
+    const loadingMessages = screen.getAllByText('Cargando...');
+    expect(loadingMessages.length).toBeGreaterThan(0);
   });
 
   it('should display an error message if data fetching fails', async () => {
     (fetch as jest.Mock).mockRejectedValueOnce(new Error('No se pudo obtener los datos.'));
     render(<AdminBusinessUnitsPage />);
-    
+
     await waitFor(() => {
-      expect(screen.getByText('Error: No se pudo obtener los datos.')).toBeInTheDocument();
+      const errorMessages = screen.getAllByText(/Error: No se pudo obtener los datos\./);
+      expect(errorMessages.length).toBeGreaterThan(0);
     });
   });
 
@@ -62,7 +64,8 @@ describe('AdminBusinessUnitsPage', () => {
     render(<AdminBusinessUnitsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Sucursal Centro')).toBeInTheDocument();
+      const businessUnitNames = screen.getAllByText('Sucursal Centro');
+      expect(businessUnitNames.length).toBeGreaterThan(0);
     });
   });
 

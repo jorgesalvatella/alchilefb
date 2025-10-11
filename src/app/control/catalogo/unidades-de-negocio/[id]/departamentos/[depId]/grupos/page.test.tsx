@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AdminGroupsPage from './page';
-import { useAuth } from '@/firebase/provider';
+import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
 
 // Mocks
@@ -10,39 +10,52 @@ jest.mock('next/navigation', () => ({
   useParams: jest.fn(),
 }));
 jest.mock('@/firebase/provider', () => ({
-  useAuth: jest.fn(),
-  useFirestore: jest.fn(() => null),
+  useUser: jest.fn(),
 }));
+jest.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: jest.fn(),
+  }),
+}));
+
+// Mock de fetch
 global.fetch = jest.fn();
 
-const mockUseAuth = useAuth as jest.Mock;
-const mockUseParams = useParams as jest.Mock;
+const mockUseUser = useUser as jest.Mock;
+const mockUseParams = jest.requireMock('next/navigation').useParams;
 
 describe('AdminGroupsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseAuth.mockReturnValue({
+    mockUseUser.mockReturnValue({
       user: {
-        getIdToken: () => Promise.resolve('test-token'),
+        getIdToken: async () => 'test-token',
       },
+      isUserLoading: false,
     });
     mockUseParams.mockReturnValue({
       id: 'test-unit-id',
       depId: 'test-dep-id',
+    });
+    (fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
     });
   });
 
   it('should display a loading message initially', () => {
     (fetch as jest.Mock).mockImplementationOnce(() => new Promise(() => {}));
     render(<AdminGroupsPage />);
-    expect(screen.getByText('Cargando grupos...')).toBeInTheDocument();
+    const loadingMessages = screen.getAllByText('Cargando grupos...');
+    expect(loadingMessages.length).toBeGreaterThan(0);
   });
 
   it('should display an error message if data fetching fails', async () => {
     (fetch as jest.Mock).mockRejectedValueOnce(new Error('No se pudo obtener los grupos.'));
     render(<AdminGroupsPage />);
     await waitFor(() => {
-      expect(screen.getByText('Error: No se pudo obtener los grupos.')).toBeInTheDocument();
+      const errorMessages = screen.getAllByText(/Error: No se pudo obtener los grupos\./);
+      expect(errorMessages.length).toBeGreaterThan(0);
     });
   });
 
@@ -54,7 +67,8 @@ describe('AdminGroupsPage', () => {
     });
     render(<AdminGroupsPage />);
     await waitFor(() => {
-      expect(screen.getByText('Bebidas')).toBeInTheDocument();
+      const groupNames = screen.getAllByText('Bebidas');
+      expect(groupNames.length).toBeGreaterThan(0);
     });
   });
 

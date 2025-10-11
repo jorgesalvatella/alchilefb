@@ -9,9 +9,11 @@ import { AddEditBusinessUnitDialog } from '@/components/control/add-edit-busines
 import { useUser } from '@/firebase/provider'; // Hook correcto para el estado del usuario
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminBusinessUnitsPage() {
   const { user, isUserLoading } = useUser(); // Obtener el usuario y el estado de carga
+  const { toast } = useToast();
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,9 +74,38 @@ export default function AdminBusinessUnitsPage() {
     setDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
-    // TODO: La lógica de borrado también debe migrarse a un endpoint en el backend
-    console.log(`TODO: Implementar borrado para el ID: ${id} a través de la API`);
+  const handleDelete = async (id: string) => {
+    if (!user || !confirm('¿Estás seguro de que quieres eliminar esta unidad de negocio?')) {
+      return;
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/control/unidades-de-negocio/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo eliminar la unidad de negocio.');
+      }
+
+      toast({
+        title: 'Unidad de Negocio Eliminada',
+        description: 'La unidad de negocio se ha eliminado correctamente.',
+      });
+      window.location.reload();
+    } catch (err: any) {
+      toast({
+        title: 'Error al eliminar',
+        description: err.message,
+        variant: 'destructive',
+      });
+      console.error('Error deleting business unit:', err);
+    }
   };
 
 
