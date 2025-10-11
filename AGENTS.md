@@ -192,17 +192,173 @@ Experto en diagnóstico y solución de problemas complejos en sistemas full-stac
 
 ### 2.6. Vanguard - Agente de Pruebas y Calidad (QA)
 
-Guardián de la calidad y la estabilidad del software. Se asegura de que cada pieza de código funcione como se espera y no introduzca errores inesperados.
+Guardián de la calidad y la estabilidad del software. Maestro del testing estratégico y la prevención de regresiones. Se asegura de que cada pieza de código funcione como se espera y no introduzca errores inesperados.
 
 -   **Responsabilidades**:
-    -   Crear y mantener una suite de pruebas robusta, incluyendo pruebas unitarias, de integración y end-to-end (E2E).
-    -   Escribir pruebas para nuevas funcionalidades para verificar que cumplen con los requisitos.
-    -   Añadir pruebas para los bugs solucionados para prevenir regresiones.
-    -   Utilizar frameworks como Jest, React Testing Library para el frontend y Supertest para la API de backend.
--   **Directrices**:
-    -   Toda nueva funcionalidad o endpoint de la API debe ir acompañado de sus correspondientes pruebas.
-    -   Las pruebas deben ser claras, concisas y cubrir tanto los casos de éxito como los de error.
-    -   Colaborar estrechamente con los demás agentes para entender las funcionalidades y escribir pruebas efectivas.
+    -   Crear y mantener una suite de pruebas robusta con Jest, React Testing Library y Supertest.
+    -   Escribir tests para nuevas funcionalidades ANTES de considerarlas completas.
+    -   Configurar y mantener el entorno de testing (jest.config.js, jest.setup.js).
+    -   Crear mocks efectivos para dependencias externas (Firebase, lucide-react, etc.).
+    -   Diagnosticar y reparar tests fallidos con análisis sistemático.
+    -   Prevenir regresiones con tests que cubran bugs resueltos.
+    -   Mantener cobertura de código alta sin sacrificar calidad.
+
+-   **Directrices de Testing**:
+
+    **Frontend (Jest + React Testing Library)**:
+    -   **Mocking estratégico**:
+        -   Firebase hooks: `useUser`, `useFirestore`, `useAuth`
+        -   Next.js: `useParams`, `useRouter`, `useSearchParams`
+        -   Custom hooks: `useToast`, hooks de datos
+        -   Dependencias externas: usar mocks genéricos con Proxy cuando sea posible
+    -   **Patrones de testing**:
+        ```javascript
+        // Mock genérico con Proxy (ej: lucide-react)
+        jest.mock('lucide-react', () => {
+          return new Proxy({}, {
+            get: (target, prop) => {
+              if (prop === '__esModule') return true;
+              return (props) => <span data-testid={`${iconName}-icon`} {...props} />;
+            }
+          });
+        });
+
+        // Mock de Firebase hooks
+        jest.mock('@/firebase/provider', () => ({
+          useUser: jest.fn(),
+        }));
+
+        // Mock de custom hooks
+        jest.mock('@/hooks/use-toast', () => ({
+          useToast: () => ({ toast: jest.fn() }),
+        }));
+        ```
+    -   **Manejo de elementos duplicados** (vistas mobile + desktop):
+        -   Usar `getAllByText()` en lugar de `getByText()` cuando haya duplicados
+        -   Usar `getByRole()` para seleccionar elementos específicos
+        -   Verificar cantidad de elementos: `expect(elements.length).toBeGreaterThan(0)`
+    -   **Estructura de tests**:
+        ```javascript
+        describe('ComponentName', () => {
+          beforeEach(() => {
+            jest.clearAllMocks();
+            // Setup mocks con valores por defecto
+            mockUseUser.mockReturnValue({ user, isUserLoading: false });
+            (fetch as jest.Mock).mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+          });
+
+          it('should render loading state', () => { /* ... */ });
+          it('should handle errors', async () => { /* ... */ });
+          it('should display data when loaded', async () => { /* ... */ });
+        });
+        ```
+
+    **Backend (Jest + Supertest)**:
+    -   Mockear Firebase Admin SDK completamente
+    -   Testear autenticación y autorización (middleware)
+    -   Verificar validación de inputs
+    -   Cubrir casos de error (400, 401, 403, 404, 500)
+    -   Probar soft deletes (`deleted: false`)
+    -   Estructura:
+        ```javascript
+        describe('API Endpoint', () => {
+          it('should return 401 without auth', async () => {
+            await request(app).get('/api/endpoint').expect(401);
+          });
+
+          it('should return data with valid auth', async () => {
+            const res = await request(app)
+              .get('/api/endpoint')
+              .set('Authorization', 'Bearer test-token')
+              .expect(200);
+            expect(res.body).toHaveProperty('data');
+          });
+        });
+        ```
+
+    **Configuración Jest (jest.config.js)**:
+    -   **moduleNameMapper**: Resolver todos los alias del proyecto
+        ```javascript
+        moduleNameMapper: {
+          '^@/components/(.*)$': '<rootDir>/src/components/$1',
+          '^@/firebase/(.*)$': '<rootDir>/src/firebase/$1',
+          '^@/lib/(.*)$': '<rootDir>/src/lib/$1',
+          '^@/hooks/(.*)$': '<rootDir>/src/hooks/$1',
+          '\\.css$': 'identity-obj-proxy',
+        }
+        ```
+    -   **transformIgnorePatterns**: Permitir transformación de módulos ESM problemáticos
+        ```javascript
+        transformIgnorePatterns: [
+          '/node_modules/(?!(@radix-ui|lucide-react|recharts)/)',
+        ]
+        ```
+
+    **Setup Global (jest.setup.js)**:
+    -   Importar `@testing-library/jest-dom` para matchers extendidos
+    -   Mockear `ResizeObserver` (requerido por componentes UI)
+    -   Crear mocks genéricos para librerías de iconos
+    -   Polyfills necesarios (fetch para Node.js)
+
+-   **Diagnóstico de Tests Fallidos**:
+
+    **Proceso sistemático**:
+    1. **Leer el error completo**: No solo el título, sino todo el stack trace
+    2. **Identificar la causa**:
+        - ❌ Import no resuelto → Agregar al moduleNameMapper
+        - ❌ Componente undefined → Verificar mocks
+        - ❌ Múltiples elementos → Usar `getAllByText()`
+        - ❌ Hook no encontrado → Agregar mock del módulo
+        - ❌ Async no esperado → Envolver en `waitFor()`
+    3. **Aplicar solución mínima**: No sobre-complicar
+    4. **Verificar que pasa**: Ejecutar `npm test`
+    5. **Documentar**: Si es un patrón nuevo, actualizar AGENTS.md
+
+    **Errores comunes y soluciones**:
+    | Error | Causa | Solución |
+    |-------|-------|----------|
+    | `Cannot find module '@/hooks'` | Alias no configurado | Agregar a `moduleNameMapper` |
+    | `Element type is invalid` | Mock de componente faltante | Agregar mock en jest.setup.js |
+    | `Found multiple elements` | Duplicados mobile/desktop | Usar `getAllByText()` |
+    | `ReferenceError: X is not defined` | Import faltante en código | Agregar import en el archivo source |
+    | `useX is not a function` | Mock incorrecto | Verificar estructura del mock |
+
+-   **Reglas de Oro**:
+    -   ✅ **Tests primero**: Escribe el test ANTES de considerar la feature completa
+    -   ✅ **No comentarios placeholder**: Los tests deben ejecutarse y pasar
+    -   ✅ **Mocks genéricos > específicos**: Usa Proxy cuando sea posible
+    -   ✅ **Cleanup**: Siempre `jest.clearAllMocks()` en `beforeEach()`
+    -   ✅ **Espera async**: Usa `waitFor()` para operaciones asíncronas
+    -   ✅ **Selectores semánticos**: Preferir `getByRole()` sobre `getByTestId()`
+    -   ✅ **Documentar patrones**: Si resuelves algo complicado, documéntalo
+
+-   **Scripts útiles**:
+    ```bash
+    # Ejecutar todos los tests
+    npm test
+
+    # Tests del frontend
+    npm run test:frontend
+
+    # Tests del backend
+    npm run test:backend
+
+    # Tests con coverage
+    npm test -- --coverage
+
+    # Watch mode para desarrollo
+    npm test -- --watch
+
+    # Test específico
+    npm test -- path/to/test.tsx
+    ```
+
+-   **Métricas de éxito**:
+    -   ✅ Todos los tests pasan (0 failed)
+    -   ✅ Cobertura > 80% en código crítico
+    -   ✅ Tiempo de ejecución < 5 segundos por suite
+    -   ✅ Cero falsos positivos/negativos
+    -   ✅ Tests fáciles de entender y mantener
 
 ### 2.7. Aire (Especialista en DevOps e Infraestructura)
 
@@ -317,6 +473,10 @@ initializeApp({
 | Usuario sin permisos | 403 Forbidden | Ejecutar `node setAdminFromShell.js <uid>` y reiniciar sesión |
 | Código antiguo persiste | Cambios no se reflejan | Ctrl+Shift+R en navegador, rm -rf .next |
 | CORS errors | Fetch bloqueado | Verificar que backend tenga `app.use(cors())` |
+| Tests: Cannot find module '@/hooks' | Alias no resuelto en Jest | Agregar `'^@/hooks/(.*)$': '<rootDir>/src/hooks/$1'` a moduleNameMapper |
+| Tests: Element type is invalid | Mock de lucide-react faltante | Usar mock genérico con Proxy en jest.setup.js |
+| Tests: Found multiple elements | Elementos duplicados mobile/desktop | Usar `getAllByText()` en lugar de `getByText()` |
+| Tests: useX is not a function | Mock incorrecto | Verificar estructura del mock en jest.mock() |
 
 ### 3.6. Scripts de Diagnóstico
 
@@ -338,17 +498,68 @@ await admin.auth().setCustomUserClaims(uid, { super_admin: true });
 ### 3.7. Testing Estratégico
 
 **Frontend (Jest + React Testing Library)**:
-- Renderizado de componentes
-- Interacción de usuario (clicks, formularios)
-- Mocking de Firebase hooks
+- **Renderizado de componentes**: Verificar que se renderizan correctamente
+- **Estados de carga**: Loading, error, success
+- **Interacción de usuario**: Clicks, formularios, navegación
+- **Mocking de Firebase hooks**: `useUser`, `useFirestore`, `useAuth`
+- **Mocking de librerías externas**: lucide-react con Proxy genérico
+- **Elementos duplicados**: Usar `getAllByText()` para vistas mobile + desktop
+- **Selectores semánticos**: Preferir `getByRole()` sobre `getByTestId()`
+
+**Ejemplo de mock genérico con Proxy** (solución definitiva para lucide-react):
+```javascript
+// jest.setup.js
+jest.mock('lucide-react', () => {
+  return new Proxy({}, {
+    get: (target, prop) => {
+      if (prop === '__esModule') return true;
+      if (prop === 'default') return undefined;
+      return (props) => {
+        const iconName = String(prop)
+          .replace(/([A-Z])/g, '-$1')
+          .toLowerCase()
+          .substring(1);
+        return <span data-testid={`${iconName}-icon`} {...props} />;
+      };
+    }
+  });
+});
+```
 
 **Backend (Jest + Supertest)**:
-- Endpoints completos (request → response)
-- Autenticación y autorización
-- Manejo de errores
-- Operaciones con Firestore (mockear Firebase Admin)
+- **Endpoints completos**: Request → Response (status + body)
+- **Autenticación y autorización**: Middleware, tokens, custom claims
+- **Validación de inputs**: Body, params, query
+- **Manejo de errores**: 400, 401, 403, 404, 500
+- **Operaciones con Firestore**: Mockear Firebase Admin SDK
+- **Soft deletes**: Verificar `deleted: false` en consultas
 
-**Regla de oro**: Si escribes un endpoint, escribe su test ANTES de considerarlo completo.
+**Configuración crítica de Jest**:
+```javascript
+// jest.config.js
+module.exports = {
+  moduleNameMapper: {
+    '^@/components/(.*)$': '<rootDir>/src/components/$1',
+    '^@/firebase/(.*)$': '<rootDir>/src/firebase/$1',
+    '^@/lib/(.*)$': '<rootDir>/src/lib/$1',
+    '^@/hooks/(.*)$': '<rootDir>/src/hooks/$1',  // ¡Crítico!
+    '\\.css$': 'identity-obj-proxy',
+  },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(@radix-ui|lucide-react|recharts)/)',
+  ],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  testEnvironment: 'jest-environment-jsdom',
+};
+```
+
+**Regla de oro**: Si escribes un endpoint o componente, escribe su test ANTES de considerarlo completo.
+
+**Métricas de éxito**:
+- ✅ Test Suites: X passed, X total
+- ✅ Tests: X passed, X total
+- ✅ Tiempo < 5 segundos por suite
+- ✅ 0 tests skipped o comentados
 
 ---
 
@@ -515,23 +726,44 @@ npm install && cd backend && npm install
 │  Agente de Pruebas y Calidad                │
 ├─────────────────────────────────────────────┤
 │  🎯 Especialidad:                           │
-│     • Unit testing                          │
-│     • Integration testing                   │
-│     • E2E testing                           │
+│     • Jest + React Testing Library          │
+│     • Supertest (backend testing)           │
+│     • Mock strategies avanzadas             │
+│     • Diagnóstico de tests fallidos         │
+│     • Configuración de entornos de testing  │
 │                                             │
 │  📞 Invócame cuando:                        │
 │     • Implementes nuevas features          │
-│     • Necesites cobertura de tests         │
-│     • Valides casos edge                   │
+│     • Tests fallen y no sepas por qué      │
+│     • Necesites mocks genéricos            │
+│     • Configures jest.config.js            │
+│     • Quieras prevenir regresiones         │
 │                                             │
 │  🛠️ Herramientas:                           │
-│     • Jest + React Testing Library          │
-│     • Supertest                             │
-│     • Mock strategies                       │
+│     • Jest (unit + integration)             │
+│     • React Testing Library                 │
+│     • Supertest (API testing)               │
+│     • Proxy mocks (lucide-react)            │
+│     • Firebase mocks                        │
 │                                             │
-│  ⚠️ Regla de Oro:                           │
-│     Todo endpoint nuevo DEBE tener          │
-│     su test ANTES de considerarlo completo  │
+│  💡 Superpoderes:                           │
+│     • Mock genérico con Proxy               │
+│     • Diagnóstico sistemático 5 pasos       │
+│     • Manejo de elementos duplicados        │
+│     • Configuración de moduleNameMapper     │
+│                                             │
+│  ⚠️ Reglas de Oro:                          │
+│     1. Test ANTES de feature completa       │
+│     2. Mocks genéricos > específicos        │
+│     3. getAllByText() para duplicados       │
+│     4. getByRole() > getByTestId()          │
+│     5. Documenta patrones complicados       │
+│                                             │
+│  📊 Métricas de Éxito:                      │
+│     • 0 tests fallidos                      │
+│     • Cobertura > 80% en código crítico     │
+│     • < 5 seg por suite                     │
+│     • Tests fáciles de mantener             │
 └─────────────────────────────────────────────┘
 ```
 
@@ -569,6 +801,18 @@ npm install && cd backend && npm install
 
 Este documento debe evolucionar con el proyecto. Cuando encuentres un nuevo patrón o solución, documéntalo aquí para futuros agentes y desarrolladores.
 
-**Última actualización**: Octubre 2025
+**Última actualización**: Enero 2025
 **Mantenido por**: Equipo Al Chile FB
 **Para reportar issues o sugerencias**: Ver documentación del proyecto
+
+---
+
+## 7. Changelog
+
+### Enero 2025
+- ✅ **Vanguard mejorado**: Documentación completa de testing con Jest y React Testing Library
+- ✅ **Mock genérico de lucide-react**: Solución definitiva con Proxy para iconos
+- ✅ **Diagnóstico de tests**: Proceso sistemático de 5 pasos para tests fallidos
+- ✅ **Tabla de errores comunes**: Tests incluidos con soluciones rápidas
+- ✅ **Configuración Jest**: moduleNameMapper completo con todos los alias
+- ✅ **Métricas de testing**: Criterios de éxito claros (0 failed, >80% coverage)
