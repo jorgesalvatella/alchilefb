@@ -1,138 +1,155 @@
 'use client';
-
-import { useState, useEffect, useCallback } from 'react';
-import { useUser } from '@/firebase/provider';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ProductsTable } from '@/components/control/products-table';
-import { AddEditSaleProductDialog } from '@/components/control/add-edit-sale-product-dialog';
-
-type Product = {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  category: string;
-  imageUrl?: string;
-  isAvailable: boolean;
-  createdAt: string;
-};
+import type { SaleProduct } from '@/lib/data';
+import { PlusCircle, Pen, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useUser } from '@/firebase/provider';
+import { useToast } from '@/hooks/use-toast';
+import { Breadcrumbs } from '@/components/ui/breadcrumb';
+import Link from 'next/link';
 
 export default function AdminSaleProductsPage() {
-  const { user, isUserLoading } = useUser();
-  const [data, setData] = useState<Product[]>([]);
+  const { user } = useUser();
+  const { toast } = useToast();
+  
+  const [products, setProducts] = useState<SaleProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (user) {
-      try {
-        setIsLoading(true);
-        const token = await user.getIdToken();
-        const response = await fetch('/api/control/productos-venta', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+  const breadcrumbItems = [
+    { label: 'Control', href: '/control' },
+    { label: 'Productos de Venta', href: '/control/productos-venta' },
+  ];
 
-        if (!response.ok) {
-          throw new Error('No se pudo obtener los productos de venta.');
-        }
-
-        const products = await response.json();
-        setData(products);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
+  const fetchData = async () => {
+    if (!user) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const token = await user.getIdToken();
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const response = await fetch('/api/control/productos-venta', { headers });
+      if (!response.ok) {
+        throw new Error('No se pudo obtener la lista de productos.');
       }
-    } else if (!isUserLoading) {
+      setProducts(await response.json());
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
       setIsLoading(false);
-      setError('Acceso no autorizado.');
     }
-  }, [user, isUserLoading]);
+  };
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [user]);
 
-  const handleAddNew = () => {
-    setSelectedProduct(null);
-    setIsDialogOpen(true);
-  };
-
-  const handleEdit = (product: Product) => {
-    setSelectedProduct(product);
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = async (product: Product) => {
-    if (!user || !confirm(`¿Estás seguro de que quieres eliminar "${product.name}"?`)) {
-      return;
-    }
+  const handleDelete = async (id: string) => {
+    if (!user || !confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
     try {
       const token = await user.getIdToken();
-      const response = await fetch(`/api/control/productos-venta/${product.id}`, {
+      const response = await fetch(`/api/control/productos-venta/${id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
       });
       if (!response.ok) {
-        throw new Error('No se pudo eliminar el producto.');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo eliminar el producto.');
       }
-      await fetchData(); // Refrescar datos
-    } catch (error) {
-      console.error(error);
+      toast({
+        title: 'Producto Eliminado',
+        description: 'El producto se ha eliminado correctamente.',
+      });
+      fetchData();
+    } catch (err: any) {
+      toast({
+        title: 'Error al eliminar',
+        description: err.message,
+        variant: 'destructive',
+      });
     }
-  };
-
-  const handleSuccess = () => {
-    fetchData(); // Refrescar los datos de la tabla
-  };
-
-  const renderContent = () => {
-    if (isLoading || isUserLoading) {
-      return (
-        <div className="space-y-4">
-          <Skeleton className="h-8 w-1/4" />
-          <Skeleton className="h-96 w-full" />
-        </div>
-      );
-    }
-
-    if (error) {
-      return <p className="text-red-500">Error: {error}</p>;
-    }
-
-    return <ProductsTable data={data} onEdit={handleEdit} onDelete={handleDelete} />;
   };
 
   return (
-    <main className="flex-1 p-6 md:p-8">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Gestión de Productos de Venta</CardTitle>
-          <Button className="bg-fresh-green hover:bg-fresh-green/80 text-black" onClick={handleAddNew}>
-            <PlusCircle className="mr-2 h-4 w-4" />
+    <>
+      <Breadcrumbs items={breadcrumbItems} />
+      <div className="text-center mb-12">
+        <h1 className="text-5xl md:text-7xl font-black text-white">
+          <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+            Productos de Venta
+          </span>
+        </h1>
+        <p className="text-white/70 text-lg mt-2">
+          Gestiona los artículos de tu menú.
+        </p>
+      </div>
+
+      <div className="flex justify-end mb-8">
+        <Button asChild className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white font-bold py-6 px-8 rounded-full hover:scale-105 transition-transform duration-300">
+          <Link href="/control/productos-venta/nuevo">
+            <PlusCircle className="mr-2 h-5 w-5" />
             Añadir Producto
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {renderContent()}
-        </CardContent>
-      </Card>
-      <AddEditSaleProductDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        onSuccess={handleSuccess}
-        product={selectedProduct}
-      />
-    </main>
+          </Link>
+        </Button>
+      </div>
+
+      {/* Mobile View */}
+      <div className="md:hidden space-y-4">
+        {isLoading ? <p className="text-center text-white/60 py-12">Cargando...</p> : error ? <p className="text-center text-red-500 py-12">Error: {error}</p> :
+          products.map((product) => (
+            <Card key={product.id} className="bg-black/50 backdrop-blur-sm border-white/10 text-white">
+              <CardHeader><CardTitle className="text-orange-400">{product.name}</CardTitle></CardHeader>
+              <CardContent className="text-sm break-words">
+                <p>{product.description}</p>
+                <p className="font-bold text-lg mt-2">${product.price.toFixed(2)}</p>
+              </CardContent>
+              <CardFooter className="flex justify-end space-x-2 flex-wrap">
+                <Button asChild variant="ghost" size="icon" className="text-white/60 hover:text-orange-400">
+                  <Link href={`/control/productos-venta/${product.id}/editar`}>
+                    <Pen className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(product.id)} className="text-white/60 hover:text-red-500"><Trash2 className="h-4 w-4" /></Button>
+              </CardFooter>
+            </Card>
+          ))
+        }
+      </div>
+
+      {/* Desktop View */}
+      <div className="hidden md:block bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-b border-white/10 hover:bg-transparent">
+              <TableHead className="text-white/80">Nombre</TableHead>
+              <TableHead className="text-white/80">Descripción</TableHead>
+              <TableHead className="text-white/80">Precio</TableHead>
+              <TableHead className="text-right text-white/80">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? <TableRow className="border-b-0"><TableCell colSpan={4} className="text-center text-white/60 py-12">Cargando...</TableCell></TableRow> :
+             error ? <TableRow className="border-b-0"><TableCell colSpan={4} className="text-center text-red-500 py-12">Error: {error}</TableCell></TableRow> :
+             products.map((product) => (
+              <TableRow key={product.id} className="border-b border-white/10 hover:bg-white/5">
+                <TableCell className="font-medium text-white">{product.name}</TableCell>
+                <TableCell className="text-white/80">{product.description}</TableCell>
+                <TableCell className="text-white/80">${product.price.toFixed(2)}</TableCell>
+                <TableCell className="text-right">
+                  <Button asChild variant="ghost" size="icon" className="text-white/60 hover:text-orange-400">
+                    <Link href={`/control/productos-venta/${product.id}/editar`}>
+                      <Pen className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(product.id)} className="text-white/60 hover:text-red-500"><Trash2 className="h-4 w-4" /></Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </>
   );
 }

@@ -4,12 +4,48 @@ import 'whatwg-fetch';
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// Polyfill for Pointer Events API used by Radix UI in JSDOM
+if (typeof window !== 'undefined') {
+  window.HTMLElement.prototype.hasPointerCapture = jest.fn();
+  window.HTMLElement.prototype.releasePointerCapture = jest.fn();
+  window.HTMLElement.prototype.setPointerCapture = jest.fn();
+}
+
+// Polyfill for scrollIntoView used by Radix UI in JSDOM
+if (typeof window !== 'undefined') {
+  window.HTMLElement.prototype.scrollIntoView = jest.fn();
+}
+
+// Polyfill for matchMedia used by Radix UI and other libraries in JSDOM
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(), // deprecated
+    removeListener: jest.fn(), // deprecated
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
 // Mock ResizeObserver
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }));
+
+// Mock de @radix-ui/react-focus-scope para evitar bucles de foco infinitos en JSDOM
+// Este es el mock más importante para resolver el problema de "Maximum call stack size exceeded"
+jest.mock('@radix-ui/react-focus-scope', () => {
+  const actual = jest.requireActual('@radix-ui/react-focus-scope');
+  return {
+    ...actual,
+    FocusScope: ({ children }) => children,
+  };
+});
 
 // Mock genérico para lucide-react que captura CUALQUIER ícono
 jest.mock('lucide-react', () => {

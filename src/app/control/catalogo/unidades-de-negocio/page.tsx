@@ -143,12 +143,12 @@ export default function AdminBusinessUnitsPage() {
                 <CardHeader>
                   <CardTitle className="text-orange-400">{unit.name}</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm">
+                <CardContent className="text-sm break-words">
                   <p><span className="font-semibold">Razón Social:</span> {unit.razonSocial}</p>
                   <p><span className="font-semibold">Dirección:</span> {unit.address}</p>
                   <p><span className="font-semibold">Teléfono:</span> {unit.phone}</p>
                 </CardContent>
-                <CardFooter className="flex justify-end space-x-2">
+                <CardFooter className="flex justify-end space-x-2 flex-wrap">
                   <Button
                     variant="ghost"
                     size="icon"
