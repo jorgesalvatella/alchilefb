@@ -1,23 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import type { SaleProduct, SaleCategory } from '@/lib/data';
+import StorageImage from '@/components/StorageImage';
 
 function ProductCard({ product }: { product: SaleProduct }) {
   return (
     <Card className="flex flex-col overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-lg group">
       <CardHeader className="p-0">
         <div className="relative h-48 w-full">
-          <Image
-            src={product.imageUrl || PlaceHolderImages.getRandomImage(product.name).imageUrl}
+          <StorageImage
+            filePath={product.imageUrl || PlaceHolderImages.getRandomImage(product.name).imageUrl}
             alt={product.name}
             fill
-            className="object-cover transition-transform duration-300 group-hover:scale-110"
+            objectFit="cover"
+            className="transition-transform duration-300 group-hover:scale-110"
           />
         </div>
       </CardHeader>
@@ -48,6 +49,10 @@ function ProductSkeleton() {
     </div>
   );
 }
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+// ... (ProductCard and ProductSkeleton remain the same)
 
 export default function MenuPage() {
   const [products, setProducts] = useState<SaleProduct[]>([]);
@@ -81,42 +86,49 @@ export default function MenuPage() {
     fetchMenuData();
   }, []);
 
-  const groupedProducts = categories.map(category => ({
-    ...category,
-    products: products.filter(p => p.categoriaVentaId === category.id),
-  })).filter(category => category.products.length > 0);
-
+  const groupedProducts = categories
+    .map(category => ({
+      ...category,
+      products: products.filter(p => p.categoriaVentaId === category.id),
+    }))
+    .filter(category => category.products.length > 0);
 
   const renderContent = () => {
     if (isLoading) {
       return (
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 mt-8">
           {Array.from({ length: 8 }).map((_, i) => <ProductSkeleton key={i} />)}
         </div>
       );
     }
 
     if (error) {
-      return <p className="text-center text-red-500">Error: {error}</p>;
+      return <p className="text-center text-red-500 mt-8">Error: {error}</p>;
     }
 
     if (groupedProducts.length === 0) {
-        return <p className="text-center text-gray-500">No hay productos disponibles en este momento.</p>;
+      return <p className="text-center text-gray-500 mt-8">No hay productos disponibles en este momento.</p>;
     }
 
     return (
-      <div className="space-y-12">
-        {groupedProducts.map((category) => (
-          <div key={category.id}>
-            <h2 className="mb-6 text-3xl font-bold tracking-tight">{category.name}</h2>
+      <Tabs defaultValue={groupedProducts[0].id} className="w-full mt-8">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {groupedProducts.map(category => (
+            <TabsTrigger key={category.id} value={category.id}>
+              {category.name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {groupedProducts.map(category => (
+          <TabsContent key={category.id} value={category.id} className="mt-6">
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {category.products.map((product) => (
+              {category.products.map(product => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
-          </div>
+          </TabsContent>
         ))}
-      </div>
+      </Tabs>
     );
   };
 

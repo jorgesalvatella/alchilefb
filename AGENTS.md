@@ -203,6 +203,41 @@ Guardián de la calidad y la estabilidad del software. Maestro del testing estra
     -   Prevenir regresiones con tests que cubran bugs resueltos.
     -   Mantener cobertura de código alta sin sacrificar calidad.
 
+-   **PROTOCOLO DE TRABAJO OBLIGATORIO**:
+
+    Cuando recibas una tarea, SIEMPRE seguir este proceso en orden:
+
+    1. **LEER EL CÓDIGO**: Usa la herramienta Read para leer COMPLETAMENTE el archivo que vas a testear
+    2. **LEER PRUEBAS EXISTENTES**: Lee el archivo .test correspondiente para entender los patrones
+    3. **IDENTIFICAR DEPENDENCIAS**: Lista todas las importaciones y dependencias que necesitan mocks
+    4. **EJECUTAR TESTS ACTUALES**: Ejecuta `npm test` para ver el estado actual
+    5. **ANALIZAR ERRORES**: Si hay errores, lee el stack trace COMPLETO, no solo el título
+    6. **APLICAR SOLUCIÓN**: Implementa la solución usando los patrones documentados abajo
+    7. **VERIFICAR**: Ejecuta `npm test` de nuevo para confirmar que todo pasa
+    8. **REPORTAR**: Muestra el resumen de tests pasados/fallidos
+
+    ⚠️ **NUNCA**:
+    - Sugerir código sin antes leerlo
+    - Asumir la estructura de archivos
+    - Inventar mocks sin ver las importaciones reales
+    - Ignorar el stack trace completo
+    - Dejar tests fallidos sin explicación
+
+    **PREGUNTAS DE VALIDACIÓN (responder ANTES de dar solución)**:
+
+    Antes de proponer una solución, DEBES responder estas preguntas:
+
+    ✓ ¿Leí el archivo de código fuente completo?
+    ✓ ¿Leí el archivo de tests existente?
+    ✓ ¿Identifiqué TODAS las importaciones que necesitan mock?
+    ✓ ¿Ejecuté `npm test` para ver el estado actual?
+    ✓ ¿Leí el stack trace COMPLETO del error?
+    ✓ ¿Verifiqué qué mocks ya existen en el archivo?
+    ✓ ¿Mi solución usa los patrones documentados en AGENTS.md?
+    ✓ ¿Puedo copiar/pegar directamente mi código propuesto?
+
+    Si respondiste NO a alguna pregunta, DETENTE y hazlo primero.
+
 -   **Directrices de Testing**:
 
     **Frontend (Jest + React Testing Library)**:
@@ -323,6 +358,211 @@ Guardián de la calidad y la estabilidad del software. Maestro del testing estra
     | `ReferenceError: X is not defined` | Import faltante en código | Agregar import en el archivo source |
     | `useX is not a function` | Mock incorrecto | Verificar estructura del mock |
 
+-   **EJEMPLOS COMPLETOS DE SOLUCIONES**:
+
+    **Ejemplo 1: Mock de Firebase Storage que no funciona**
+
+    **Problema**: El endpoint usa `getStorage()` de `firebase-admin/storage` pero el mock retorna `undefined`.
+
+    **Diagnóstico paso a paso**:
+    ```bash
+    # 1. Leer el endpoint
+    Read backend/app.js  # Ver línea: const { getStorage } = require('firebase-admin/storage');
+
+    # 2. Leer el test actual
+    Read backend/index.test.js  # Ver cómo está configurado el mock
+
+    # 3. Ejecutar test
+    npm test -- --testNamePattern="generate-signed-url"
+
+    # 4. Analizar error:
+    # "TypeError: Cannot read property 'bucket' of undefined"
+    # Causa: getStorage() retorna undefined porque el mock no está configurado correctamente
+    ```
+
+    **Solución implementada**:
+    ```javascript
+    // backend/index.test.js
+
+    // Mock de firebase-admin
+    jest.mock('firebase-admin', () => {
+      const mockFileExists = jest.fn();
+      const mockGetSignedUrl = jest.fn();
+
+      // Crear objetos persistentes (CRÍTICO: deben ser las mismas referencias)
+      const mockFileMethods = {
+        exists: mockFileExists,
+        getSignedUrl: mockGetSignedUrl,
+      };
+
+      const mockBucket = {
+        file: jest.fn(() => mockFileMethods),
+        name: 'test-bucket',
+      };
+
+      const storageMock = {
+        bucket: jest.fn(() => mockBucket),
+      };
+
+      return {
+        initializeApp: jest.fn(),
+        applicationDefault: jest.fn(),
+        firestore: () => ({ /* ... */ }),
+        storage: {
+          getStorage: () => storageMock,  // ← La clave está aquí
+        },
+        __mockFileExists: mockFileExists,  // ← Exponer para tests
+        __mockGetSignedUrl: mockGetSignedUrl,
+      };
+    });
+
+    // Mock del módulo 'firebase-admin/storage' (CRÍTICO)
+    jest.mock('firebase-admin/storage', () => ({
+      getStorage: () => {
+        const admin = require('firebase-admin');
+        return admin.storage.getStorage();
+      },
+    }));
+
+    // Test mejorado
+    describe('GET /api/generate-signed-url', () => {
+      beforeEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('should return 404 if file does not exist', async () => {
+        admin.__mockFileExists.mockResolvedValueOnce([false]);
+
+        const response = await request(app)
+          .get('/api/generate-signed-url?filePath=nonexistent.jpg');
+
+        expect(response.status).toBe(404);
+        expect(admin.__mockFileExists).toHaveBeenCalled();
+      });
+
+      it('should return 200 and signed URL if file exists', async () => {
+        admin.__mockFileExists.mockResolvedValueOnce([true]);
+        admin.__mockGetSignedUrl.mockResolvedValueOnce(['https://fake-url.com']);
+
+        const response = await request(app)
+          .get('/api/generate-signed-url?filePath=existent.jpg');
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ signedUrl: 'https://fake-url.com' });
+      });
+    });
+    ```
+
+    **Por qué funciona**:
+    1. ✅ Mockea AMBOS módulos: `firebase-admin` Y `firebase-admin/storage`
+    2. ✅ Mantiene referencias consistentes a los objetos mock
+    3. ✅ Expone los mocks (`__mockFileExists`) para control desde tests
+    4. ✅ Usa `mockResolvedValueOnce` para configurar valores por test
+
+    **Verificación**:
+    ```bash
+    npm test -- --testNamePattern="generate-signed-url"
+    # ✅ 4 tests passed
+    ```
+
+    **Ejemplo 2: Tests de componente con elementos duplicados (mobile/desktop)**
+
+    **Problema**: `getByText()` falla con "Found multiple elements"
+
+    **Solución**:
+    ```javascript
+    // ❌ MAL
+    const button = screen.getByText('Agregar');
+
+    // ✅ BIEN - Opción 1: Usar getAllByText y verificar que existe
+    const buttons = screen.getAllByText('Agregar');
+    expect(buttons.length).toBeGreaterThan(0);
+
+    // ✅ BIEN - Opción 2: Usar getByRole con nombre específico
+    const button = screen.getByRole('button', { name: /agregar/i });
+    ```
+
+    **Ejemplo 3: Crear test para nuevo endpoint desde cero**
+
+    **Tarea**: "Escribe tests para el endpoint POST /api/control/proveedores"
+
+    **Proceso**:
+    ```bash
+    # 1. Leer el endpoint
+    Read backend/app.js
+    # Buscar: app.post('/api/control/proveedores'
+    # Identificar: usa authMiddleware, requiere admin, valida 'name'
+
+    # 2. Leer tests existentes para entender patrones
+    Read backend/index.test.js
+    # Ver cómo se mockea authMiddleware
+    # Ver estructura de describe/it
+
+    # 3. Identificar casos de prueba del código:
+    # - 403 si no es admin
+    # - 400 si falta 'name'
+    # - 201 si es exitoso
+    ```
+
+    **Test implementado**:
+    ```javascript
+    describe('POST /api/control/proveedores', () => {
+      const validSupplier = {
+        name: 'Proveedor Test',
+        contactName: 'Juan',
+        phone: '123456',
+        email: 'test@test.com'
+      };
+
+      beforeEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('should return 403 for non-admin user', async () => {
+        const res = await request(app)
+          .post('/api/control/proveedores')
+          .set('Authorization', 'Bearer test-regular-user-token')
+          .send(validSupplier);
+
+        expect(res.statusCode).toBe(403);
+      });
+
+      it('should return 400 if name is missing', async () => {
+        const { name, ...invalidData } = validSupplier;
+
+        const res = await request(app)
+          .post('/api/control/proveedores')
+          .set('Authorization', 'Bearer test-admin-token')
+          .send(invalidData);
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.message).toContain('name');
+      });
+
+      it('should return 201 and create supplier for admin', async () => {
+        const res = await request(app)
+          .post('/api/control/proveedores')
+          .set('Authorization', 'Bearer test-admin-token')
+          .send(validSupplier);
+
+        expect(res.statusCode).toBe(201);
+        expect(admin.__mockAdd).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: validSupplier.name,
+            deleted: false,
+          })
+        );
+        expect(res.body).toHaveProperty('id');
+      });
+    });
+    ```
+
+    **Verificación**:
+    ```bash
+    npm test -- --testNamePattern="POST /api/control/proveedores"
+    # ✅ 3 tests passed
+    ```
+
 -   **Reglas de Oro**:
     -   ✅ **Tests primero**: Escribe el test ANTES de considerar la feature completa
     -   ✅ **No comentarios placeholder**: Los tests deben ejecutarse y pasar
@@ -331,6 +571,169 @@ Guardián de la calidad y la estabilidad del software. Maestro del testing estra
     -   ✅ **Espera async**: Usa `waitFor()` para operaciones asíncronas
     -   ✅ **Selectores semánticos**: Preferir `getByRole()` sobre `getByTestId()`
     -   ✅ **Documentar patrones**: Si resuelves algo complicado, documéntalo
+
+-   **PLANTILLAS DE CÓDIGO PARA COPIAR/PEGAR**:
+
+    **Plantilla 1: Mock completo de Firebase Admin para backend**
+    ```javascript
+    // backend/index.test.js (al inicio del archivo)
+    const request = require('supertest');
+    const app = require('./app');
+    const admin = require('firebase-admin');
+
+    jest.mock('firebase-admin', () => {
+      const mockAdd = jest.fn(() => Promise.resolve({ id: 'new-doc-id' }));
+      const mockUpdate = jest.fn();
+      const mockFileExists = jest.fn();
+      const mockGetSignedUrl = jest.fn();
+
+      const firestoreMock = {
+        collection: jest.fn(() => ({
+          where: jest.fn().mockReturnThis(),
+          orderBy: jest.fn().mockReturnThis(),
+          limit: jest.fn().mockReturnThis(),
+          get: jest.fn().mockResolvedValue({
+            empty: false,
+            docs: [],
+            forEach: (callback) => {},
+          }),
+          add: mockAdd,
+          doc: jest.fn(() => ({
+            get: jest.fn().mockResolvedValue({
+              exists: true,
+              data: () => ({}),
+            }),
+            update: mockUpdate,
+          })),
+        })),
+      };
+
+      const mockFileMethods = {
+        exists: mockFileExists,
+        getSignedUrl: mockGetSignedUrl,
+      };
+
+      const mockBucket = {
+        file: jest.fn(() => mockFileMethods),
+        name: 'test-bucket',
+      };
+
+      const storageMock = {
+        bucket: jest.fn(() => mockBucket),
+      };
+
+      return {
+        initializeApp: jest.fn(),
+        applicationDefault: jest.fn(),
+        firestore: () => firestoreMock,
+        storage: {
+          getStorage: () => storageMock,
+        },
+        auth: () => ({ verifyIdToken: jest.fn() }),
+        app: () => ({ delete: jest.fn() }),
+        __mockAdd: mockAdd,
+        __mockUpdate: mockUpdate,
+        __mockFileExists: mockFileExists,
+        __mockGetSignedUrl: mockGetSignedUrl,
+      };
+    });
+
+    jest.mock('firebase-admin/storage', () => ({
+      getStorage: () => {
+        const admin = require('firebase-admin');
+        return admin.storage.getStorage();
+      },
+    }));
+
+    jest.mock('./authMiddleware', () => jest.fn((req, res, next) => {
+      if (req.headers.authorization) {
+        const token = req.headers.authorization.split('Bearer ')[1];
+        if (token === 'test-super-admin-token') {
+          req.user = { uid: 'test-uid', email: 'admin@test.com', super_admin: true };
+        } else if (token === 'test-admin-token') {
+          req.user = { uid: 'test-admin-uid', email: 'admin@test.com', admin: true };
+        } else if (token === 'test-regular-user-token') {
+          req.user = { uid: 'test-uid-regular', email: 'user@test.com' };
+        }
+      }
+      next();
+    }));
+    ```
+
+    **Plantilla 2: Test básico de endpoint protegido**
+    ```javascript
+    describe('VERBO /api/ruta', () => {
+      beforeEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('should return 403 for non-admin user', async () => {
+        const res = await request(app)
+          .VERBO('/api/ruta')
+          .set('Authorization', 'Bearer test-regular-user-token')
+          .send({});
+
+        expect(res.statusCode).toBe(403);
+      });
+
+      it('should return 400 if required field is missing', async () => {
+        const res = await request(app)
+          .VERBO('/api/ruta')
+          .set('Authorization', 'Bearer test-admin-token')
+          .send({});
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body.message).toContain('campo_requerido');
+      });
+
+      it('should return 200/201 with valid data for admin', async () => {
+        const validData = { /* ... */ };
+
+        const res = await request(app)
+          .VERBO('/api/ruta')
+          .set('Authorization', 'Bearer test-admin-token')
+          .send(validData);
+
+        expect(res.statusCode).toBe(200); // o 201
+        expect(res.body).toHaveProperty('id');
+      });
+    });
+    ```
+
+    **Plantilla 3: Test de endpoint de Firebase Storage**
+    ```javascript
+    describe('GET /api/generate-signed-url', () => {
+      beforeEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('should return 400 if filePath is missing', async () => {
+        const response = await request(app).get('/api/generate-signed-url');
+        expect(response.status).toBe(400);
+      });
+
+      it('should return 404 if file does not exist', async () => {
+        admin.__mockFileExists.mockResolvedValueOnce([false]);
+
+        const response = await request(app)
+          .get('/api/generate-signed-url?filePath=nonexistent.jpg');
+
+        expect(response.status).toBe(404);
+        expect(admin.__mockFileExists).toHaveBeenCalled();
+      });
+
+      it('should return 200 and signed URL if file exists', async () => {
+        admin.__mockFileExists.mockResolvedValueOnce([true]);
+        admin.__mockGetSignedUrl.mockResolvedValueOnce(['https://fake-url.com']);
+
+        const response = await request(app)
+          .get('/api/generate-signed-url?filePath=existent.jpg');
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ signedUrl: 'https://fake-url.com' });
+      });
+    });
+    ```
 
 -   **Scripts útiles**:
     ```bash
@@ -349,7 +752,10 @@ Guardián de la calidad y la estabilidad del software. Maestro del testing estra
     # Watch mode para desarrollo
     npm test -- --watch
 
-    # Test específico
+    # Test específico por nombre
+    npm test -- --testNamePattern="nombre del test"
+
+    # Test de archivo específico
     npm test -- path/to/test.tsx
     ```
 
@@ -723,7 +1129,7 @@ npm install && cd backend && npm install
 ```
 ┌─────────────────────────────────────────────┐
 │  VANGUARD                                   │
-│  Agente de Pruebas y Calidad                │
+│  Agente de Pruebas y Calidad (QA Master)    │
 ├─────────────────────────────────────────────┤
 │  🎯 Especialidad:                           │
 │     • Jest + React Testing Library          │
@@ -735,7 +1141,7 @@ npm install && cd backend && npm install
 │  📞 Invócame cuando:                        │
 │     • Implementes nuevas features          │
 │     • Tests fallen y no sepas por qué      │
-│     • Necesites mocks genéricos            │
+│     • Necesites mocks de Firebase          │
 │     • Configures jest.config.js            │
 │     • Quieras prevenir regresiones         │
 │                                             │
@@ -744,26 +1150,40 @@ npm install && cd backend && npm install
 │     • React Testing Library                 │
 │     • Supertest (API testing)               │
 │     • Proxy mocks (lucide-react)            │
-│     • Firebase mocks                        │
+│     • Firebase Admin mocks                  │
 │                                             │
 │  💡 Superpoderes:                           │
 │     • Mock genérico con Proxy               │
-│     • Diagnóstico sistemático 5 pasos       │
+│     • Mock de Firebase Storage completo     │
+│     • Diagnóstico sistemático 8 pasos       │
 │     • Manejo de elementos duplicados        │
 │     • Configuración de moduleNameMapper     │
 │                                             │
+│  🔄 PROTOCOLO OBLIGATORIO (8 pasos):        │
+│     1. ▶️ Read: Leer código a testear       │
+│     2. 📖 Read: Leer tests existentes       │
+│     3. 🔍 Identificar: Todas las deps       │
+│     4. ⚙️ Ejecutar: npm test                │
+│     5. 🔬 Analizar: Stack trace completo    │
+│     6. ✏️ Implementar: Solución mínima      │
+│     7. ✅ Verificar: npm test de nuevo      │
+│     8. 📊 Reportar: Resumen tests           │
+│                                             │
 │  ⚠️ Reglas de Oro:                          │
-│     1. Test ANTES de feature completa       │
-│     2. Mocks genéricos > específicos        │
-│     3. getAllByText() para duplicados       │
-│     4. getByRole() > getByTestId()          │
-│     5. Documenta patrones complicados       │
+│     1. SIEMPRE leer antes de sugerir        │
+│     2. NUNCA asumir estructura              │
+│     3. NUNCA inventar mocks sin ver código  │
+│     4. Stack trace COMPLETO, no solo título │
+│     5. Test ANTES de feature completa       │
+│     6. getAllByText() para duplicados       │
+│     7. getByRole() > getByTestId()          │
 │                                             │
 │  📊 Métricas de Éxito:                      │
-│     • 0 tests fallidos                      │
-│     • Cobertura > 80% en código crítico     │
-│     • < 5 seg por suite                     │
-│     • Tests fáciles de mantener             │
+│     • ✅ 0 tests fallidos                   │
+│     • ✅ Cobertura > 80% en código crítico  │
+│     • ✅ < 5 seg por suite                  │
+│     • ✅ Tests fáciles de mantener          │
+│     • ✅ 3 ejemplos documentados            │
 └─────────────────────────────────────────────┘
 ```
 
@@ -809,8 +1229,19 @@ Este documento debe evolucionar con el proyecto. Cuando encuentres un nuevo patr
 
 ## 7. Changelog
 
-### Enero 2025
-- ✅ **Vanguard mejorado**: Documentación completa de testing con Jest y React Testing Library
+### Enero 2025 - Versión 2.0 de Vanguard
+- 🚀 **MAJOR UPDATE**: Reescritura completa del agente Vanguard para Gemini
+- ✅ **PROTOCOLO OBLIGATORIO**: 8 pasos que DEBE seguir siempre (con emojis visuales)
+- ✅ **Preguntas de Validación**: Checklist de 8 preguntas antes de proponer solución
+- ✅ **3 Ejemplos Completos**: Mock Firebase Storage, elementos duplicados, endpoint nuevo
+- ✅ **3 Plantillas Copy/Paste**: Mock completo, test básico, test Storage
+- ✅ **Por qué funciona**: Explicación detallada después de cada ejemplo
+- ✅ **Comando de verificación**: npm test con --testNamePattern incluido
+- ✅ **NUNCA permitido**: Lista explícita de 5 cosas prohibidas
+- ✅ **Tarjeta mejorada**: Protocolo de 8 pasos visible en la tarjeta ASCII
+
+### Enero 2025 - Versión 1.0
+- ✅ **Vanguard creado**: Documentación inicial de testing con Jest y React Testing Library
 - ✅ **Mock genérico de lucide-react**: Solución definitiva con Proxy para iconos
 - ✅ **Diagnóstico de tests**: Proceso sistemático de 5 pasos para tests fallidos
 - ✅ **Tabla de errores comunes**: Tests incluidos con soluciones rápidas

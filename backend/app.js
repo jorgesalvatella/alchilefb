@@ -1990,59 +1990,49 @@ app.get('/api/categorias-venta', async (req, res) => {
         
 
         app.get('/api/generate-signed-url', async (req, res) => {
-
           const { filePath } = req.query;
 
-        
-
           if (!filePath) {
-
             return res.status(400).send('Missing required query parameter: filePath');
-
           }
-
-        
 
           try {
-
             const bucket = getStorage().bucket();
-
             const file = bucket.file(filePath);
 
-        
-
+            // Verify file exists
             const [exists] = await file.exists();
-
             if (!exists) {
-
               return res.status(404).send('File not found');
-
             }
 
-        
+            // Generate a download token (works without service account JSON)
+            const [metadata] = await file.getMetadata();
 
-            const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+            // If file already has a downloadToken, use it
+            let token = metadata.metadata?.firebaseStorageDownloadTokens;
 
-            const [signedUrl] = await file.getSignedUrl({
+            // If no token exists, create one
+            if (!token) {
+              const crypto = require('crypto');
+              token = crypto.randomUUID();
 
-              action: 'read',
+              await file.setMetadata({
+                metadata: {
+                  firebaseStorageDownloadTokens: token
+                }
+              });
+            }
 
-              expires: expiresAt,
+            // Build the public URL with token
+            const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(filePath)}?alt=media&token=${token}`;
 
-            });
-
-        
-
-            res.status(200).json({ signedUrl });
+            res.status(200).json({ signedUrl: publicUrl });
 
           } catch (error) {
-
             console.error('Error generating signed URL:', error);
-
             res.status(500).send('Internal Server Error');
-
           }
-
         });
 
         
