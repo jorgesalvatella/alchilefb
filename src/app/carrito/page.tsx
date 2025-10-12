@@ -1,59 +1,17 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { MinusCircle, PlusCircle, Trash2, ShoppingCart } from 'lucide-react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-
-// TODO: Reemplazar esto con un hook de estado global (Zustand, Context, etc.)
-const mockCartItems = [
-  {
-    id: '1',
-    name: 'Taco de Pastor',
-    description: 'Carne de cerdo marinada, piña, cilantro y cebolla.',
-    price: 25,
-    imageUrl: PlaceHolderImages.getRandomImage('Taco de Pastor').imageUrl,
-    quantity: 2,
-  },
-  {
-    id: '2',
-    name: 'Agua de Horchata',
-    description: 'Bebida refrescante de arroz con canela.',
-    price: 20,
-    imageUrl: PlaceHolderImages.getRandomImage('Agua de Horchata').imageUrl,
-    quantity: 1,
-  },
-];
+import { useCart } from '@/context/cart-context';
+import StorageImage from '@/components/StorageImage';
 
 export default function CartPage() {
-  // TODO: Este estado debe venir de un hook global
-  const [cartItems, setCartItems] = useState(mockCartItems);
-
-  const handleQuantityChange = (id: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-    setCartItems(
-      cartItems.map((item) =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      )
-    );
-  };
-
-  const handleRemoveItem = (id: string) => {
-    setCartItems(cartItems.filter((item) => item.id !== id));
-  };
-
-  const subtotal = cartItems.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0
-  );
-  
-  // TODO: Calcular impuestos y envío en una fase posterior
-  const total = subtotal;
+  const { cartItems, updateQuantity, removeFromCart, subtotal, tax, total } = useCart();
 
   if (cartItems.length === 0) {
     return (
@@ -88,13 +46,14 @@ export default function CartPage() {
             <CardContent className="space-y-6">
               {cartItems.map((item) => (
                 <div key={item.id} className="flex items-start space-x-4">
-                  <Image
-                    src={item.imageUrl}
-                    alt={item.name}
-                    width={80}
-                    height={80}
-                    className="rounded-md object-cover"
-                  />
+                  <div className="relative h-20 w-20 flex-shrink-0">
+                    <StorageImage
+                      filePath={item.imageUrl}
+                      alt={item.name}
+                      fill
+                      className="rounded-md object-cover"
+                    />
+                  </div>
                   <div className="flex-1">
                     <h3 className="font-semibold">{item.name}</h3>
                     <p className="text-sm text-gray-500">${item.price.toFixed(2)}</p>
@@ -102,20 +61,20 @@ export default function CartPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
                       >
                         <MinusCircle className="h-5 w-5" data-testid="minus-circle-icon" />
                       </Button>
                       <Input
                         type="number"
                         value={item.quantity}
-                        onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value, 10) || 1)}
+                        onChange={(e) => updateQuantity(item.id, parseInt(e.target.value, 10) || 1)}
                         className="w-16 text-center"
                       />
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
                       >
                         <PlusCircle className="h-5 w-5" data-testid="plus-circle-icon" />
                       </Button>
@@ -127,7 +86,7 @@ export default function CartPage() {
                       variant="ghost"
                       size="icon"
                       className="mt-2 text-gray-500 hover:text-red-500"
-                      onClick={() => handleRemoveItem(item.id)}
+                      onClick={() => removeFromCart(item.id)}
                     >
                       <Trash2 className="h-5 w-5" data-testid="trash-2-icon" />
                     </Button>
@@ -149,8 +108,8 @@ export default function CartPage() {
                 <span>${subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-gray-500">
-                <span>Envío</span>
-                <span>Calculado al pagar</span>
+                <span>IVA (16%)</span>
+                <span>${tax.toFixed(2)}</span>
               </div>
               <Separator />
               <div className="flex justify-between text-xl font-bold">

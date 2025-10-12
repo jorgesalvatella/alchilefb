@@ -16,6 +16,7 @@ const customJestConfig = {
     '^@/firebase/(.*)$': '<rootDir>/src/firebase/$1',
     '^@/lib/(.*)$': '<rootDir>/src/lib/$1',
     '^@/hooks/(.*)$': '<rootDir>/src/hooks/$1',
+    '^@/context/(.*)$': '<rootDir>/src/context/$1',
     // Handle CSS imports
     '\\.css$': 'identity-obj-proxy',
   },

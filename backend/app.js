@@ -2266,6 +2266,50 @@ app.put('/api/me/addresses/set-default/:id', authMiddleware, async (req, res) =>
   }
 });
 
+// --- Cart Verification ---
+const TAX_RATE = 0.16;
+
+app.post('/api/cart/verify-totals', async (req, res) => {
+  const { items } = req.body;
+
+  if (!items || !Array.isArray(items)) {
+    return res.status(400).json({ message: 'Missing or invalid items array' });
+  }
+
+  try {
+    let calculatedTotal = 0;
+
+    for (const item of items) {
+      if (!item.id || !item.quantity) {
+        return res.status(400).json({ message: `Invalid item in cart: ${JSON.stringify(item)}` });
+      }
+      
+      const productRef = db.collection('productosDeVenta').doc(item.id);
+      const doc = await productRef.get();
+
+      if (!doc.exists) {
+        return res.status(404).json({ message: `Product with ID ${item.id} not found.` });
+      }
+
+      const productData = doc.data();
+      calculatedTotal += productData.price * item.quantity;
+    }
+
+    const subtotal = calculatedTotal / (1 + TAX_RATE);
+    const tax = calculatedTotal - subtotal;
+
+    res.status(200).json({
+      total: calculatedTotal,
+      subtotal,
+      tax,
+    });
+
+  } catch (error) {
+    console.error('Error verifying cart totals:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
 
 module.exports = app;
 
