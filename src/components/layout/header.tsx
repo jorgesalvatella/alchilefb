@@ -116,10 +116,17 @@ function AdminMenu({ userRole }: { userRole: string }) {
   );
 }
 
+import { useCart } from '@/context/cart-context';
+
+// ... (other imports remain the same)
+
+// ... (UserNav and AdminMenu components remain the same)
+
 export function Header() {
   const [isSheetOpen, setSheetOpen] = useState(false);
   const isMobile = useIsMobile();
   const { user } = useUser();
+  const { itemCount } = useCart(); // Use the cart context
   const [userRole, setUserRole] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
@@ -227,7 +234,11 @@ export function Header() {
               <Link href="/carrito">
                 <ShoppingCart />
                 <span className="sr-only">Carrito</span>
-                {/* <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-xs font-bold">3</div> */}
+                {itemCount > 0 && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-xs font-bold">
+                    {itemCount}
+                  </div>
+                )}
               </Link>
             </Button>
           </div>

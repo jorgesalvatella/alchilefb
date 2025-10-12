@@ -8,7 +8,11 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import type { SaleProduct, SaleCategory } from '@/lib/data';
 import StorageImage from '@/components/StorageImage';
 
+import { useCart } from '@/context/cart-context';
+
 function ProductCard({ product }: { product: SaleProduct }) {
+  const { addToCart } = useCart();
+
   return (
     <Card className="flex flex-col overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-lg group">
       <CardHeader className="p-0">
@@ -28,7 +32,10 @@ function ProductCard({ product }: { product: SaleProduct }) {
         <p className="mt-4 text-xl font-semibold">${product.price.toFixed(2)}</p>
       </CardContent>
       <CardFooter className="p-4 pt-0">
-        <Button className="w-full bg-fresh-green text-black hover:bg-fresh-green/80">
+        <Button
+          onClick={() => addToCart(product)}
+          className="w-full bg-fresh-green text-black hover:bg-fresh-green/80"
+        >
           Añadir al Carrito
         </Button>
       </CardFooter>

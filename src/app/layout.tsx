@@ -1,40 +1,34 @@
-import { Roboto as FontSans } from "next/font/google"
-import './globals.css'
+import { Roboto } from 'next/font/google';
+import './globals.css';
+import { CartProvider } from '@/context/cart-context';
+import { Footer } from '@/components/layout/footer';
+import { Header } from '@/components/layout/header';
+import { Toaster } from '@/components/ui/toaster';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 
-import { cn } from "@/lib/utils"
-import { Toaster } from "@/components/ui/toaster"
-import { FirebaseProvider } from '@/firebase/provider'
-import { FirebaseClientProvider } from '@/firebase/client-provider'
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
-import FirebaseErrorListener from '@/components/FirebaseErrorListener'
-
-const fontSans = FontSans({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  weight: ["400", "500", "700"],
-})
+const roboto = Roboto({
+  subsets: ['latin'],
+  weight: ['400', '700', '900'],
+  variable: '--font-sans',
+});
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="es" suppressHydrationWarning className="dark">
+    <html lang="en" className="dark">
       <body
-        className={cn(
-          "min-h-screen bg-background font-sans antialiased",
-          fontSans.variable
-        )}
+        className={`${roboto.variable} font-sans bg-black text-white`}
       >
         <FirebaseClientProvider>
-          <div className="relative flex min-h-dvh flex-col">
+          <CartProvider>
             <Header />
-            <main className="flex-1 pt-24">{children}</main>
+            <main className="min-h-screen">{children}</main>
             <Footer />
-          </div>
-          <Toaster />
+            <Toaster />
+          </CartProvider>
         </FirebaseClientProvider>
       </body>
     </html>
