@@ -2,7 +2,9 @@ const admin = require('firebase-admin');
 
 // Initialize the app. When running in a Google Cloud environment like Cloud Shell,
 // the SDK automatically finds the project credentials.
-admin.initializeApp();
+admin.initializeApp({
+  projectId: 'studio-9824031244-700aa',
+});
 
 // --- Get the UID from command-line arguments ---
 const targetUid = process.argv[2];

@@ -47,6 +47,16 @@ jest.mock('@radix-ui/react-focus-scope', () => {
   };
 });
 
+// Mock de @radix-ui/react-portal para que renderice inline en lugar de usar portales
+// Esto es necesario para que las opciones del Select sean accesibles en las pruebas
+jest.mock('@radix-ui/react-portal', () => {
+  const actual = jest.requireActual('@radix-ui/react-portal');
+  return {
+    ...actual,
+    Portal: ({ children }) => children,
+  };
+});
+
 // Mock genérico para lucide-react que captura CUALQUIER ícono
 jest.mock('lucide-react', () => {
   return new Proxy(
