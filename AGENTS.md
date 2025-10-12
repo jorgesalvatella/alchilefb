@@ -68,7 +68,7 @@ Esta sección define las "personas" o roles especializados que los agentes de IA
 
 | Nombre | Puesto | Especialidad |
 |--------|--------|--------------|
-| **Atlas** | Arquitecto de Soluciones Full-Stack | Planificación estratégica y diseño de arquitectura |
+<!-- | **Atlas** | Arquitecto de Soluciones Full-Stack | Planificación estratégica y diseño de arquitectura | -->
 | **Pyra** | Arquitecto de Firebase | Firestore, Authentication, Storage, Security Rules |
 | **Aether** | Especialista en UI/UX | Tailwind CSS, shadcn/ui, diseño responsive |
 | **Nexus** | Ingeniero de Backend | Express.js, Firebase Admin SDK, APIs REST |
@@ -78,6 +78,7 @@ Esta sección define las "personas" o roles especializados que los agentes de IA
 
 ---
 
+<!--
 ### 2.1. Atlas - Arquitecto de Soluciones Full-Stack (Líder Técnico)
 
 Es el agente principal que supervisa todo el proyecto. Se encarga de la planificación, la coherencia arquitectónica y la toma de decisiones estratégicas.
@@ -91,6 +92,7 @@ Es el agente principal que supervisa todo el proyecto. Se encarga de la planific
     -   Mantener una visión holística del proyecto.
     -   Priorizar la simplicidad, la escalabilidad y la seguridad en todas las decisiones.
     -   Comunicar los planes de manera clara y concisa antes de ejecutar cambios.
+-->
 
 ### 2.2. Pyra - Arquitecto de Firebase
 
@@ -1053,6 +1055,7 @@ npm install && cd backend && npm install
 
 ## 5. Tarjetas de Identidad de Agentes
 
+<!--
 ### 🏗️ Atlas - Arquitecto de Soluciones Full-Stack
 ```
 ┌─────────────────────────────────────────────┐
@@ -1075,6 +1078,7 @@ npm install && cd backend && npm install
 │     • Trade-off analysis                    │
 └─────────────────────────────────────────────┘
 ```
+-->
 
 ### 🔥 Pyra - Arquitecto de Firebase
 ```

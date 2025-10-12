@@ -104,20 +104,17 @@ app.post('/api/control/productos-venta/upload-image', authMiddleware, requireAdm
       },
     });
 
-    // Set ACL to make file public using setMetadata
+    // Generate a download token to create a public URL
+    const crypto = require('crypto');
+    const token = crypto.randomUUID();
     await fileRef.setMetadata({
       metadata: {
-        firebaseStorageDownloadTokens: '', // Remove Firebase token requirement
-      },
+        firebaseStorageDownloadTokens: token,
+      }
     });
 
-    // Make public using ACL
-    await fileRef.acl.add({
-      entity: 'allUsers',
-      role: 'READER',
-    });
-
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileRef.name}`;
+    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileRef.name)}?alt=media&token=${token}`;
+    
     res.status(200).send({ url: publicUrl });
   } catch (error) {
     console.error('Error uploading product image:', error);
@@ -1933,6 +1930,8 @@ app.get('/api/menu', async (req, res) => {
 
     try {
 
+        console.log('[/api/menu] Fetching products...');
+
         const snapshot = await db.collection('productosDeVenta')
 
             .where('deletedAt', '==', null)
@@ -1943,15 +1942,30 @@ app.get('/api/menu', async (req, res) => {
 
             .get();
 
-        const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('[/api/menu] Found', snapshot.size, 'products');
+
+        const products = snapshot.docs.map(doc => {
+            const data = doc.data();
+            // Convert Firestore Timestamps to ISO strings for JSON serialization
+            return {
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+                updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+                deletedAt: data.deletedAt?.toDate ? data.deletedAt.toDate().toISOString() : data.deletedAt,
+            };
+        });
+
+        console.log('[/api/menu] Sending response with', products.length, 'products');
 
         res.status(200).json(products);
 
     } catch (error) {
 
-        console.error("Error fetching menu:", error);
+        console.error("[/api/menu] Error fetching menu:", error);
+        console.error("[/api/menu] Error stack:", error.stack);
 
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ message: 'Internal Server Error', error: error.message });
 
     }
 
@@ -2267,46 +2281,84 @@ app.put('/api/me/addresses/set-default/:id', authMiddleware, async (req, res) =>
 });
 
 // --- Cart Verification ---
-const TAX_RATE = 0.16;
-
-app.post('/api/cart/verify-totals', authMiddleware, async (req, res) => {
+app.post('/api/cart/verify-totals', async (req, res) => {
   const { items } = req.body;
 
   if (!items || !Array.isArray(items)) {
-    return res.status(400).json({ message: 'Missing or invalid items array' });
+    return res.status(400).json({ message: 'Request body must contain an array of items.' });
   }
 
   try {
-    let calculatedTotal = 0;
+    let grandSubtotal = 0;
+    let grandTotal = 0;
+    const detailedItems = [];
 
     for (const item of items) {
-      if (!item.id || !item.quantity) {
+      if (!item.productId || !item.quantity) {
         return res.status(400).json({ message: `Invalid item in cart: ${JSON.stringify(item)}` });
       }
-      
-      const productRef = db.collection('productosDeVenta').doc(item.id);
-      const doc = await productRef.get();
 
-      if (!doc.exists) {
-        return res.status(404).json({ message: `Product with ID ${item.id} not found.` });
+      const productRef = db.collection('productosDeVenta').doc(item.productId);
+      const docSnap = await productRef.get();
+
+      if (!docSnap.exists) {
+        return res.status(400).json({ message: `Producto con ID ${item.productId} no encontrado.` });
       }
 
-      const productData = doc.data();
-      calculatedTotal += productData.price * item.quantity;
+      const productData = docSnap.data();
+      let itemSubtotal = productData.basePrice || 0;
+      let itemTotal = productData.price || 0;
+      let customName = productData.name;
+      const addedCustomizations = [];
+
+      // Handle added ingredients securely from DB
+      if (item.customizations && item.customizations.added && Array.isArray(item.customizations.added)) {
+        for (const addedName of item.customizations.added) {
+          const extra = (productData.ingredientesExtra || []).find(e => e.nombre === addedName);
+          if (extra && extra.precio) {
+            const extraPrice = parseFloat(extra.precio);
+            // If the main product is taxable, assume extras are too.
+            const extraBasePrice = productData.isTaxable ? extraPrice / 1.16 : extraPrice;
+            itemSubtotal += extraBasePrice;
+            itemTotal += extraPrice;
+            addedCustomizations.push(extra.nombre);
+          }
+        }
+      }
+      
+      if (addedCustomizations.length > 0) {
+        customName = `${productData.name} (+ ${addedCustomizations.join(', ')})`;
+      }
+
+      const finalItemSubtotal = itemSubtotal * item.quantity;
+      const finalItemTotal = itemTotal * item.quantity;
+
+      grandSubtotal += finalItemSubtotal;
+      grandTotal += finalItemTotal;
+
+      detailedItems.push({
+        ...item,
+        name: customName,
+        subtotalItem: finalItemSubtotal,
+        totalItem: finalItemTotal,
+        removed: (item.customizations && item.customizations.removed) || [],
+      });
     }
 
-    const subtotal = calculatedTotal / (1 + TAX_RATE);
-    const tax = calculatedTotal - subtotal;
+    const ivaDesglosado = grandTotal - grandSubtotal;
 
     res.status(200).json({
-      total: calculatedTotal,
-      subtotal,
-      tax,
+      items: detailedItems,
+      summary: {
+        subtotalGeneral: grandSubtotal,
+        ivaDesglosado: ivaDesglosado,
+        totalFinal: grandTotal,
+      },
     });
 
   } catch (error) {
-    console.error('Error verifying cart totals:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error("Error verifying cart totals:", error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 });
 

@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
@@ -16,7 +16,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import { Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { SaleProduct, BusinessUnit, Department, SaleCategory } from '@/lib/data';
+import type { SaleProduct } from '@/lib/types';
+import type { BusinessUnit, Department, SaleCategory } from '@/lib/data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const formSchema = z.object({
@@ -31,6 +32,8 @@ const formSchema = z.object({
   businessUnitId: z.string().min(1, { message: 'Debes seleccionar una unidad de negocio.' }),
   departmentId: z.string().min(1, { message: 'Debes seleccionar un departamento.' }),
   categoriaVentaId: z.string().min(1, { message: 'Debes seleccionar una categoría de venta.' }),
+  ingredientesBase: z.string().optional(),
+  ingredientesExtra: z.string().optional(),
 });
 
 type SaleProductFormProps = {
@@ -52,10 +55,6 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
   const [isLoadingDepts, setIsLoadingDepts] = useState(false);
   const [isLoadingCats, setIsLoadingCats] = useState(false);
 
-  // Flags to prevent clearing fields during initial load (edit mode)
-  const isBusinessUnitInitialLoad = useRef(true);
-  const isDepartmentInitialLoad = useRef(true);
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: product ? {
@@ -63,12 +62,16 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
         price: product.price || 0,
         cost: product.cost || 0,
         platformFeePercent: product.platformFeePercent || 0,
+        ingredientesBase: (product.ingredientesBase || []).join(', '),
+        ingredientesExtra: (product.ingredientesExtra || []).map(e => `${e.nombre}:${e.precio}`).join(', '),
     } : {
       name: '', price: 0, description: '', imageUrl: '', isAvailable: true, isTaxable: true,
       cost: 0, platformFeePercent: 0, businessUnitId: '', departmentId: '', categoriaVentaId: '',
+      ingredientesBase: '', ingredientesExtra: '',
     },
   });
 
+  // Effects for fetching dependent dropdowns...
   useEffect(() => {
     const fetchBusinessUnits = async () => {
       if (!user) return;
@@ -89,18 +92,12 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
   const selectedBusinessUnitId = form.watch('businessUnitId');
   useEffect(() => {
     const fetchDepartments = async () => {
-      if (!user || !selectedBusinessUnitId) return;
-      setIsLoadingDepts(true);
-      setDepartments([]); setSaleCategories([]);
-
-      // Only clear child fields if this is NOT the initial load (user manually changed selection)
-      if (!isBusinessUnitInitialLoad.current) {
-        if (form.getValues('departmentId')) form.setValue('departmentId', '');
-        if (form.getValues('categoriaVentaId')) form.setValue('categoriaVentaId', '');
-      } else {
-        isBusinessUnitInitialLoad.current = false; // After first run, future changes are user-initiated
+      if (!user || !selectedBusinessUnitId) {
+        setDepartments([]);
+        setSaleCategories([]);
+        return;
       }
-
+      setIsLoadingDepts(true);
       try {
         const token = await user.getIdToken();
         const res = await fetch(`/api/control/unidades-de-negocio/${selectedBusinessUnitId}/departamentos`, { headers: { Authorization: `Bearer ${token}` } });
@@ -112,23 +109,17 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
         setIsLoadingDepts(false);
       }
     };
-    if (selectedBusinessUnitId) fetchDepartments();
-  }, [selectedBusinessUnitId, user, toast, form]);
+    fetchDepartments();
+  }, [selectedBusinessUnitId, user, toast]);
 
   const selectedDepartmentId = form.watch('departmentId');
   useEffect(() => {
     const fetchSaleCategories = async () => {
-      if (!user || !selectedDepartmentId) return;
-      setIsLoadingCats(true);
-      setSaleCategories([]);
-
-      // Only clear child fields if this is NOT the initial load (user manually changed selection)
-      if (!isDepartmentInitialLoad.current) {
-        if (form.getValues('categoriaVentaId')) form.setValue('categoriaVentaId', '');
-      } else {
-        isDepartmentInitialLoad.current = false; // After first run, future changes are user-initiated
+      if (!user || !selectedDepartmentId) {
+        setSaleCategories([]);
+        return;
       }
-
+      setIsLoadingCats(true);
       try {
         const token = await user.getIdToken();
         const res = await fetch(`/api/control/departamentos/${selectedDepartmentId}/categorias-venta`, { headers: { Authorization: `Bearer ${token}` } });
@@ -140,8 +131,9 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
         setIsLoadingCats(false);
       }
     };
-    if (selectedDepartmentId) fetchSaleCategories();
-  }, [selectedDepartmentId, user, toast, form]);
+    fetchSaleCategories();
+  }, [selectedDepartmentId, user, toast]);
+
 
   const watchedPrice = parseFloat(form.watch('price').toString()) || 0;
   const watchedCost = parseFloat(form.watch('cost').toString()) || 0;
@@ -183,9 +175,24 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
     setIsSubmitting(true);
     try {
       const token = await user.getIdToken();
+      
+      // Parse customization fields
+      const ingredientesBase = values.ingredientesBase ? values.ingredientesBase.split(',').map(s => s.trim()).filter(Boolean) : [];
+      const ingredientesExtra = values.ingredientesExtra ? values.ingredientesExtra.split(',').map(s => {
+        const [nombre, precioStr] = s.split(':');
+        const precio = parseFloat(precioStr);
+        return { nombre: nombre.trim(), precio: isNaN(precio) ? 0 : precio };
+      }).filter(e => e.nombre && e.precio > 0) : [];
+
+      const payload = {
+        ...values,
+        ingredientesBase,
+        ingredientesExtra,
+      };
+
       const url = product ? `/api/control/productos-venta/${product.id}` : '/api/control/productos-venta';
       const method = product ? 'PUT' : 'POST';
-      const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(values) });
+      const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || `Error al ${product ? 'actualizar' : 'crear'} el producto.`);
@@ -219,6 +226,14 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
               <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nombre del Producto</FormLabel><FormControl><Input placeholder="Taco de Pastor" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Precio de Venta (IVA Incl.)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="25.00" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Descripción</FormLabel><FormControl><Textarea placeholder="Carne de cerdo marinada..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+            </CardContent>
+          </Card>
+
+          <Card className="bg-black/50 border-white/10">
+            <CardHeader><CardTitle className="text-orange-400">Personalización</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <FormField control={form.control} name="ingredientesBase" render={({ field }) => (<FormItem><FormLabel>Ingredientes Base</FormLabel><FormControl><Textarea placeholder="Lechuga, Tomate, Cebolla" {...field} /></FormControl><FormDescription>Lista de ingredientes incluidos, separados por comas.</FormDescription><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="ingredientesExtra" render={({ field }) => (<FormItem><FormLabel>Ingredientes Extra</FormLabel><FormControl><Textarea placeholder="Tocino:25, Aguacate:20, Queso extra:15" {...field} /></FormControl><FormDescription>Lista de extras con su precio, formato: Nombre:Precio, Otro:Precio.</FormDescription><FormMessage /></FormItem>)} />
             </CardContent>
           </Card>
 
