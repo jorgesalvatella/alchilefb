@@ -6,29 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { cn } from '@/lib/utils';
-
-type SaleProduct = {
-  id: string;
-  name: string;
-  description?: string;
-  price: number;
-  category: string;
-  imageUrl?: string;
-  isAvailable: boolean;
-};
+import type { SaleProduct, SaleCategory } from '@/lib/data';
 
 function ProductCard({ product }: { product: SaleProduct }) {
   return (
-    <Card className="flex flex-col overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-lg">
+    <Card className="flex flex-col overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-lg group">
       <CardHeader className="p-0">
         <div className="relative h-48 w-full">
           <Image
             src={product.imageUrl || PlaceHolderImages.getRandomImage(product.name).imageUrl}
             alt={product.name}
-            layout="fill"
-            objectFit="cover"
-            className="transition-transform duration-300 group-hover:scale-110"
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-110"
           />
         </div>
       </CardHeader>
@@ -62,34 +51,41 @@ function ProductSkeleton() {
 
 export default function MenuPage() {
   const [products, setProducts] = useState<SaleProduct[]>([]);
+  const [categories, setCategories] = useState<SaleCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchMenu = async () => {
+    const fetchMenuData = async () => {
       try {
-        const response = await fetch('/api/menu');
-        if (!response.ok) {
+        const [productsRes, categoriesRes] = await Promise.all([
+          fetch('/api/menu'),
+          fetch('/api/categorias-venta'),
+        ]);
+
+        if (!productsRes.ok || !categoriesRes.ok) {
           throw new Error('No se pudo cargar el menú.');
         }
-        const data = await response.json();
-        setProducts(data);
+
+        const productsData = await productsRes.json();
+        const categoriesData = await categoriesRes.json();
+
+        setProducts(productsData);
+        setCategories(categoriesData);
       } catch (err: any) {
         setError(err.message);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchMenu();
+    fetchMenuData();
   }, []);
 
-  const categories = products.reduce((acc, product) => {
-    if (!acc[product.category]) {
-      acc[product.category] = [];
-    }
-    acc[product.category].push(product);
-    return acc;
-  }, {} as Record<string, SaleProduct[]>);
+  const groupedProducts = categories.map(category => ({
+    ...category,
+    products: products.filter(p => p.categoriaVentaId === category.id),
+  })).filter(category => category.products.length > 0);
+
 
   const renderContent = () => {
     if (isLoading) {
@@ -104,17 +100,17 @@ export default function MenuPage() {
       return <p className="text-center text-red-500">Error: {error}</p>;
     }
 
-    if (Object.keys(categories).length === 0) {
+    if (groupedProducts.length === 0) {
         return <p className="text-center text-gray-500">No hay productos disponibles en este momento.</p>;
     }
 
     return (
       <div className="space-y-12">
-        {Object.entries(categories).map(([category, items]) => (
-          <div key={category}>
-            <h2 className="mb-6 text-3xl font-bold tracking-tight">{category}</h2>
+        {groupedProducts.map((category) => (
+          <div key={category.id}>
+            <h2 className="mb-6 text-3xl font-bold tracking-tight">{category.name}</h2>
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {items.map((product) => (
+              {category.products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>

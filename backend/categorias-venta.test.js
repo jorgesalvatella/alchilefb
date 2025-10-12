@@ -348,3 +348,30 @@ describe('DELETE /api/control/catalogo/categorias-venta/:id', () => {
     expect(response.body.message).toContain('Sale category deleted successfully');
   });
 });
+
+describe('GET /api/categorias-venta (Public)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should return 200 OK and a list of categories without authentication', async () => {
+    const mockGet = jest.fn().mockResolvedValue({
+      docs: [
+        { id: 'cat1', data: () => ({ name: 'Public Category 1' }) },
+        { id: 'cat2', data: () => ({ name: 'Public Category 2' }) },
+      ],
+    });
+    admin.firestore().collection.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      get: mockGet,
+    });
+
+    const response = await request(app).get('/api/categorias-venta');
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toBeInstanceOf(Array);
+    expect(response.body.length).toBe(2);
+    expect(response.body[0].name).toBe('Public Category 1');
+  });
+});

@@ -8,6 +8,8 @@ jest.mock('firebase-admin', () => {
   const mockArrayUnion = jest.fn();
   const mockArrayRemove = jest.fn();
   const mockUpdate = jest.fn();
+  const mockFileExists = jest.fn();
+  const mockGetSignedUrl = jest.fn();
 
   const firestoreMock = {
     collection: jest.fn((collectionName) => {
@@ -48,16 +50,28 @@ jest.mock('firebase-admin', () => {
     },
   };
 
+  const storageMock = {
+    bucket: jest.fn(() => ({
+      file: jest.fn(() => ({
+        exists: mockFileExists,
+        getSignedUrl: mockGetSignedUrl,
+      })),
+    })),
+  };
+
   return {
     initializeApp: jest.fn(),
     applicationDefault: jest.fn(),
     firestore: () => firestoreMock,
+    storage: () => storageMock,
     auth: () => ({ verifyIdToken: jest.fn() }),
     app: () => ({ delete: jest.fn() }),
     __mockAdd: mockAdd,
     __mockUpdate: mockUpdate,
     __mockArrayUnion: mockArrayUnion,
     __mockArrayRemove: mockArrayRemove,
+    __mockFileExists: mockFileExists,
+    __mockGetSignedUrl: mockGetSignedUrl,
   };
 });
 
@@ -707,6 +721,36 @@ describe('API Endpoints', () => {
         deleted: true,
         deletedAt: expect.any(String),
       });
+    });
+  });
+
+  describe('GET /api/generate-signed-url', () => {
+    beforeEach(() => {
+      // Clear mock history before each test
+      admin.__mockFileExists.mockClear();
+      admin.__mockGetSignedUrl.mockClear();
+    });
+
+    it('should return 400 if filePath is missing', async () => {
+      const response = await request(app).get('/api/generate-signed-url');
+      expect(response.status).toBe(400);
+    });
+
+    it('should return 404 if file does not exist', async () => {
+      admin.__mockFileExists.mockResolvedValueOnce([false]);
+      const response = await request(app).get('/api/generate-signed-url?filePath=nonexistent.jpg');
+      expect(response.status).toBe(404);
+    });
+
+    it('should return 200 and a signed URL if file exists', async () => {
+      admin.__mockFileExists.mockResolvedValueOnce([true]);
+      admin.__mockGetSignedUrl.mockResolvedValueOnce(['https://fake-signed-url.com']);
+      
+      const response = await request(app).get('/api/generate-signed-url?filePath=existent.jpg');
+      
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ signedUrl: 'https://fake-signed-url.com' });
+      expect(admin.__mockGetSignedUrl).toHaveBeenCalled();
     });
   });
 

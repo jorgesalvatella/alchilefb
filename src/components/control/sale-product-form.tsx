@@ -52,6 +52,10 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
   const [isLoadingDepts, setIsLoadingDepts] = useState(false);
   const [isLoadingCats, setIsLoadingCats] = useState(false);
 
+  // Flags to prevent clearing fields during initial load (edit mode)
+  const isBusinessUnitInitialLoad = useRef(true);
+  const isDepartmentInitialLoad = useRef(true);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: product ? {
@@ -88,8 +92,15 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
       if (!user || !selectedBusinessUnitId) return;
       setIsLoadingDepts(true);
       setDepartments([]); setSaleCategories([]);
-      if (form.getValues('departmentId')) form.setValue('departmentId', '');
-      if (form.getValues('categoriaVentaId')) form.setValue('categoriaVentaId', '');
+
+      // Only clear child fields if this is NOT the initial load (user manually changed selection)
+      if (!isBusinessUnitInitialLoad.current) {
+        if (form.getValues('departmentId')) form.setValue('departmentId', '');
+        if (form.getValues('categoriaVentaId')) form.setValue('categoriaVentaId', '');
+      } else {
+        isBusinessUnitInitialLoad.current = false; // After first run, future changes are user-initiated
+      }
+
       try {
         const token = await user.getIdToken();
         const res = await fetch(`/api/control/unidades-de-negocio/${selectedBusinessUnitId}/departamentos`, { headers: { Authorization: `Bearer ${token}` } });
@@ -110,7 +121,14 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
       if (!user || !selectedDepartmentId) return;
       setIsLoadingCats(true);
       setSaleCategories([]);
-      if (form.getValues('categoriaVentaId')) form.setValue('categoriaVentaId', '');
+
+      // Only clear child fields if this is NOT the initial load (user manually changed selection)
+      if (!isDepartmentInitialLoad.current) {
+        if (form.getValues('categoriaVentaId')) form.setValue('categoriaVentaId', '');
+      } else {
+        isDepartmentInitialLoad.current = false; // After first run, future changes are user-initiated
+      }
+
       try {
         const token = await user.getIdToken();
         const res = await fetch(`/api/control/departamentos/${selectedDepartmentId}/categorias-venta`, { headers: { Authorization: `Bearer ${token}` } });
@@ -209,7 +227,7 @@ export function SaleProductForm({ product }: SaleProductFormProps) {
             <CardContent>
               <div className="flex items-center gap-4">
                 <div className="relative w-24 h-24 rounded-md border border-dashed border-white/20 flex items-center justify-center">
-                  {watchedImageUrl ? <Image src={watchedImageUrl} alt="Vista previa" layout="fill" objectFit="cover" className="rounded-md" /> : <span className="text-xs text-white/50">Vista previa</span>}
+                  {watchedImageUrl && watchedImageUrl.startsWith('http') && watchedImageUrl.length > 20 ? <Image src={watchedImageUrl} alt="Vista previa" fill className="object-cover rounded-md" /> : <span className="text-xs text-white/50">Vista previa</span>}
                 </div>
                 <div className="flex-1">
                   <FormField control={form.control} name="imageUrl" render={({ field }) => (<FormItem><FormLabel className="sr-only">URL de la Imagen</FormLabel><FormControl><Input placeholder="https://example.com/image.jpg" {...field} /></FormControl><FormMessage /></FormItem>)} />

@@ -107,7 +107,7 @@ export default function AdminSaleProductsPage() {
               </CardContent>
               <CardFooter className="flex justify-end space-x-2 flex-wrap">
                 <Button asChild variant="ghost" size="icon" className="text-white/60 hover:text-orange-400">
-                  <Link href={`/control/productos-venta/${product.id}/editar`}>
+                  <Link href={`/control/productos-venta/${product.id}/editar`} aria-label="edit icon">
                     <Pen className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -139,7 +139,7 @@ export default function AdminSaleProductsPage() {
                 <TableCell className="text-white/80">${product.price.toFixed(2)}</TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="ghost" size="icon" className="text-white/60 hover:text-orange-400">
-                    <Link href={`/control/productos-venta/${product.id}/editar`}>
+                    <Link href={`/control/productos-venta/${product.id}/editar`} aria-label="edit icon">
                       <Pen className="h-4 w-4" />
                     </Link>
                   </Button>
