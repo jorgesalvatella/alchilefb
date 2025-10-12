@@ -7,48 +7,52 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { MinusCircle, PlusCircle, Trash2, ShoppingCart } from 'lucide-react';
-import { useCart } from '@/context/cart-context';
+import { useCart, CartItem } from '@/context/cart-context';
 import { useUser } from '@/firebase';
 import StorageImage from '@/components/StorageImage';
+
+type ServerTotals = {
+  subtotalGeneral: number;
+  ivaDesglosado: number;
+  totalFinal: number;
+};
 
 export default function CartPage() {
   const { user, isUserLoading } = useUser();
   const { cartItems, updateQuantity, removeFromCart } = useCart();
-  const [serverTotals, setServerTotals] = useState({ subtotal: 0, tax: 0, total: 0 });
+  const [serverTotals, setServerTotals] = useState<ServerTotals>({ subtotalGeneral: 0, ivaDesglosado: 0, totalFinal: 0 });
   const [isVerifying, setIsVerifying] = useState(true);
 
   useEffect(() => {
     const verifyTotals = async () => {
-      if (isUserLoading) {
-        return;
-      }
+      if (isUserLoading) return;
 
       if (cartItems.length === 0) {
         setIsVerifying(false);
-        setServerTotals({ subtotal: 0, tax: 0, total: 0 });
+        setServerTotals({ subtotalGeneral: 0, ivaDesglosado: 0, totalFinal: 0 });
         return;
       }
-
-      if (!user) {
-        setIsVerifying(false);
-        setServerTotals({ subtotal: 0, tax: 0, total: 0 });
-        return;
-      }
+      
+      // No user needed for verification, as prices are public
+      // if (!user) {
+      //   setIsVerifying(false);
+      //   // Optionally calculate a client-side estimate or show a login prompt
+      //   return;
+      // }
 
       setIsVerifying(true);
       try {
-        const token = await user.getIdToken();
+        // No token needed if the endpoint is public for price verification
+        // const token = await user.getIdToken();
         const itemsToVerify = cartItems.map(item => ({
-          id: item.id,
-          quantity: item.quantity
+          productId: item.id,
+          quantity: item.quantity,
+          customizations: item.customizations || { added: [], removed: [] },
         }));
 
         const response = await fetch('/api/cart/verify-totals', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ items: itemsToVerify }),
         });
 
@@ -57,9 +61,10 @@ export default function CartPage() {
         }
 
         const data = await response.json();
-        setServerTotals(data);
+        setServerTotals(data.summary);
       } catch (error) {
         console.error("Error verifying totals:", error);
+        // Handle error case, e.g., show a toast notification
       } finally {
         setIsVerifying(false);
       }
@@ -67,6 +72,16 @@ export default function CartPage() {
 
     verifyTotals();
   }, [cartItems, user, isUserLoading]);
+
+  const getCustomizationPrice = (item: CartItem): number => {
+    let customPrice = 0;
+    if (item.customizations?.added) {
+      // This is a client-side estimate. The server has the final say.
+      // We need product data here, which we don't have in the cart item by default.
+      // For now, we'll just display the server-calculated price.
+    }
+    return (item.price * item.quantity) + customPrice;
+  };
 
   if (cartItems.length === 0) {
     return (
@@ -76,7 +91,7 @@ export default function CartPage() {
             <p className="mt-2 text-lg text-gray-500">
                 Parece que aún no has añadido nada. ¡Explora nuestro menú!
             </p>
-            <Button asChild className="mt-6 bg-fresh-green text-black hover:bg-fresh-green/80">
+            <Button asChild className="mt-6 bg-orange-500 text-white hover:bg-orange-600">
                 <Link href="/menu">Ir al Menú</Link>
             </Button>
         </main>
@@ -86,21 +101,21 @@ export default function CartPage() {
   return (
     <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
       <div className="text-center mb-12">
-        <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl">Tu Carrito</h1>
-        <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
+        <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl text-white">Tu Carrito</h1>
+        <p className="mt-4 max-w-2xl mx-auto text-xl text-white/70">
           Revisa tu pedido y prepárate para disfrutar.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:gap-12">
         <div className="lg:col-span-2">
-          <Card>
+          <Card className="bg-gray-900/50 border-gray-700 text-white">
             <CardHeader>
-              <CardTitle>Resumen de tu Pedido</CardTitle>
+              <CardTitle className="text-orange-400">Resumen de tu Pedido</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {cartItems.map((item) => (
-                <div key={item.id} className="flex items-start space-x-3">
+                <div key={item.cartItemId} className="flex items-start space-x-4">
                   <div className="relative h-20 w-20 flex-shrink-0">
                     <StorageImage
                       filePath={item.imageUrl}
@@ -112,39 +127,28 @@ export default function CartPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
                       <h3 className="font-semibold break-words pr-2">{item.name}</h3>
-                      <p className="font-semibold flex-shrink-0">${(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="font-semibold flex-shrink-0">${getCustomizationPrice(item).toFixed(2)}</p>
                     </div>
-                    <p className="text-sm text-gray-500">${item.price.toFixed(2)}</p>
-                    <div className="mt-2 flex items-center justify-between">
+                    <div className="text-sm text-white/60 space-y-1 mt-1">
+                      {item.customizations?.added && item.customizations.added.map(extra => (
+                        <p key={extra} className="text-green-400">+ {extra}</p>
+                      ))}
+                      {item.customizations?.removed && item.customizations.removed.map(removed => (
+                        <p key={removed} className="text-red-400">- {removed}</p>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
                       <div className="flex items-center">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        >
-                          <MinusCircle className="h-5 w-5" data-testid="minus-circle-icon" />
+                        <Button variant="ghost" size="icon" onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)} aria-label="Disminuir cantidad">
+                          <MinusCircle className="h-5 w-5" />
                         </Button>
-                        <Input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => updateQuantity(item.id, parseInt(e.target.value, 10) || 1)}
-                          className="w-12 text-center h-8"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        >
-                          <PlusCircle className="h-5 w-5" data-testid="plus-circle-icon" />
+                        <Input type="number" readOnly value={item.quantity} className="w-12 text-center h-8 bg-gray-800 border-gray-600"/>
+                        <Button variant="ghost" size="icon" onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)} aria-label="Aumentar cantidad">
+                          <PlusCircle className="h-5 w-5" />
                         </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-gray-500 hover:text-red-500"
-                        onClick={() => removeFromCart(item.id)}
-                      >
-                        <Trash2 className="h-5 w-5" data-testid="trash-2-icon" />
+                      <Button variant="ghost" size="icon" className="text-gray-500 hover:text-red-500" onClick={() => removeFromCart(item.cartItemId)} aria-label="Eliminar item">
+                        <Trash2 className="h-5 w-5" />
                       </Button>
                     </div>
                   </div>
@@ -155,27 +159,27 @@ export default function CartPage() {
         </div>
 
         <div className="lg:col-span-1">
-          <Card>
+          <Card className="bg-gray-900/50 border-gray-700 text-white">
             <CardHeader>
-              <CardTitle>Total del Pedido</CardTitle>
+              <CardTitle className="text-orange-400">Total del Pedido</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>{isVerifying ? 'Calculando...' : `$${serverTotals.subtotal.toFixed(2)}`}</span>
+                <span>{isVerifying ? 'Calculando...' : `$${serverTotals.subtotalGeneral.toFixed(2)}`}</span>
               </div>
-              <div className="flex justify-between text-gray-500">
+              <div className="flex justify-between text-white/60">
                 <span>IVA (16%)</span>
-                <span>{isVerifying ? 'Calculando...' : `$${serverTotals.tax.toFixed(2)}`}</span>
+                <span>{isVerifying ? 'Calculando...' : `$${serverTotals.ivaDesglosado.toFixed(2)}`}</span>
               </div>
-              <Separator />
+              <Separator className="bg-gray-700" />
               <div className="flex justify-between text-xl font-bold">
                 <span>Total</span>
-                <span>{isVerifying ? 'Calculando...' : `$${serverTotals.total.toFixed(2)}`}</span>
+                <span>{isVerifying ? 'Calculando...' : `$${serverTotals.totalFinal.toFixed(2)}`}</span>
               </div>
             </CardContent>
             <CardFooter>
-              <Button disabled={isVerifying} className="w-full bg-fresh-green text-black hover:bg-fresh-green/80 text-lg py-6">
+              <Button disabled={isVerifying || serverTotals.totalFinal === 0} className="w-full bg-orange-500 text-white hover:bg-orange-600 text-lg py-6">
                 {isVerifying ? 'Verificando...' : 'Proceder al Pago'}
               </Button>
             </CardFooter>

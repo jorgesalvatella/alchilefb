@@ -1,19 +1,20 @@
 'use client';
 
 import { createContext, useContext, useState, useMemo, ReactNode, useEffect } from 'react';
-import type { SaleProduct } from '@/lib/data';
+import type { CartItem as CartItemType } from '@/lib/types';
+import { toast } from '@/hooks/use-toast';
 
-// Define the shape of a single cart item
-export interface CartItem extends SaleProduct {
-  quantity: number;
+// Define the shape of a single cart item, adding a unique cart-specific ID
+export interface CartItem extends CartItemType {
+  cartItemId: string; 
 }
 
 // Define the shape of the context
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: SaleProduct) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addItem: (item: CartItemType) => void;
+  removeFromCart: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, quantity: number) => void;
   clearCart: () => void;
   itemCount: number;
 }
@@ -43,35 +44,52 @@ export function CartProvider({ children }: CartProviderProps) {
 
   // Effect to save cart to localStorage whenever it changes
   useEffect(() => {
-    // Don't save during the initial load from localStorage
     if (!isInitialLoad) {
       localStorage.setItem('alchile-cart', JSON.stringify(cartItems));
     }
   }, [cartItems, isInitialLoad]);
 
-  const addToCart = (product: SaleProduct) => {
+  const addItem = (itemToAdd: CartItemType) => {
     setCartItems(prevItems => {
-      const existingItem = prevItems.find(item => item.id === product.id);
+      // Check for an identical item (same ID and same customizations)
+      const existingItem = prevItems.find(item => 
+        item.id === itemToAdd.id &&
+        JSON.stringify(item.customizations) === JSON.stringify(itemToAdd.customizations)
+      );
+
       if (existingItem) {
+        // If found, just increase quantity
         return prevItems.map(item =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.cartItemId === existingItem.cartItemId 
+            ? { ...item, quantity: item.quantity + itemToAdd.quantity } 
+            : item
         );
+      } else {
+        // If not found, add as a new item with a unique cartItemId
+        const newCartItem: CartItem = {
+          ...itemToAdd,
+          cartItemId: `${itemToAdd.id}_${Date.now()}`
+        };
+        return [...prevItems, newCartItem];
       }
-      return [...prevItems, { ...product, quantity: 1 }];
+    });
+    toast({
+      title: '¡Añadido al carrito!',
+      description: `${itemToAdd.quantity} x ${itemToAdd.name} se ha añadido a tu pedido.`,
     });
   };
 
-  const removeFromCart = (productId: string) => {
-    setCartItems(prevItems => prevItems.filter(item => item.id !== productId));
+  const removeFromCart = (cartItemId: string) => {
+    setCartItems(prevItems => prevItems.filter(item => item.cartItemId !== cartItemId));
   };
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(cartItemId);
     } else {
       setCartItems(prevItems =>
         prevItems.map(item =>
-          item.id === productId ? { ...item, quantity } : item
+          item.cartItemId === cartItemId ? { ...item, quantity } : item
         )
       );
     }
@@ -87,7 +105,7 @@ export function CartProvider({ children }: CartProviderProps) {
 
   const value = {
     cartItems,
-    addToCart,
+    addItem,
     removeFromCart,
     updateQuantity,
     clearCart,

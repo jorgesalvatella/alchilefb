@@ -14,9 +14,22 @@ interface StorageImageProps {
 }
 
 const StorageImage = ({ filePath, alt, fill, objectFit = 'cover', className }: StorageImageProps) => {
+  // Si ya es una URL completa de Firebase Storage con token, úsala directamente
+  if (filePath && filePath.startsWith('https://firebasestorage.googleapis.com/') && filePath.includes('token=')) {
+    return (
+      <Image
+        src={filePath}
+        alt={alt}
+        fill={fill}
+        className={className}
+        objectFit={objectFit}
+      />
+    );
+  }
+
   let relativePath = filePath;
 
-  // Si el filePath es una URL completa de GCS, extrae la ruta relativa.
+  // Si el filePath es una URL completa de GCS sin token, extrae la ruta relativa.
   if (filePath && filePath.startsWith('https://storage.googleapis.com/')) {
     try {
       const url = new URL(filePath);

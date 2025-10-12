@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useUser } from '@/firebase/provider';
 import { SaleProductForm } from '@/components/control/sale-product-form';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
-import type { SaleProduct } from '@/lib/data';
+import type { SaleProduct } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function EditSaleProductPage() {
