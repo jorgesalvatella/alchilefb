@@ -2155,5 +2155,117 @@ app.delete('/api/control/productos-venta/:id', authMiddleware, requireAdmin, asy
 
                     
 
-                    module.exports = app;
+                    // --- User Profile and Addresses ---
+
+// Get user profile
+app.get('/api/me/profile', authMiddleware, async (req, res) => {
+  try {
+    const userRef = db.collection('users').doc(req.user.uid);
+    const doc = await userRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ message: 'Profile not found' });
+    }
+    res.status(200).json({ id: doc.id, ...doc.data() });
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// Update user profile
+app.put('/api/me/profile', authMiddleware, async (req, res) => {
+  try {
+    const { firstName, lastName, phoneNumber } = req.body;
+    const userRef = db.collection('users').doc(req.user.uid);
+
+    const updateData = {
+      firstName,
+      lastName,
+      phoneNumber,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await userRef.update(updateData);
+    res.status(200).json({ message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// Get all user addresses
+app.get('/api/me/addresses', authMiddleware, async (req, res) => {
+  try {
+    const addressesRef = db.collection('users').doc(req.user.uid).collection('delivery_addresses');
+    const snapshot = await addressesRef.get();
+    const addresses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.status(200).json(addresses);
+  } catch (error) {
+    console.error('Error fetching addresses:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// Add a new address
+app.post('/api/me/addresses', authMiddleware, async (req, res) => {
+  try {
+    const { streetAddress, city, state, zipCode } = req.body;
+    if (!streetAddress || !city || !state || !zipCode) {
+      return res.status(400).json({ message: 'Missing required address fields' });
+    }
+    const addressesRef = db.collection('users').doc(req.user.uid).collection('delivery_addresses');
+    const newAddress = { streetAddress, city, state, zipCode };
+    const docRef = await addressesRef.add(newAddress);
+    res.status(201).json({ id: docRef.id, ...newAddress });
+  } catch (error) {
+    console.error('Error adding address:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// Update an address
+app.put('/api/me/addresses/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { streetAddress, city, state, zipCode } = req.body;
+    if (!streetAddress || !city || !state || !zipCode) {
+      return res.status(400).json({ message: 'Missing required address fields' });
+    }
+    const addressRef = db.collection('users').doc(req.user.uid).collection('delivery_addresses').doc(id);
+    await addressRef.update({ streetAddress, city, state, zipCode });
+    res.status(200).json({ message: 'Address updated successfully' });
+  } catch (error) {
+    console.error('Error updating address:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// Delete an address
+app.delete('/api/me/addresses/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const addressRef = db.collection('users').doc(req.user.uid).collection('delivery_addresses').doc(id);
+    await addressRef.delete();
+    res.status(200).json({ message: 'Address deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting address:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// Set default address
+app.put('/api/me/addresses/set-default/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRef = db.collection('users').doc(req.user.uid);
+    await userRef.update({ defaultDeliveryAddressId: id });
+    res.status(200).json({ message: 'Default address updated successfully' });
+  } catch (error) {
+    console.error('Error setting default address:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
+module.exports = app;
 
