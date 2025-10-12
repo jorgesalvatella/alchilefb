@@ -2,7 +2,7 @@ const request = require('supertest');
 const app = require('./app');
 const admin = require('firebase-admin');
 
-// Mock de Firestore con la función 'add' expuesta
+// Mock de Firebase Admin - Configuración completa y robusta
 jest.mock('firebase-admin', () => {
   const mockAdd = jest.fn(() => Promise.resolve({ id: 'new-doc-id' }));
   const mockArrayUnion = jest.fn();
@@ -10,6 +10,8 @@ jest.mock('firebase-admin', () => {
   const mockUpdate = jest.fn();
   const mockFileExists = jest.fn();
   const mockGetSignedUrl = jest.fn();
+  const mockGetMetadata = jest.fn();
+  const mockSetMetadata = jest.fn();
 
   const firestoreMock = {
     collection: jest.fn((collectionName) => {
@@ -50,20 +52,29 @@ jest.mock('firebase-admin', () => {
     },
   };
 
+  const mockFileMethods = {
+    exists: mockFileExists,
+    getSignedUrl: mockGetSignedUrl,
+    getMetadata: mockGetMetadata,
+    setMetadata: mockSetMetadata,
+  };
+
+  const mockBucket = {
+    file: jest.fn(() => mockFileMethods),
+    name: 'test-bucket',
+  };
+
   const storageMock = {
-    bucket: jest.fn(() => ({
-      file: jest.fn(() => ({
-        exists: mockFileExists,
-        getSignedUrl: mockGetSignedUrl,
-      })),
-    })),
+    bucket: jest.fn(() => mockBucket),
   };
 
   return {
     initializeApp: jest.fn(),
     applicationDefault: jest.fn(),
     firestore: () => firestoreMock,
-    storage: () => storageMock,
+    storage: {
+      getStorage: () => storageMock,
+    },
     auth: () => ({ verifyIdToken: jest.fn() }),
     app: () => ({ delete: jest.fn() }),
     __mockAdd: mockAdd,
@@ -72,8 +83,20 @@ jest.mock('firebase-admin', () => {
     __mockArrayRemove: mockArrayRemove,
     __mockFileExists: mockFileExists,
     __mockGetSignedUrl: mockGetSignedUrl,
+    __mockGetMetadata: mockGetMetadata,
+    __mockSetMetadata: mockSetMetadata,
+    __mockBucket: mockBucket,
+    __mockFileMethods: mockFileMethods,
   };
 });
+
+// Mock del módulo 'firebase-admin/storage' que es el que realmente usa el endpoint
+jest.mock('firebase-admin/storage', () => ({
+  getStorage: () => {
+    const admin = require('firebase-admin');
+    return admin.storage.getStorage();
+  },
+}));
 
 // Mock del middleware de autenticación
 jest.mock('./authMiddleware', () => jest.fn((req, res, next) => {
@@ -726,31 +749,85 @@ describe('API Endpoints', () => {
 
   describe('GET /api/generate-signed-url', () => {
     beforeEach(() => {
-      // Clear mock history before each test
-      admin.__mockFileExists.mockClear();
-      admin.__mockGetSignedUrl.mockClear();
+      // Reset all mocks before each test
+      jest.clearAllMocks();
     });
 
     it('should return 400 if filePath is missing', async () => {
       const response = await request(app).get('/api/generate-signed-url');
       expect(response.status).toBe(400);
+      expect(response.text).toContain('Missing required query parameter: filePath');
     });
 
     it('should return 404 if file does not exist', async () => {
+      // Mock file.exists() to return [false]
       admin.__mockFileExists.mockResolvedValueOnce([false]);
+
       const response = await request(app).get('/api/generate-signed-url?filePath=nonexistent.jpg');
+
       expect(response.status).toBe(404);
+      expect(response.text).toContain('File not found');
+      expect(admin.__mockFileExists).toHaveBeenCalled();
     });
 
-    it('should return 200 and a signed URL if file exists', async () => {
+    it('should return 200 and a public URL with token if file exists', async () => {
+      const testToken = 'test-token-123';
+      const testFilePath = 'productos/test.jpg';
+
+      // Mock file.exists() to return [true]
       admin.__mockFileExists.mockResolvedValueOnce([true]);
-      admin.__mockGetSignedUrl.mockResolvedValueOnce(['https://fake-signed-url.com']);
-      
-      const response = await request(app).get('/api/generate-signed-url?filePath=existent.jpg');
-      
+
+      // Mock file.getMetadata() to return metadata with existing token
+      admin.__mockGetMetadata.mockResolvedValueOnce([{
+        metadata: {
+          firebaseStorageDownloadTokens: testToken
+        }
+      }]);
+
+      const response = await request(app).get(`/api/generate-signed-url?filePath=${testFilePath}`);
+
       expect(response.status).toBe(200);
-      expect(response.body).toEqual({ signedUrl: 'https://fake-signed-url.com' });
-      expect(admin.__mockGetSignedUrl).toHaveBeenCalled();
+      expect(response.body).toHaveProperty('signedUrl');
+      expect(response.body.signedUrl).toContain(testToken);
+      expect(response.body.signedUrl).toContain(encodeURIComponent(testFilePath));
+      expect(admin.__mockFileExists).toHaveBeenCalled();
+      expect(admin.__mockGetMetadata).toHaveBeenCalled();
+    });
+
+    it('should create a new token if file does not have one', async () => {
+      const testFilePath = 'productos/new-file.jpg';
+
+      // Mock file.exists() to return [true]
+      admin.__mockFileExists.mockResolvedValueOnce([true]);
+
+      // Mock file.getMetadata() to return metadata WITHOUT token
+      admin.__mockGetMetadata.mockResolvedValueOnce([{
+        metadata: {}
+      }]);
+
+      // Mock file.setMetadata()
+      admin.__mockSetMetadata.mockResolvedValueOnce([{}]);
+
+      const response = await request(app).get(`/api/generate-signed-url?filePath=${testFilePath}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('signedUrl');
+      expect(response.body.signedUrl).toContain('alt=media&token=');
+      expect(admin.__mockSetMetadata).toHaveBeenCalledWith({
+        metadata: {
+          firebaseStorageDownloadTokens: expect.any(String)
+        }
+      });
+    });
+
+    it('should handle errors gracefully', async () => {
+      // Mock file.exists() to throw an error
+      admin.__mockFileExists.mockRejectedValueOnce(new Error('Storage error'));
+
+      const response = await request(app).get('/api/generate-signed-url?filePath=error.jpg');
+
+      expect(response.status).toBe(500);
+      expect(response.text).toContain('Internal Server Error');
     });
   });
 
