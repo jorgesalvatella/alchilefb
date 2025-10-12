@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       {
+        source: '/api/menu',
+        destination: 'http://localhost:8080/api/menu',
+      },
+      {
+        source: '/api/categorias-venta',
+        destination: 'http://localhost:8080/api/categorias-venta',
+      },
+      {
         source: '/api/:path*',
         destination: 'http://localhost:8080/api/:path*',
       },

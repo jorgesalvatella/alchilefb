@@ -1,0 +1,21 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Regla existente para tax_ids
+    match /tax_ids/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Nueva regla para productos - LECTURA PÚBLICA
+    match /productos/{allPaths=**} {
+      allow read: if true; // Public read access
+      allow write: if request.auth != null;
+    }
+
+    // Regla por defecto para todo lo demás (si no coincide con lo anterior)
+    match /{allOtherPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

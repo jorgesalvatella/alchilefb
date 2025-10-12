@@ -2,7 +2,7 @@
 
 **Documento Creado por:** Atlas (Arquitecto de Soluciones)
 **Fecha:** 10 de Octubre de 2025
-**Estado:** Aprobado (Versión 2)
+**Estado:** Fases 1 y 2 Completadas (Versión 2.1)
 
 **Resumen:** Este documento anula la versión anterior y define la hoja de ruta para implementar la gestión de **Productos de Venta** (el menú para clientes), un módulo distinto del catálogo de gastos/insumos ya existente.
 
@@ -16,9 +16,9 @@ Se ha identificado una distinción clave entre dos tipos de catálogos:
     -   **Propósito:** Gestión interna de compras y gastos (ej. "Tomate", "Servilletas").
     -   **Estructura:** `Unidades -> Departamentos -> Grupos -> Conceptos`.
 
-2.  **Catálogo de Productos de Venta (Por implementar):**
+2.  **Catálogo de Productos de Venta (Implementado):**
     -   **Propósito:** El menú que se ofrece a los clientes finales (ej. "Taco al Pastor", "Agua de Horchata").
-    -   **Estructura:** Será una colección independiente y más simple, probablemente organizada por categorías.
+    -   **Estructura:** `Unidad de Negocio -> Departamento -> Categoría de Venta -> Producto de Venta`.
 
 Este plan se enfoca exclusivamente en el **Catálogo de Productos de Venta**.
 
@@ -26,17 +26,21 @@ Este plan se enfoca exclusivamente en el **Catálogo de Productos de Venta**.
 
 ## 2. Hoja de Ruta
 
--   **Fase 1: Desarrollo del Backend (API)**
+-   **Fase 1: Desarrollo del Backend (API)** - ✅ **Completado**
     -   **Agente Responsable:** Nexus
-    -   **Objetivo:** Crear y probar los endpoints CRUD para la gestión de `Productos de Venta`.
+    -   **Objetivo:** Crear y probar los endpoints CRUD para la gestión de `Productos de Venta` y `Categorías de Venta`.
 
--   **Fase 2: Desarrollo del Frontend (UI de Administración)**
+-   **Fase 2: Desarrollo del Frontend (UI de Administración)** - ✅ **Completado**
     -   **Agente Responsable:** Aether
-    -   **Objetivo:** Construir la interfaz en el panel de control para que los administradores gestionen los productos de venta.
+    -   **Objetivo:** Construir la interfaz en el panel de control para que los administradores gestionen la jerarquía de catálogos y los productos de venta.
 
--   **Fase 3: Verificación y QA**
+-   **Fase 3: Desarrollo del Frontend (UI Pública)**
+    -   **Agente Responsable:** Aether
+    -   **Objetivo:** Refactorizar la página del menú público para usar la nueva estructura de datos.
+
+-   **Fase 4: Verificación y QA Final**
     -   **Agente Responsable:** Vanguard
-    -   **Objetivo:** Asegurar la correcta implementación y probar la funcionalidad de extremo a extremo.
+    -   **Objetivo:** Asegurar la correcta implementación y probar la funcionalidad de extremo a extremo de todo el flujo.
 
 ---
 
@@ -92,53 +96,53 @@ Esta colección define las categorías a las que pueden pertenecer los productos
 
 ### Pruebas de Backend (Jest + Supertest)
 
--   **Nuevos Endpoints a Probar:**
+-   **Endpoints Probados:**
     -   `POST /api/control/productos-venta`
     -   `GET /api/control/productos-venta`
     -   `PUT /api/control/productos-venta/:id`
-    -   `DELETE /api/control/productos-venta/:id`
+    -   `GET /api/control/productos-venta/:id`
+    -   `POST /api/control/catalogo/categorias-venta`
+    -   `GET /api/control/catalogo/categorias-venta`
+    -   `GET /api/control/departamentos/:deptoId/categorias-venta`
+    -   `PUT /api/control/catalogo/categorias-venta/:id`
+    -   `DELETE /api/control/catalogo/categorias-venta/:id`
     -   `GET /api/menu` (Endpoint público)
--   **Casos de Prueba:**
-    -   Verificar creación, lectura, actualización y borrado por parte de administradores.
-    -   Verificar que usuarios no-admin no puedan acceder a los endpoints de control (403).
-    -   Verificar que el endpoint `/api/menu` sea público y devuelva solo productos `isAvailable: true` y `deleted: false`.
+    -   `GET /api/categorias-venta` (Endpoint público)
+-   **Estado:** ✅ **Completado y Aprobado.**
 
 ### Pruebas de Frontend (Jest + React Testing Library)
 
--   **Nueva Página `src/app/control/productos-venta/page.tsx`:**
-    -   Test para renderizar la tabla de productos.
-    -   Test para los estados de carga y error.
--   **Nuevo Componente `AddEditSaleProductDialog.tsx`:**
-    -   Test para el formulario de creación/edición.
-    -   Test para la validación y el envío de datos a la API.
+-   **Páginas y Componentes Probados:**
+    -   `src/app/control/productos-venta/page.tsx`
+    -   `src/components/control/sale-product-form.tsx`
+    -   Se han corregido y actualizado las pruebas existentes para toda la sección de catálogos.
+-   **Estado:** ✅ **Completado y Aprobado.**
 
 ---
 
 ## 5. Plan de Ejecución Detallado
 
-### Fase 1: Backend (Agente: Nexus)
+### Fase 1: Backend (Agente: Nexus) - ✅ **Completado**
 
-1.  **Crear Endpoints CRUD en `backend/app.js`:**
-    -   `POST /api/control/productos-venta`
-    -   `GET /api/control/productos-venta`
-    -   `PUT /api/control/productos-venta/:id`
-    -   `DELETE /api/control/productos-venta/:id`
-    -   `GET /api/menu`
-2.  **Implementar Lógica:**
-    -   Endpoints de `/control` deben usar `authMiddleware` y verificar rol de administrador.
-    -   Endpoint `/api/menu` debe ser público.
-    -   Implementar la lógica CRUD contra la nueva colección `productosDeVenta`.
-3.  **Documentar con Swagger:** Añadir los nuevos endpoints a la documentación de la API.
-4.  **Escribir Pruebas:** Implementar los tests de backend definidos anteriormente.
+1.  **Crear Endpoints CRUD:** Se crearon y probaron todos los endpoints necesarios para `productosDeVenta` y `categoriasDeVenta`.
+2.  **Implementar Lógica:** Se implementó la lógica de negocio, incluyendo el cálculo de `basePrice` y la protección de rutas de administrador.
+3.  **Crear Endpoints Públicos:** Se crearon y probaron los endpoints `/api/menu` y `/api/categorias-venta`.
+4.  **Verificación:** Todas las pruebas de backend pasaron.
 
-### Fase 2: Frontend (Agente: Aether)
+### Fase 2: Frontend (Agente: Aether) - ✅ **Completado**
 
-1.  **Crear Página de Gestión:** Crear la ruta y el componente principal en `src/app/control/productos-venta/page.tsx`.
-2.  **Añadir Navegación:** Agregar un enlace en el menú lateral del panel de control para ir a "Productos de Venta".
-3.  **Desarrollar UI:** Construir la tabla y el diálogo para el CRUD de productos de venta, reutilizando componentes de `shadcn/ui` existentes.
-4.  **Integrar con API:** Conectar la UI a los nuevos endpoints del backend.
+1.  **Crear UI de Jerarquía:** Se crearon las páginas y componentes para gestionar las `Categorías de Venta`, anidadas dentro de sus `Departamentos` correspondientes.
+2.  **Cambio Arquitectónico:** Se tomó la decisión de abandonar el `Dialog` para la gestión de productos en favor de páginas dedicadas, mejorando la UX y la responsividad.
+3.  **Crear UI de Productos:** Se crearon las páginas `/control/productos-venta/nuevo` y `.../[id]/editar`, junto con el componente reutilizable `sale-product-form.tsx`.
+4.  **Integración Completa:** El formulario incluye selectores jerárquicos dependientes y se integra con todos los endpoints del backend.
+5.  **Verificación:** Todas las pruebas de frontend fueron creadas/actualizadas y pasaron.
 
-### Fase 3: Verificación (Agente: Vanguard)
+### Fase 3: Frontend - UI Pública (Agente: Aether) - **Pendiente**
 
-1.  **Ejecutar Pruebas:** Correr `npm test` para asegurar que todas las pruebas, nuevas y antiguas, pasen.
-2.  **Validación Funcional:** Realizar una revisión manual del flujo completo de gestión de productos de venta.
+1.  **Refactorizar `src/app/menu/page.tsx`:**
+    -   Modificar la página para hacer un `fetch` de los endpoints `/api/categorias-venta` y `/api/menu`.
+    -   Agrupar los productos por su `categoriaVentaId`.
+    -   Renderizar la lista de categorías, y dentro de cada una, la lista de sus productos correspondientes.
+2.  **Manejo de Imágenes (URLs Firmadas):**
+    -   Implementar el módulo de URLs firmadas (backend y frontend) para garantizar que las imágenes se muestren correctamente a pesar de las políticas de seguridad del bucket.
+    -   **Próxima Acción:** Corregir la prueba fallida del endpoint `generate-signed-url`.

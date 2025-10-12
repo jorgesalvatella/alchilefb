@@ -96,8 +96,25 @@ app.post('/api/control/productos-venta/upload-image', authMiddleware, requireAdm
     const fileName = `${Date.now()}-${req.file.originalname}`;
     const fileRef = bucket.file(`productos/${fileName}`);
 
+    // Upload file
     await fileRef.save(req.file.buffer, {
-      metadata: { contentType: req.file.mimetype },
+      metadata: {
+        contentType: req.file.mimetype,
+        cacheControl: 'public, max-age=31536000',
+      },
+    });
+
+    // Set ACL to make file public using setMetadata
+    await fileRef.setMetadata({
+      metadata: {
+        firebaseStorageDownloadTokens: '', // Remove Firebase token requirement
+      },
+    });
+
+    // Make public using ACL
+    await fileRef.acl.add({
+      entity: 'allUsers',
+      role: 'READER',
     });
 
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileRef.name}`;
@@ -1940,17 +1957,107 @@ app.get('/api/menu', async (req, res) => {
 
 });
 
-// PUT (Actualizar)
 
-app.put('/api/control/productos-venta/:id', authMiddleware, requireAdmin, async (req, res) => {
 
-  const { id } = req.params;
+// GET (Público - Categorías de Venta)
 
-  const { 
+app.get('/api/categorias-venta', async (req, res) => {
 
-    name, 
+    try {
 
-    price, 
+        const snapshot = await db.collection('categoriasDeVenta')
+
+            .where('deletedAt', '==', null)
+
+            .orderBy('createdAt', 'desc')
+
+            .get();
+
+        const categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        res.status(200).json(categories);
+
+    } catch (error) {
+
+        console.error("Error fetching sale categories:", error);
+
+                res.status(500).send('Internal Server Error');
+
+            }
+
+        });
+
+        
+
+        app.get('/api/generate-signed-url', async (req, res) => {
+
+          const { filePath } = req.query;
+
+        
+
+          if (!filePath) {
+
+            return res.status(400).send('Missing required query parameter: filePath');
+
+          }
+
+        
+
+          try {
+
+            const bucket = getStorage().bucket();
+
+            const file = bucket.file(filePath);
+
+        
+
+            const [exists] = await file.exists();
+
+            if (!exists) {
+
+              return res.status(404).send('File not found');
+
+            }
+
+        
+
+            const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+            const [signedUrl] = await file.getSignedUrl({
+
+              action: 'read',
+
+              expires: expiresAt,
+
+            });
+
+        
+
+            res.status(200).json({ signedUrl });
+
+          } catch (error) {
+
+            console.error('Error generating signed URL:', error);
+
+            res.status(500).send('Internal Server Error');
+
+          }
+
+        });
+
+        
+
+        // PUT (Actualizar)
+
+        app.put('/api/control/productos-venta/:id', authMiddleware, requireAdmin, async (req, res) => {
+
+          const { id } = req.params;
+
+          const { 
+
+            name, 
+
+            price,  
 
     description, 
 
