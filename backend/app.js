@@ -1780,63 +1780,23 @@ app.delete('/api/control/catalogo/categorias-venta/:id', authMiddleware, require
 
 app.post('/api/control/productos-venta', authMiddleware, requireAdmin, async (req, res) => {
 
-  const { 
+    const { 
 
-    name, 
+      name, 
 
-    price, 
+      price, 
 
-    description, 
+      description, 
 
-    imageUrl, 
+      imageUrl, 
 
-    isAvailable, 
+      isAvailable, 
 
-    cost, 
+      cost, 
 
-    platformFeePercent, 
+      platformFeePercent, 
 
-    isTaxable,
-
-    businessUnitId,
-
-    departmentId,
-
-    categoriaVentaId 
-
-  } = req.body;
-
-  if (!name || !price || !businessUnitId || !departmentId || !categoriaVentaId) {
-
-    return res.status(400).send('Missing required fields: name, price, businessUnitId, departmentId, categoriaVentaId');
-
-  }
-
-  try {
-
-    const finalPrice = parseFloat(price);
-
-    const basePrice = isTaxable ? finalPrice / 1.16 : finalPrice;
-
-    const newProduct = {
-
-      name,
-
-      price: finalPrice,
-
-      basePrice,
-
-      description: description || '',
-
-      imageUrl: imageUrl || '',
-
-      isAvailable: isAvailable !== undefined ? isAvailable : true,
-
-      cost: cost ? parseFloat(cost) : 0,
-
-      platformFeePercent: platformFeePercent ? parseFloat(platformFeePercent) : 0,
-
-      isTaxable: isTaxable !== undefined ? isTaxable : true,
+      isTaxable,
 
       businessUnitId,
 
@@ -1844,13 +1804,65 @@ app.post('/api/control/productos-venta', authMiddleware, requireAdmin, async (re
 
       categoriaVentaId,
 
-      createdAt: new Date(),
+      ingredientesBase,
 
-      updatedAt: new Date(),
+      ingredientesExtra
 
-      deletedAt: null,
+    } = req.body;
 
-    };
+  
+
+    if (!name || !price || !businessUnitId || !departmentId || !categoriaVentaId) {
+
+      return res.status(400).send('Missing required fields: name, price, businessUnitId, departmentId, categoriaVentaId');
+
+    }
+
+  
+
+    try {
+
+      const finalPrice = parseFloat(price);
+
+      const basePrice = isTaxable ? finalPrice / 1.16 : finalPrice;
+
+      const newProduct = {
+
+        name,
+
+        price: finalPrice,
+
+        basePrice,
+
+        description: description || '',
+
+        imageUrl: imageUrl || '',
+
+        isAvailable: isAvailable !== undefined ? isAvailable : true,
+
+        cost: cost ? parseFloat(cost) : 0,
+
+        platformFeePercent: platformFeePercent ? parseFloat(platformFeePercent) : 0,
+
+        isTaxable: isTaxable !== undefined ? isTaxable : true,
+
+        businessUnitId,
+
+        departmentId,
+
+        categoriaVentaId,
+
+        ingredientesBase: ingredientesBase || [],
+
+        ingredientesExtra: ingredientesExtra || [],
+
+        createdAt: new Date(),
+
+        updatedAt: new Date(),
+
+        deletedAt: null,
+
+      };
 
     const docRef = await db.collection('productosDeVenta').add(newProduct);
 
@@ -1874,8 +1886,28 @@ app.get('/api/control/productos-venta', authMiddleware, requireAdmin, async (req
 
     const snapshot = await db.collection('productosDeVenta').where('deletedAt', '==', null).orderBy('createdAt', 'desc').get();
 
-    const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
+            const products = snapshot.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    id: doc.id,
+                    name: data.name,
+                    price: data.price,
+                    description: data.description,
+                    imageUrl: data.imageUrl,
+                    isAvailable: data.isAvailable,
+                    isTaxable: data.isTaxable,
+                    cost: data.cost,
+                    platformFeePercent: data.platformFeePercent,
+                    basePrice: data.basePrice,
+                    businessUnitId: data.businessUnitId,
+                    departmentId: data.departmentId,
+                    categoriaVentaId: data.categoriaVentaId,
+                    ingredientesBase: data.ingredientesBase || [],
+                    ingredientesExtra: data.ingredientesExtra || [],
+                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+                    updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+                };
+            });
     res.status(200).json(products);
 
   } catch (error) {
@@ -1946,10 +1978,23 @@ app.get('/api/menu', async (req, res) => {
 
         const products = snapshot.docs.map(doc => {
             const data = doc.data();
-            // Convert Firestore Timestamps to ISO strings for JSON serialization
+            // Explicitly map all fields to ensure everything is included
             return {
                 id: doc.id,
-                ...data,
+                name: data.name,
+                price: data.price,
+                basePrice: data.basePrice,
+                description: data.description,
+                imageUrl: data.imageUrl,
+                isAvailable: data.isAvailable,
+                cost: data.cost,
+                platformFeePercent: data.platformFeePercent,
+                isTaxable: data.isTaxable,
+                businessUnitId: data.businessUnitId,
+                departmentId: data.departmentId,
+                categoriaVentaId: data.categoriaVentaId,
+                ingredientesBase: data.ingredientesBase || [],
+                ingredientesExtra: data.ingredientesExtra || [],
                 createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
                 updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
                 deletedAt: data.deletedAt?.toDate ? data.deletedAt.toDate().toISOString() : data.deletedAt,
@@ -2063,69 +2108,81 @@ app.get('/api/categorias-venta', async (req, res) => {
 
             price,  
 
-    description, 
+        description, 
 
-    imageUrl, 
+        imageUrl, 
 
-    isAvailable, 
+        isAvailable, 
 
-    cost, 
+        cost, 
 
-    platformFeePercent, 
+        platformFeePercent, 
 
-    isTaxable,
+        isTaxable,
 
-    businessUnitId,
+        businessUnitId,
 
-    departmentId,
+        departmentId,
 
-    categoriaVentaId 
+        categoriaVentaId,
 
-  } = req.body;
+        ingredientesBase,
 
-  if (!name || !price || !businessUnitId || !departmentId || !categoriaVentaId) {
+        ingredientesExtra
 
-    return res.status(400).send('Missing required fields: name, price, businessUnitId, departmentId, categoriaVentaId');
+      } = req.body;
 
-  }
+    
 
-  try {
+      if (!name || !price || !businessUnitId || !departmentId || !categoriaVentaId) {
 
-    const docRef = db.collection('productosDeVenta').doc(id);
+        return res.status(400).send('Missing required fields: name, price, businessUnitId, departmentId, categoriaVentaId');
 
-    const finalPrice = parseFloat(price);
+      }
 
-    const basePrice = isTaxable ? finalPrice / 1.16 : finalPrice;
+    
 
-    const updatedProduct = {
+      try {
 
-      name,
+        const docRef = db.collection('productosDeVenta').doc(id);
 
-      price: finalPrice,
+        const finalPrice = parseFloat(price);
 
-      basePrice,
+        const basePrice = isTaxable ? finalPrice / 1.16 : finalPrice;
 
-      description: description || '',
+        const updatedProduct = {
 
-      imageUrl: imageUrl || '',
+          name,
 
-      isAvailable: isAvailable !== undefined ? isAvailable : true,
+          price: finalPrice,
 
-      cost: cost ? parseFloat(cost) : 0,
+          basePrice,
 
-      platformFeePercent: platformFeePercent ? parseFloat(platformFeePercent) : 0,
+          description: description || '',
 
-      isTaxable: isTaxable !== undefined ? isTaxable : true,
+          imageUrl: imageUrl || '',
 
-      businessUnitId,
+          isAvailable: isAvailable !== undefined ? isAvailable : true,
 
-      departmentId,
+          cost: cost ? parseFloat(cost) : 0,
 
-      categoriaVentaId,
+          platformFeePercent: platformFeePercent ? parseFloat(platformFeePercent) : 0,
 
-      updatedAt: new Date(),
+          isTaxable: isTaxable !== undefined ? isTaxable : true,
 
-    };
+          businessUnitId,
+
+          departmentId,
+
+          categoriaVentaId,
+
+          ingredientesBase: ingredientesBase || [],
+
+          ingredientesExtra: ingredientesExtra || [],
+
+          updatedAt: new Date(),
+
+        };
 
     await docRef.update(updatedProduct);
 

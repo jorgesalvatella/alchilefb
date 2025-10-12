@@ -89,7 +89,7 @@ export function ProductCustomizationDialog({ product, isOpen, onOpenChange }: Pr
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-gray-900 text-white border-gray-700">
+      <DialogContent className="sm:max-w-[425px] bg-gray-900/50 backdrop-blur-sm border-gray-700 text-white">
         <DialogHeader>
           <DialogTitle className="text-orange-400">{product.name}</DialogTitle>
           <DialogDescription>{product.description}</DialogDescription>

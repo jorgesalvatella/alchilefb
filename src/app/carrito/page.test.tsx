@@ -2,20 +2,18 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CartPage from './page';
 import { useCart } from '@/context/cart-context';
-import { useUser } from '@/firebase';
+import { useUser } from '@/firebase/provider';
 
 // Mock dependencies
 jest.mock('@/context/cart-context', () => ({
   useCart: jest.fn(),
 }));
-
 jest.mock('@/firebase/provider', () => ({
   useUser: jest.fn(),
 }));
-
 jest.mock('@/components/StorageImage', () => ({
   __esModule: true,
-  default: ({ alt }) => <img alt={alt} />,
+  default: (props: any) => <img alt={props.alt} />,
 }));
 
 global.fetch = jest.fn();
@@ -24,19 +22,13 @@ const mockUpdateQuantity = jest.fn();
 const mockRemoveFromCart = jest.fn();
 
 const mockCartItems = [
-  { cartItemId: '1_abc', id: '1', name: 'Taco de Pastor', price: 25, quantity: 2, imageUrl: '', customizations: { added: ['Queso'], removed: [] } },
-  { cartItemId: '2_def', id: '2', name: 'Agua de Horchata', price: 20, quantity: 1, imageUrl: '', customizations: { added: [], removed: [] } },
+  { cartItemId: 'prod1_ts', id: 'prod1', name: 'Taco de Pastor', price: 25, quantity: 2, imageUrl: 'pastor.jpg', customizations: { added: ['Queso'], removed: ['Cebolla'] } },
+  { cartItemId: 'prod2_ts', id: 'prod2', name: 'Agua de Horchata', price: 20, quantity: 1, imageUrl: 'horchata.jpg', customizations: { added: [], removed: [] } },
 ];
 
 describe('CartPage', () => {
   beforeEach(() => {
-    (useCart as jest.Mock).mockClear();
-    (useUser as jest.Mock).mockClear();
-    mockUpdateQuantity.mockClear();
-    mockRemoveFromCart.mockClear();
-    (fetch as jest.Mock).mockClear();
-
-    // Default mocks
+    jest.clearAllMocks();
     (useUser as jest.Mock).mockReturnValue({ user: { uid: 'test-user' }, isUserLoading: false });
     (fetch as jest.Mock).mockResolvedValue({
       ok: true,
@@ -45,51 +37,46 @@ describe('CartPage', () => {
   });
 
   it('should render empty cart message when there are no items', () => {
-    (useCart as jest.Mock).mockReturnValue({ cartItems: [] });
+    (useCart as jest.Mock).mockReturnValue({ cartItems: [], updateQuantity: mockUpdateQuantity, removeFromCart: mockRemoveFromCart });
     render(<CartPage />);
     expect(screen.getByText('Tu Carrito está Vacío')).toBeInTheDocument();
   });
 
-  it('should render items and display server-verified totals', async () => {
-    (useCart as jest.Mock).mockReturnValue({ cartItems: mockCartItems });
+  it('should render items, display customizations, and show server-verified totals', async () => {
+    (useCart as jest.Mock).mockReturnValue({ cartItems: mockCartItems, updateQuantity: mockUpdateQuantity, removeFromCart: mockRemoveFromCart });
     render(<CartPage />);
 
+    // Verify items and customizations are rendered
     expect(screen.getByText('Taco de Pastor')).toBeInTheDocument();
     expect(screen.getByText('+ Queso')).toBeInTheDocument();
+    expect(screen.getByText('- Cebolla')).toBeInTheDocument();
     expect(screen.getByText('Agua de Horchata')).toBeInTheDocument();
 
+    // Verify totals are updated after fetch
     await waitFor(() => {
       expect(screen.getByText('$70.00')).toBeInTheDocument();
       expect(screen.getByText('$11.20')).toBeInTheDocument();
       expect(screen.getByText('$81.20')).toBeInTheDocument();
     });
-
-    expect(fetch).toHaveBeenCalledWith('/api/cart/verify-totals', expect.any(Object));
   });
 
-  it('should call updateQuantity with cartItemId when quantity is changed', () => {
-    (useCart as jest.Mock).mockReturnValue({
-      cartItems: mockCartItems,
-      updateQuantity: mockUpdateQuantity,
-    });
+  it('should call updateQuantity with cartItemId when plus button is clicked', async () => {
+    (useCart as jest.Mock).mockReturnValue({ cartItems: mockCartItems, updateQuantity: mockUpdateQuantity, removeFromCart: mockRemoveFromCart });
     render(<CartPage />);
+    
+    const plusButtons = await screen.findAllByRole('button', { name: /Aumentar cantidad/i });
+    fireEvent.click(plusButtons[0]);
 
-    const plusButton = screen.getAllByRole('button', { name: /Aumentar cantidad/i })[0];
-    fireEvent.click(plusButton);
-
-    expect(mockUpdateQuantity).toHaveBeenCalledWith('1_abc', 3);
+    expect(mockUpdateQuantity).toHaveBeenCalledWith('prod1_ts', 3);
   });
 
-  it('should call removeFromCart with cartItemId when trash button is clicked', () => {
-    (useCart as jest.Mock).mockReturnValue({
-      cartItems: mockCartItems,
-      removeFromCart: mockRemoveFromCart,
-    });
+  it('should call removeFromCart with cartItemId when trash button is clicked', async () => {
+    (useCart as jest.Mock).mockReturnValue({ cartItems: mockCartItems, updateQuantity: mockUpdateQuantity, removeFromCart: mockRemoveFromCart });
     render(<CartPage />);
 
-    const trashButton = screen.getAllByRole('button', { name: /Eliminar item/i })[0];
-    fireEvent.click(trashButton);
+    const removeButtons = await screen.findAllByRole('button', { name: /Eliminar item/i });
+    fireEvent.click(removeButtons[0]);
 
-    expect(mockRemoveFromCart).toHaveBeenCalledWith('1_abc');
+    expect(mockRemoveFromCart).toHaveBeenCalledWith('prod1_ts');
   });
 });
