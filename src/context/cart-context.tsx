@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, ReactNode, useEffect } from 'react';
 import type { SaleProduct } from '@/lib/data';
 
 // Define the shape of a single cart item
@@ -15,9 +15,6 @@ interface CartContextType {
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
-  subtotal: number;
-  tax: number;
-  total: number;
   itemCount: number;
 }
 
@@ -29,21 +26,37 @@ interface CartProviderProps {
   children: ReactNode;
 }
 
-const TAX_RATE = 0.16; // 16% IVA
-
 export function CartProvider({ children }: CartProviderProps) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Effect to load cart from localStorage on initial client-side render
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedCart = localStorage.getItem('alchile-cart');
+      if (savedCart) {
+        setCartItems(JSON.parse(savedCart));
+      }
+      setIsInitialLoad(false);
+    }
+  }, []);
+
+  // Effect to save cart to localStorage whenever it changes
+  useEffect(() => {
+    // Don't save during the initial load from localStorage
+    if (!isInitialLoad) {
+      localStorage.setItem('alchile-cart', JSON.stringify(cartItems));
+    }
+  }, [cartItems, isInitialLoad]);
 
   const addToCart = (product: SaleProduct) => {
     setCartItems(prevItems => {
       const existingItem = prevItems.find(item => item.id === product.id);
       if (existingItem) {
-        // If item already exists, increase quantity
         return prevItems.map(item =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      // Otherwise, add new item with quantity 1
       return [...prevItems, { ...product, quantity: 1 }];
     });
   };
@@ -54,7 +67,6 @@ export function CartProvider({ children }: CartProviderProps) {
 
   const updateQuantity = (productId: string, quantity: number) => {
     if (quantity <= 0) {
-      // If quantity is 0 or less, remove the item
       removeFromCart(productId);
     } else {
       setCartItems(prevItems =>
@@ -69,13 +81,8 @@ export function CartProvider({ children }: CartProviderProps) {
     setCartItems([]);
   };
 
-  // useMemo will recalculate totals only when cartItems changes
-  const { subtotal, tax, total, itemCount } = useMemo(() => {
-    const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const subtotal = total / (1 + TAX_RATE);
-    const tax = total - subtotal;
-    const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-    return { subtotal, tax, total, itemCount };
+  const itemCount = useMemo(() => {
+    return cartItems.reduce((sum, item) => sum + item.quantity, 0);
   }, [cartItems]);
 
   const value = {
@@ -84,9 +91,6 @@ export function CartProvider({ children }: CartProviderProps) {
     removeFromCart,
     updateQuantity,
     clearCart,
-    subtotal,
-    tax,
-    total,
     itemCount,
   };
 

@@ -2269,7 +2269,7 @@ app.put('/api/me/addresses/set-default/:id', authMiddleware, async (req, res) =>
 // --- Cart Verification ---
 const TAX_RATE = 0.16;
 
-app.post('/api/cart/verify-totals', async (req, res) => {
+app.post('/api/cart/verify-totals', authMiddleware, async (req, res) => {
   const { items } = req.body;
 
   if (!items || !Array.isArray(items)) {
