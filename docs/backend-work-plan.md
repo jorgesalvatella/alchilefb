@@ -53,8 +53,10 @@ Este documento detalla las fases y tareas para construir el backend completo baj
 ### Fase 4: Funcionalidad del Usuario Final
 *   **Objetivo:** Migrar las operaciones que realizan los clientes.
 *   **Tareas (Endpoints a crear):**
-    *   `GET /api/menu` (Endpoint público para ver el menú).
-    *   `GET /api/me/profile` y `PUT /api/me/profile` (para la página de perfil del usuario).
+    *   `GET /api/menu` (Endpoint público para ver el menú). `[HECHO]`
+    *   `GET /api/me/profile` y `PUT /api/me/profile` (para la página de perfil del usuario). `[HECHO]`
+    *   `GET /api/me/addresses`, `POST`, `PUT`, `DELETE` (para la gestión de direcciones). `[HECHO]`
+    *   `POST /api/cart/verify-totals` (para el carrito de compras funcional). `[HECHO]`
     *   `GET /api/me/orders` (para el historial de pedidos del usuario).
     *   `POST /api/checkout` (para procesar una nueva orden).
 *   **Tareas (Frontend):** Refactorizar las páginas de `menu`, `profile`, `orders` y `checkout` para que dejen de usar `useCollection` y llamen a la API.

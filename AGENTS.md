@@ -967,6 +967,61 @@ module.exports = {
 - ✅ Tiempo < 5 segundos por suite
 - ✅ 0 tests skipped o comentados
 
+### 3.8. Flujo de Carrito de Compras Seguro (Cliente + Servidor)
+
+**Lección Aprendida:** La gestión de un carrito de compras requiere un enfoque dual para equilibrar la experiencia de usuario (feedback instantáneo) con la seguridad (lógica de negocio en el servidor).
+
+**Patrón:**
+1.  **Estado en Cliente con Persistencia:**
+    *   **Problema:** `useState` por sí solo es volátil y se pierde al recargar la página.
+    *   **Solución:** Se utiliza un React Context (`CartContext`) que gestiona los artículos del carrito. Este contexto **hidrata su estado inicial desde `localStorage`** y **guarda cualquier cambio de vuelta en `localStorage`**.
+    *   **Implementación Clave (`cart-context.tsx`):**
+        ```typescript
+        // Cargar al inicio
+        useEffect(() => {
+          const savedCart = localStorage.getItem('alchile-cart');
+          if (savedCart) {
+            setCartItems(JSON.parse(savedCart));
+          }
+        }, []);
+
+        // Guardar en cada cambio
+        useEffect(() => {
+          localStorage.setItem('alchile-cart', JSON.stringify(cartItems));
+        }, [cartItems]);
+        ```
+
+2.  **Cálculos de Totales:**
+    *   **Rol del Cliente:** El `CartContext` puede calcular totales para **visualización inmediata** en la UI. Esto proporciona un feedback rápido al usuario.
+    *   **Rol del Servidor (CRÍTICO):** El precio final y autoritativo **SIEMPRE** debe ser calculado en el backend para evitar vulnerabilidades de manipulación de precios.
+
+3.  **Verificación en Servidor (API Endpoint):**
+    *   Se crea un endpoint seguro: `POST /api/cart/verify-totals`.
+    *   **Flujo:**
+        a.  La página del carrito envía los `IDs` y `cantidades` de sus artículos a este endpoint.
+        b.  El backend ignora cualquier precio del cliente, busca cada producto en la base de datos para obtener su precio oficial, recalcula los totales y los devuelve.
+        c.  El frontend muestra estos totales verificados y solo entonces activa el botón de "Pagar".
+
+4.  **Manejo de Condiciones de Carrera (`useEffect`):**
+    *   **Problema:** La página del carrito depende de dos fuentes de datos asíncronas: el `user` (desde Firebase Auth) y los `cartItems` (desde `localStorage`/Context). Una llamada a la API en el momento incorrecto puede fallar.
+    *   **Solución:** Utilizar **guardias explícitas** dentro del `useEffect` para manejar todos los estados posibles.
+    *   **Implementación Clave (`carrito/page.tsx`):**
+        ```typescript
+        useEffect(() => {
+          // Guardia 1: Esperar a que la autenticación se resuelva
+          if (isUserLoading) {
+            return; 
+          }
+          // Guardia 2: Manejar el caso de que no haya usuario o el carrito esté vacío
+          if (!user || cartItems.length === 0) {
+            setServerTotals({ subtotal: 0, tax: 0, total: 0 });
+            return;
+          }
+          // Solo si todas las guardias pasan, se procede con la llamada a la API.
+          fetchTotalsFromServer();
+        }, [cartItems, user, isUserLoading]); // <-- Dependencias completas
+        ```
+
 ---
 
 ## 4. Comando de Ayuda Rápida
