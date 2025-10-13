@@ -153,56 +153,62 @@ export default function CheckoutPage() {
 
   if (itemCount === 0 && !isSubmitting) {
     return (
-      <div className="container mx-auto px-4 py-8 text-center">
-        <h1 className="text-3xl font-bold mb-4">Checkout</h1>
-        <p>Tu carrito está vacío. ¡Añade algunos productos para continuar!</p>
-        <Button onClick={() => router.push('/menu')} className="mt-4">
+      <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32 text-center">
+        <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl text-white mb-6">Tu Carrito está Vacío</h1>
+        <p className="mt-4 max-w-2xl mx-auto text-xl text-white/70 mb-8">¡Añade algunos productos para continuar!</p>
+        <Button onClick={() => router.push('/menu')} className="bg-orange-500 text-white hover:bg-orange-600 font-bold">
           Ir al Menú
         </Button>
-      </div>
+      </main>
     );
   }
 
   return (
     <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
-      <h1 className="text-3xl font-bold mb-8">Finalizar Compra</h1>
+      <div className="text-center mb-12">
+        <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl text-white">Finalizar Compra</h1>
+        <p className="mt-4 max-w-2xl mx-auto text-xl bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent font-black">
+          Completa tu pedido en unos simples pasos
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Columna Izquierda y Central: Opciones */}
         <div className="lg:col-span-2">
-          <Card className="mb-8">
-            <CardHeader><CardTitle>1. Dirección de Entrega</CardTitle></CardHeader>
+          <Card className="mb-8 bg-gray-900/50 border-gray-700 text-white">
+            <CardHeader><CardTitle className="text-orange-400">1. Dirección de Entrega</CardTitle></CardHeader>
             <CardContent>
               <RadioGroup value={addressOption} onValueChange={setAddressOption} className="space-y-4">
                 <div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="main" id="main" />
-                    <Label htmlFor="main">Usar mi dirección principal</Label>
+                    <Label htmlFor="main" className="text-white">Usar mi dirección principal</Label>
                   </div>
                   {addressOption === 'main' && (
-                    <div className="pl-6 mt-2 text-sm text-muted-foreground border-l-2 ml-2">
+                    <div className="pl-6 mt-2 text-sm text-white/70 border-l-2 border-orange-500 ml-2">
                       <p>{userAddresses[0]?.street}</p>
                       <p>{`${userAddresses[0]?.city}, ${userAddresses[0]?.state} ${userAddresses[0]?.postalCode}`}</p>
                     </div>
                   )}
                 </div>
-                
+
                 <div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="whatsapp" id="whatsapp" />
-                    <Label htmlFor="whatsapp">Coordinar por WhatsApp</Label>
+                    <Label htmlFor="whatsapp" className="text-white">Coordinar por WhatsApp</Label>
                   </div>
                 </div>
 
                 <div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="location" id="location" />
-                    <Label htmlFor="location">Enviar mi ubicación actual</Label>
+                    <Label htmlFor="location" className="text-white">Enviar mi ubicación actual</Label>
                   </div>
                   {addressOption === 'location' && (
                     <div className="pl-6 mt-2 ml-2">
-                      <Button variant="outline" onClick={handleGetLocation}>Obtener Ubicación</Button>
-                      {currentLocation && <p className="text-sm text-green-600 mt-2">Ubicación guardada: {currentLocation.lat.toFixed(4)}, {currentLocation.lon.toFixed(4)}</p>}
+                      <Button variant="outline" onClick={handleGetLocation} className="border-gray-600 text-white hover:bg-fresh-green hover:text-black hover:border-fresh-green">Obtener Ubicación</Button>
+                      {currentLocation && <p className="text-sm text-fresh-green mt-2">Ubicación guardada: {currentLocation.lat.toFixed(4)}, {currentLocation.lon.toFixed(4)}</p>}
                     </div>
                   )}
                 </div>
@@ -210,13 +216,13 @@ export default function CheckoutPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle>2. Método de Pago</CardTitle></CardHeader>
+          <Card className="bg-gray-900/50 border-gray-700 text-white">
+            <CardHeader><CardTitle className="text-orange-400">2. Método de Pago</CardTitle></CardHeader>
             <CardContent>
-              <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as any)}>
-                <div className="flex items-center space-x-2"><RadioGroupItem value="Efectivo" id="efectivo" /><Label htmlFor="efectivo">Efectivo</Label></div>
-                <div className="flex items-center space-x-2"><RadioGroupItem value="Tarjeta a la entrega" id="tarjeta" /><Label htmlFor="tarjeta">Tarjeta a la entrega</Label></div>
-                <div className="flex items-center space-x-2"><RadioGroupItem value="Transferencia bancaria" id="transferencia" /><Label htmlFor="transferencia">Transferencia bancaria</Label></div>
+              <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as any)} className="space-y-3">
+                <div className="flex items-center space-x-2"><RadioGroupItem value="Efectivo" id="efectivo" /><Label htmlFor="efectivo" className="text-white">Efectivo</Label></div>
+                <div className="flex items-center space-x-2"><RadioGroupItem value="Tarjeta a la entrega" id="tarjeta" /><Label htmlFor="tarjeta" className="text-white">Tarjeta a la entrega</Label></div>
+                <div className="flex items-center space-x-2"><RadioGroupItem value="Transferencia bancaria" id="transferencia" /><Label htmlFor="transferencia" className="text-white">Transferencia bancaria</Label></div>
               </RadioGroup>
             </CardContent>
           </Card>
@@ -224,28 +230,28 @@ export default function CheckoutPage() {
 
         {/* Columna Derecha: Resumen */}
         <div className="lg:col-span-1">
-          <Card>
-            <CardHeader><CardTitle>3. Resumen del Pedido</CardTitle></CardHeader>
+          <Card className="bg-gray-900/50 border-gray-700 text-white">
+            <CardHeader><CardTitle className="text-orange-400">3. Resumen del Pedido</CardTitle></CardHeader>
             <CardContent>
               <ul className="space-y-2">
                 {cartItems.map(item => (
                   <li key={item.cartItemId} className="flex justify-between text-sm">
-                    <span>{item.quantity} x {item.name}</span>
-                    <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                    <span className="text-white">{item.quantity} x {item.name}</span>
+                    <span className="font-medium text-white/80">${(item.price * item.quantity).toFixed(2)}</span>
                   </li>
                 ))}
               </ul>
-              <hr className="my-4" />
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total</span>
-                <span>
+              <hr className="my-4 border-gray-700" />
+              <div className="flex justify-between font-bold text-xl">
+                <span className="text-white">Total</span>
+                <span className="text-orange-400">
                   {verifiedTotal !== null ? `$${verifiedTotal.toFixed(2)}` : 'Calculando...'}
                 </span>
               </div>
-              <Button 
-                onClick={handlePlaceOrder} 
+              <Button
+                onClick={handlePlaceOrder}
                 disabled={isSubmitting || !paymentMethod || !addressOption || verifiedTotal === null}
-                className="w-full mt-6"
+                className="w-full mt-6 bg-orange-500 text-white hover:bg-orange-600 font-bold text-lg py-6"
                 size="lg"
               >
                 {isSubmitting ? 'Confirmando...' : 'Confirmar Pedido'}
