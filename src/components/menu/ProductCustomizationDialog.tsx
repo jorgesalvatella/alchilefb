@@ -21,9 +21,13 @@ export function ProductCustomizationDialog({ product, isOpen, onOpenChange }: Pr
   const [selectedExtras, setSelectedExtras] = useState<{ nombre: string; precio: number }[]>([]);
   const [removedIngredients, setRemovedIngredients] = useState<string[]>([]);
   const [currentPrice, setCurrentPrice] = useState(product?.price || 0);
+  const [priceKey, setPriceKey] = useState(0);
   const { addItem } = useCart();
 
   useEffect(() => {
+    // Force re-render when price-related values change
+    setPriceKey(prev => prev + 1);
+
     if (product) {
       let total = product.price;
 
@@ -135,7 +139,7 @@ export function ProductCustomizationDialog({ product, isOpen, onOpenChange }: Pr
         </div>
 
         {/* Price Breakdown */}
-        <div className="space-y-2 py-3 border-t border-gray-700">
+        <div className="space-y-2 py-3 border-t border-gray-700" key={priceKey}>
           <div className="flex justify-between text-sm text-white/70">
             <span>Precio base:</span>
             <span>${product.price.toFixed(2)}</span>
