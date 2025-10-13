@@ -18,7 +18,7 @@ interface ProductCustomizationDialogProps {
 
 export function ProductCustomizationDialog({ product, isOpen, onOpenChange }: ProductCustomizationDialogProps) {
   const [quantity, setQuantity] = useState(1);
-  const [selectedExtras, setSelectedExtras] = useState<string[]>([]);
+  const [selectedExtras, setSelectedExtras] = useState<{ nombre: string; precio: number }[]>([]);
   const [removedIngredients, setRemovedIngredients] = useState<string[]>([]);
   const [currentPrice, setCurrentPrice] = useState(product?.price || 0);
   const { addItem } = useCart();
@@ -26,13 +26,10 @@ export function ProductCustomizationDialog({ product, isOpen, onOpenChange }: Pr
   useEffect(() => {
     if (product) {
       let total = product.price;
-      
+
       // Add price of selected extras
-      selectedExtras.forEach(extraName => {
-        const extra = product.ingredientesExtra?.find(e => e.nombre === extraName);
-        if (extra) {
-          total += extra.precio;
-        }
+      selectedExtras.forEach(extra => {
+        total += extra.precio;
       });
 
       setCurrentPrice(total * quantity);
@@ -72,9 +69,11 @@ export function ProductCustomizationDialog({ product, isOpen, onOpenChange }: Pr
     onOpenChange(false);
   };
 
-  const handleExtraChange = (extraName: string, checked: boolean) => {
-    setSelectedExtras(prev => 
-      checked ? [...prev, extraName] : prev.filter(name => name !== extraName)
+  const handleExtraChange = (extraName: string, extraPrice: number, checked: boolean) => {
+    setSelectedExtras(prev =>
+      checked
+        ? [...prev, { nombre: extraName, precio: extraPrice }]
+        : prev.filter(e => e.nombre !== extraName)
     );
   };
 
@@ -121,9 +120,9 @@ export function ProductCustomizationDialog({ product, isOpen, onOpenChange }: Pr
               {product.ingredientesExtra.map(extra => (
                 <div key={extra.nombre} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Checkbox 
+                    <Checkbox
                       id={`extra-${extra.nombre}`}
-                      onCheckedChange={(checked) => handleExtraChange(extra.nombre, !!checked)}
+                      onCheckedChange={(checked) => handleExtraChange(extra.nombre, extra.precio, !!checked)}
                       className="border-orange-400"
                     />
                     <Label htmlFor={`extra-${extra.nombre}`} className="cursor-pointer">{extra.nombre}</Label>
@@ -135,6 +134,32 @@ export function ProductCustomizationDialog({ product, isOpen, onOpenChange }: Pr
           )}
         </div>
 
+        {/* Price Breakdown */}
+        <div className="space-y-2 py-3 border-t border-gray-700">
+          <div className="flex justify-between text-sm text-white/70">
+            <span>Precio base:</span>
+            <span>${product.price.toFixed(2)}</span>
+          </div>
+          {selectedExtras.length > 0 && (
+            <div className="space-y-1">
+              {selectedExtras.map(extra => (
+                <div key={extra.nombre} className="flex justify-between text-sm text-yellow-400">
+                  <span>+ {extra.nombre}</span>
+                  <span>${extra.precio.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex justify-between text-sm font-semibold text-white/90 pt-1 border-t border-gray-700/50">
+            <span>Precio por unidad:</span>
+            <span>${((currentPrice / quantity)).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-base font-bold text-orange-400">
+            <span>Total ({quantity} {quantity === 1 ? 'unidad' : 'unidades'}):</span>
+            <span>${currentPrice.toFixed(2)}</span>
+          </div>
+        </div>
+
         <DialogFooter className="sm:justify-between items-center">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setQuantity(q => Math.max(1, q - 1))} aria-label="Disminuir cantidad"><Minus className="h-4 w-4"/></Button>
@@ -142,7 +167,7 @@ export function ProductCustomizationDialog({ product, isOpen, onOpenChange }: Pr
             <Button variant="outline" size="icon" onClick={() => setQuantity(q => q + 1)} aria-label="Aumentar cantidad"><Plus className="h-4 w-4"/></Button>
           </div>
           <Button onClick={handleAddToCart} className="bg-orange-500 hover:bg-orange-600 text-white font-bold">
-            Añadir por ${currentPrice.toFixed(2)}
+            Añadir al carrito
           </Button>
         </DialogFooter>
       </DialogContent>

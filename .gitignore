@@ -39,4 +39,12 @@ next-env.d.ts
 # genkit
 .genkit/
 .genkit-cache.json
-\n# Playwright auth state\ne2e/.auth/
+
+# Playwright
+e2e/.auth/
+playwright-report/
+test-results/
+
+# ngrok
+*.tgz
+ngrok

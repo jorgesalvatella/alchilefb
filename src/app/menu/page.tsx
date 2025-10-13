@@ -164,7 +164,7 @@ export default function MenuPage() {
 
   return (
     <>
-      <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8">
+      <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl text-white">Nuestro Menú</h1>
           <p className="mt-4 max-w-2xl mx-auto text-xl bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent font-black">

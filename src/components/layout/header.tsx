@@ -63,12 +63,12 @@ function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-white/10" />
         {userMenuNavigation.map((item) => (
-          <DropdownMenuItem key={item.href} asChild className="cursor-pointer hover:bg-white/10 focus:bg-white/10">
+          <DropdownMenuItem key={item.href} asChild className="cursor-pointer hover:bg-orange-500 hover:text-black focus:bg-orange-500 focus:text-black">
             <Link href={item.href}>{item.label}</Link>
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator className="bg-white/10" />
-        <DropdownMenuItem onClick={() => auth.signOut()} className="cursor-pointer hover:bg-white/10 focus:bg-red-600/50">
+        <DropdownMenuItem onClick={() => auth.signOut()} className="cursor-pointer hover:bg-orange-500 hover:text-black focus:bg-orange-500 focus:text-black">
           <LogOut className="mr-2 h-4 w-4" />
           <span>Cerrar Sesión</span>
         </DropdownMenuItem>
@@ -85,7 +85,7 @@ function AdminMenu({ userRole }: { userRole: string }) {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className={cn(
-          "relative font-headline tracking-wider transition-colors hover:text-white text-white/80 data-[state=open]:text-white",
+          "relative font-headline tracking-wider transition-colors hover:bg-fresh-green hover:text-black text-white/80 data-[state=open]:text-white",
           pathname.startsWith('/control') && "text-white"
         )}>
           Control
@@ -97,7 +97,7 @@ function AdminMenu({ userRole }: { userRole: string }) {
           item.isLabel ? (
             <DropdownMenuLabel key={item.label} className="text-white/60 text-xs px-2 py-1.5">{item.label}</DropdownMenuLabel>
           ) : (
-            <DropdownMenuItem key={item.href} asChild className="hover:bg-white/10 focus:bg-white/10 cursor-pointer">
+            <DropdownMenuItem key={item.href} asChild className="hover:bg-orange-500 hover:text-black focus:bg-orange-500 focus:text-black cursor-pointer">
               <Link href={item.href}>
                 {item.icon && <item.icon className="mr-2 h-4 w-4" />}
                 <span>{item.label}</span>
@@ -152,7 +152,7 @@ export function Header() {
             key={link.href}
             href={link.href}
             className={cn(
-              "relative font-headline tracking-wider transition-colors hover:text-white",
+              "relative font-headline tracking-wider transition-colors hover:bg-fresh-green hover:text-black px-3 py-2 rounded-md",
               isActive && "text-white"
             )}
           >
@@ -231,7 +231,7 @@ export function Header() {
         </div>
 
         <div className="flex items-center space-x-1 md:space-x-2 text-white">
-          <Button variant="ghost" size="icon" asChild className="relative text-white hover:bg-white/10">
+          <Button variant="ghost" size="icon" asChild className="relative text-white hover:bg-fresh-green hover:text-black">
             <Link href="/carrito">
               <ShoppingCart />
               <span className="sr-only">Carrito</span>

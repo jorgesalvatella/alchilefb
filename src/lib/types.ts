@@ -35,11 +35,11 @@ export type SaleProduct = {
 export type CartItem = {
   id: string;
   name: string;
-  price: number;
+  price: number; // Base price of the product
   quantity: number;
   imageUrl?: string;
   customizations?: {
-    added: string[];
+    added: { nombre: string; precio: number }[];
     removed: string[];
   };
 };
