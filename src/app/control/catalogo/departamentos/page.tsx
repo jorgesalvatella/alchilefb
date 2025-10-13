@@ -72,10 +72,10 @@ export default function AdminDepartmentsPage() {
   };
 
   return (
-    <>
+    <div className="pt-32">
         <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-7xl font-black text-white">
-                <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
+                <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
                     Departamentos
                 </span>
             </h1>
@@ -145,6 +145,6 @@ export default function AdminDepartmentsPage() {
             onOpenChange={setDialogOpen}
             department={selectedDepartment}
         />
-    </>
+    </div>
   );
 }

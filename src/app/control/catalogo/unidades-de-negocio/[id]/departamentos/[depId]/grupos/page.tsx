@@ -120,11 +120,11 @@ export default function AdminGroupsPage() {
   };
 
   return (
-    <>
+    <div className="pt-32">
       <Breadcrumbs items={breadcrumbItems} />
       <div className="text-center mb-12">
-        <h1 className="text-5xl md:text-7xl font-black text-white">
-          <span className="bg-gradient-to-r from-teal-400 via-cyan-500 to-blue-600 bg-clip-text text-transparent">
+        <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
+          <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
             Grupos de {department?.name}
           </span>
         </h1>
@@ -253,6 +253,6 @@ export default function AdminGroupsPage() {
         businessUnitId={businessUnitId}
         departmentId={departmentId}
       />
-    </>
+    </div>
   );
 }

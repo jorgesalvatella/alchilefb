@@ -115,15 +115,15 @@ export default function AdminSaleCategoriesPage() {
   };
 
   return (
-    <>
+    <div className="pt-32">
       <Breadcrumbs items={breadcrumbItems} />
       <div className="text-center mb-12">
-        <h1 className="text-5xl md:text-7xl font-black text-white">
+        <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
           <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
             Categorías de Venta
           </span>
         </h1>
-        <p className="text-white/70 text-lg mt-2">
+        <p className="text-xl text-white/80 max-w-2xl mx-auto">
           Para el departamento: <strong>{department?.name}</strong>
         </p>
       </div>
@@ -184,6 +184,6 @@ export default function AdminSaleCategoriesPage() {
         businessUnitId={businessUnitId}
         departmentId={departmentId}
       />
-    </>
+    </div>
   );
 }

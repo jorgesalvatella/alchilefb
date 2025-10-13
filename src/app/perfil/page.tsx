@@ -231,11 +231,14 @@ export default function ProfilePage() {
 
       <div className="relative container mx-auto px-4 pb-12 md:pb-20">
         <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-7xl font-black text-white mb-3">
+            <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
                 <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
                     Mi Cuenta
                 </span>
             </h1>
+            <p className="text-xl text-white/80 max-w-2xl mx-auto">
+                Administra tu información personal y direcciones de entrega.
+            </p>
         </div>
 
         <div className="grid md:grid-cols-4 gap-8 items-start">
