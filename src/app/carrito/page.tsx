@@ -52,10 +52,14 @@ export default function CartPage() {
           productId: item.id,
           quantity: item.quantity,
           customizations: {
-            added: item.customizations?.added?.map(extra => extra.nombre) || [],
+            added: item.customizations?.added || [],
             removed: item.customizations?.removed || [],
           },
         }));
+
+        if (itemsToVerify.length === 0 && cartItems.length > 0) {
+          throw new Error("Algunos items en tu carrito son inválidos.");
+        }
 
         const response = await fetch('/api/cart/verify-totals', {
           method: 'POST',
@@ -64,14 +68,19 @@ export default function CartPage() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to verify totals');
+          throw new Error('No se pudieron verificar los totales con el servidor.');
         }
 
         const data = await response.json();
         setServerTotals(data.summary);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error verifying totals:", error);
         // Handle error case, e.g., show a toast notification
+        toast({ // <-- FEEDBACK AL USUARIO
+          title: 'Error de Carrito',
+          description: error.message || 'No se pudo conectar con el servidor.',
+          variant: 'destructive',
+        });
       } finally {
         setIsVerifying(false);
       }
@@ -210,8 +219,10 @@ export default function CartPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button disabled={isVerifying || serverTotals.totalFinal === 0} className="w-full bg-orange-500 text-white hover:bg-orange-600 text-lg py-6">
-                {isVerifying ? 'Verificando...' : 'Proceder al Pago'}
+              <Button asChild disabled={isVerifying || serverTotals.totalFinal === 0} className="w-full bg-orange-500 text-white hover:bg-orange-600 text-lg py-6">
+                <Link href="/pago">
+                  {isVerifying ? 'Verificando...' : 'Proceder al Pago'}
+                </Link>
               </Button>
             </CardFooter>
           </Card>

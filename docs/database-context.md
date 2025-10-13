@@ -17,15 +17,17 @@ Este documento proporciona una visión general de la estructura de la base de da
     - `claims`: Objeto que contiene los roles (`super_admin`, `admin`). La seguridad se basa en estos claims.
     - `spicePreference`: Nivel de picante preferido.
 
-### 2. `orders`
-- **Ruta**: `/orders/{orderId}`
+### 2. `pedidos`
+- **Ruta**: `/pedidos/{pedidoId}`
 - **Descripción**: Contiene el historial de todos los pedidos realizados en la aplicación.
 - **Contenido Clave**:
-    - `userId`: Referencia al usuario que hizo el pedido.
-    - `orderDate`: Fecha del pedido.
-    - `totalAmount`: Monto total.
-    - `orderStatus`: Estado actual (`Pedido Realizado`, `Preparando`, `En Reparto`, `Entregado`).
-- **Sub-colección**: `order_items` (`/orders/{orderId}/order_items/{orderItemId}`) que detalla cada producto del pedido.
+    - `userId`: (String) ID del usuario que realizó el pedido.
+    - `items`: (Array) Copia de los productos del carrito, incluyendo personalizaciones y precios.
+    - `totalVerificado`: (Number) El costo total del pedido, calculado y verificado por el backend.
+    - `metodoPago`: (String) Método de pago seleccionado (ej. "Efectivo", "Tarjeta a la entrega").
+    - `estado`: (String) Estado actual del pedido (valor inicial: "Recibido").
+    - `fechaCreacion`: (Timestamp) Fecha y hora de creación del pedido.
+    - `direccionEntrega`: (Object | String) Dirección de entrega, que puede ser un objeto estructurado, un string "Ubicación por WhatsApp", o una URL de geolocalización.
 
 ---
 
