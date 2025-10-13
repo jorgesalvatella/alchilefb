@@ -27,13 +27,13 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
   const mapImage = PlaceHolderImages.getById('map-placeholder');
 
   const orderRef = useMemoFirebase(
-    () => (firestore ? doc(firestore, 'orders', id) : null),
+    () => (firestore ? doc(firestore, 'pedidos', id) : null),
     [firestore, id]
   );
   const { data: order, isLoading } = useDoc<Order>(orderRef);
 
   const orderItemsCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, `orders/${id}/order_items`) : null),
+    () => (firestore ? collection(firestore, `pedidos/${id}/order_items`) : null),
     [firestore, id]
   );
   const { data: orderItems, isLoading: isLoadingItems } = useCollection<OrderItem>(orderItemsCollection);

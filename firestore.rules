@@ -179,6 +179,20 @@ service cloud.firestore {
       allow create: if isSignedIn();
       // Admins/SuperAdmins can manage all orders
       allow read, write: if isAdmin() || isSuperAdmin();
+
+      match /order_items/{orderItemId} {
+        /**
+         * @description Manages order items within a pedido.
+         * @path /pedidos/{pedidoId}/order_items/{orderItemId}
+         * @allow (get, list) Users can read order items if they own the parent pedido.
+         * @allow (create) Order items can be created when the pedido is created.
+         * @principle Order items inherit access control from parent pedido.
+         */
+        allow get, list: if request.auth.uid == get(/databases/$(database)/documents/pedidos/$(pedidoId)).data.userId;
+        allow create: if isSignedIn();
+        // Admins/SuperAdmins can manage all order items
+        allow read, write: if isAdmin() || isSuperAdmin();
+      }
     }
 
     match /menu_items/{menuItemId} {
