@@ -47,7 +47,10 @@ export default function CartPage() {
         const itemsToVerify = cartItems.map(item => ({
           productId: item.id,
           quantity: item.quantity,
-          customizations: item.customizations || { added: [], removed: [] },
+          customizations: {
+            added: item.customizations?.added?.map(extra => extra.nombre) || [],
+            removed: item.customizations?.removed || [],
+          },
         }));
 
         const response = await fetch('/api/cart/verify-totals', {
@@ -73,14 +76,24 @@ export default function CartPage() {
     verifyTotals();
   }, [cartItems, user, isUserLoading]);
 
-  const getCustomizationPrice = (item: CartItem): number => {
-    let customPrice = 0;
+  const getItemTotal = (item: CartItem): number => {
+    let unitPrice = item.price;
     if (item.customizations?.added) {
-      // This is a client-side estimate. The server has the final say.
-      // We need product data here, which we don't have in the cart item by default.
-      // For now, we'll just display the server-calculated price.
+      item.customizations.added.forEach(extra => {
+        unitPrice += extra.precio;
+      });
     }
-    return (item.price * item.quantity) + customPrice;
+    return unitPrice * item.quantity;
+  };
+
+  const getUnitPrice = (item: CartItem): number => {
+    let unitPrice = item.price;
+    if (item.customizations?.added) {
+      item.customizations.added.forEach(extra => {
+        unitPrice += extra.precio;
+      });
+    }
+    return unitPrice;
   };
 
   if (cartItems.length === 0) {
@@ -125,17 +138,31 @@ export default function CartPage() {
                     />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-semibold break-words pr-2">{item.name}</h3>
-                      <p className="font-semibold flex-shrink-0">${getCustomizationPrice(item).toFixed(2)}</p>
-                    </div>
-                    <div className="text-sm text-white/60 space-y-1 mt-1">
+                    <h3 className="font-semibold break-words">{item.name}</h3>
+
+                    {/* Price Breakdown */}
+                    <div className="text-sm space-y-1 mt-2">
+                      <div className="flex justify-between text-white/60">
+                        <span>Precio base:</span>
+                        <span>${item.price.toFixed(2)}</span>
+                      </div>
                       {item.customizations?.added && item.customizations.added.map(extra => (
-                        <p key={extra} className="text-green-400">+ {extra}</p>
+                        <div key={extra.nombre} className="flex justify-between text-yellow-400">
+                          <span>+ {extra.nombre}</span>
+                          <span>${extra.precio.toFixed(2)}</span>
+                        </div>
                       ))}
                       {item.customizations?.removed && item.customizations.removed.map(removed => (
-                        <p key={removed} className="text-red-400">- {removed}</p>
+                        <p key={removed} className="text-red-400 text-xs">Sin {removed}</p>
                       ))}
+                      <div className="flex justify-between text-white/80 font-semibold pt-1 border-t border-gray-700/50">
+                        <span>Precio unitario:</span>
+                        <span>${getUnitPrice(item).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-orange-400 font-bold">
+                        <span>Subtotal ({item.quantity}x):</span>
+                        <span>${getItemTotal(item).toFixed(2)}</span>
+                      </div>
                     </div>
                     <div className="mt-3 flex items-center justify-between">
                       <div className="flex items-center">
