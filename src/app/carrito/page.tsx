@@ -22,8 +22,12 @@ export default function CartPage() {
   const { cartItems, updateQuantity, removeFromCart } = useCart();
   const [serverTotals, setServerTotals] = useState<ServerTotals>({ subtotalGeneral: 0, ivaDesglosado: 0, totalFinal: 0 });
   const [isVerifying, setIsVerifying] = useState(true);
+  const [cartKey, setCartKey] = useState(0);
 
   useEffect(() => {
+    // Force re-render when cart items change
+    setCartKey(prev => prev + 1);
+
     const verifyTotals = async () => {
       if (isUserLoading) return;
 
@@ -32,7 +36,7 @@ export default function CartPage() {
         setServerTotals({ subtotalGeneral: 0, ivaDesglosado: 0, totalFinal: 0 });
         return;
       }
-      
+
       // No user needed for verification, as prices are public
       // if (!user) {
       //   setIsVerifying(false);
@@ -74,7 +78,7 @@ export default function CartPage() {
     };
 
     verifyTotals();
-  }, [cartItems, user, isUserLoading]);
+  }, [JSON.stringify(cartItems), user, isUserLoading]);
 
   const getItemTotal = (item: CartItem): number => {
     let unitPrice = item.price;
@@ -126,7 +130,7 @@ export default function CartPage() {
             <CardHeader>
               <CardTitle className="text-orange-400">Resumen de tu Pedido</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6" key={cartKey}>
               {cartItems.map((item) => (
                 <div key={item.cartItemId} className="flex items-start space-x-4">
                   <div className="relative h-20 w-20 flex-shrink-0">
