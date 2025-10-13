@@ -20,14 +20,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  NavigationMenu,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  navigationMenuTriggerStyle,
-} from '@/components/ui/navigation-menu';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { useCart } from '@/context/cart-context';
 
 function UserNav() {
   const auth = useAuth();
@@ -39,7 +33,7 @@ function UserNav() {
 
   if (!user) {
     return (
-      <Button variant="ghost" size="icon" asChild className="text-white hover:bg-white/10">
+      <Button variant="ghost" size="icon" asChild className="text-white hover:bg-fresh-green hover:text-black">
         <Link href="/ingresar">
           <User />
           <span className="sr-only">Perfil</span>
@@ -51,7 +45,7 @@ function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/10">
+        <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-fresh-green hover:text-black">
           {user.photoURL ? (
             <Image src={user.photoURL} alt="User avatar" width={32} height={32} className="rounded-full" />
           ) : (
@@ -116,17 +110,10 @@ function AdminMenu({ userRole }: { userRole: string }) {
   );
 }
 
-import { useCart } from '@/context/cart-context';
-
-// ... (other imports remain the same)
-
-// ... (UserNav and AdminMenu components remain the same)
-
 export function Header() {
   const [isSheetOpen, setSheetOpen] = useState(false);
-  const isMobile = useIsMobile();
   const { user } = useUser();
-  const { itemCount } = useCart(); // Use the cart context
+  const { itemCount } = useCart();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
@@ -154,7 +141,6 @@ export function Header() {
   }, [user]);
 
   const closeSheet = () => setSheetOpen(false);
-
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
   const DesktopNav = () => (
@@ -187,15 +173,25 @@ export function Header() {
           <span className="sr-only">Abrir menú</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="right" className="w-full max-w-xs bg-black border-l-0 pt-20 text-white">
+      <SheetContent side="left" className="w-full max-w-xs bg-black border-r border-r-white/10 pt-20 text-white">
         <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
         <nav className="flex flex-col gap-8 text-center text-lg font-medium">
           {baseNavigation.map((link) => (
             <Link key={link.href} href={link.href} onClick={closeSheet} className="hover:text-yellow-400">{link.label}</Link>
           ))}
-          {user && userMenuNavigation.map((link) => (
+          <DropdownMenuSeparator className="bg-white/10" />
+          <Link href="/carrito" onClick={closeSheet} className="hover:text-yellow-400 flex items-center justify-center gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            Carrito
+          </Link>
+          {user ? userMenuNavigation.map((link) => (
             <Link key={link.href} href={link.href} onClick={closeSheet} className="hover:text-yellow-400">{link.label}</Link>
-          ))}
+          )) : (
+            <Link href="/ingresar" onClick={closeSheet} className="hover:text-yellow-400 flex items-center justify-center gap-2">
+                <User className="h-4 w-4" />
+                Ingresar
+            </Link>
+          )}
           {isAdmin && <DropdownMenuSeparator className="bg-white/10" />}
           {isAdmin && userRole && adminNavigation
             .filter(item => item.roles.includes(userRole as any))
@@ -220,29 +216,33 @@ export function Header() {
         scrolled ? 'bg-gradient-to-r from-yellow-400/80 via-orange-500/80 to-red-600/80 backdrop-blur-lg shadow-xl' : 'bg-transparent'
     )}>
       <div className="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
-        <Link href="/" className="flex items-center gap-3">
-          <Image src="https://imagenes.nobbora.com/Dise%C3%B1o%20sin%20t%C3%ADtulo%20(3)%20(2).png" alt="Achille Logo" width={48} height={48} className="transition-transform duration-300 hover:scale-110" />
-          <span className="font-black text-3xl tracking-tighter text-white">Al Chile</span>
-        </Link>
-
-        <DesktopNav />
-
-        <div className="flex items-center space-x-2">
-          <div className="hidden md:flex items-center gap-2 text-white">
-            <UserNav />
-            <Button variant="ghost" size="icon" asChild className="relative text-white hover:bg-white/10">
-              <Link href="/carrito">
-                <ShoppingCart />
-                <span className="sr-only">Carrito</span>
-                {itemCount > 0 && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-xs font-bold">
-                    {itemCount}
-                  </div>
-                )}
-              </Link>
-            </Button>
+        <div className="flex items-center gap-3">
+          <div className="md:hidden">
+            <MobileNav />
           </div>
-          <MobileNav />
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="https://imagenes.nobbora.com/Dise%C3%B1o%20sin%20t%C3%ADtulo%20(3)%20(2).png" alt="Achille Logo" width={48} height={48} className="transition-transform duration-300 hover:scale-110" />
+            <span className="hidden md:inline font-black text-3xl tracking-tighter text-white">Al Chile</span>
+          </Link>
+        </div>
+
+        <div className="hidden md:flex flex-1 justify-center">
+          <DesktopNav />
+        </div>
+
+        <div className="flex items-center space-x-1 md:space-x-2 text-white">
+          <Button variant="ghost" size="icon" asChild className="relative text-white hover:bg-white/10">
+            <Link href="/carrito">
+              <ShoppingCart />
+              <span className="sr-only">Carrito</span>
+              {itemCount > 0 && (
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 rounded-full flex items-center justify-center text-xs font-bold">
+                  {itemCount}
+                </div>
+              )}
+            </Link>
+          </Button>
+          <UserNav />
         </div>
       </div>
     </header>
