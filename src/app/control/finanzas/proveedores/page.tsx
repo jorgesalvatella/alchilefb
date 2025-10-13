@@ -78,11 +78,11 @@ export default function AdminSuppliersPage() {
   ];
 
   return (
-    <>
+    <div className="pt-32">
       <Breadcrumbs items={breadcrumbItems} />
       <div className="text-center mb-12">
-        <h1 className="text-5xl md:text-7xl font-black text-white">
-          <span className="bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
+        <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
+          <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
             Proveedores
           </span>
         </h1>
@@ -159,6 +159,6 @@ export default function AdminSuppliersPage() {
         onOpenChange={setDialogOpen}
         supplier={selectedSupplier}
       />
-    </>
+    </div>
   );
 }

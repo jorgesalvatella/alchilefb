@@ -31,9 +31,9 @@ export default function AdminProductsPage() {
   };
 
   return (
-    <>
+    <div className="pt-32">
         <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-7xl font-black text-white">
+            <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
                 <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
                     Productos
                 </span>
@@ -89,6 +89,6 @@ export default function AdminProductsPage() {
         onOpenChange={setDialogOpen}
         product={selectedProduct}
       />
-    </>
+    </div>
   );
 }

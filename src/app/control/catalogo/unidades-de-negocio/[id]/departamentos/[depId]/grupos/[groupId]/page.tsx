@@ -104,14 +104,14 @@ export default function AdminConceptsPage({ params }: { params: { id: string, de
 
 
   return (
-    <>
+    <div className="pt-32">
         <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-7xl font-black text-white">
-                <span className="bg-gradient-to-r from-pink-400 via-purple-500 to-indigo-600 bg-clip-text text-transparent">
+            <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
+                <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
                     Conceptos de {group?.name}
                 </span>
             </h1>
-            <p className="text-white/60 mt-4 text-lg md:text-xl">Unidad de Negocio: {businessUnit?.name} / Departamento: {department?.name}</p>
+            <p className="text-xl text-white/80 max-w-2xl mx-auto">Unidad de Negocio: {businessUnit?.name} / Departamento: {department?.name}</p>
         </div>
 
         <div className="flex justify-end mb-8">
@@ -178,6 +178,6 @@ export default function AdminConceptsPage({ params }: { params: { id: string, de
             departmentId={params.depId}
             groupId={params.groupId}
         />
-    </>
+    </div>
   );
 }

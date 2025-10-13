@@ -166,8 +166,12 @@ export default function MenuPage() {
     <>
       <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl text-white">Nuestro Menú</h1>
-          <p className="mt-4 max-w-2xl mx-auto text-xl bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent font-black">
+          <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
+            <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+              Nuestro Menú
+            </span>
+          </h1>
+          <p className="text-xl text-white/80 max-w-2xl mx-auto">
             Hecho con los ingredientes más frescos y el auténtico sabor de México.
           </p>
         </div>

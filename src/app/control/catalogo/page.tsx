@@ -27,14 +27,14 @@ export default function CatalogoPage() {
   const [businessUnitDialogOpen, setBusinessUnitDialogOpen] = useState(false);
 
   return (
-    <>
+    <div className="pt-32">
       <div className="text-center mb-12">
-        <h1 className="text-5xl md:text-7xl font-black text-white">
-          <span className="bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
+        <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
+          <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
             Catálogos
           </span>
         </h1>
-        <p className="text-white/60 mt-4 text-lg md:text-xl">Gestiona la información maestra de la aplicación.</p>
+        <p className="text-xl text-white/80 max-w-2xl mx-auto">Gestiona la información maestra de la aplicación.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -70,6 +70,6 @@ export default function CatalogoPage() {
         onOpenChange={setBusinessUnitDialogOpen}
         businessUnit={null}
       />
-    </>
+    </div>
   );
 }

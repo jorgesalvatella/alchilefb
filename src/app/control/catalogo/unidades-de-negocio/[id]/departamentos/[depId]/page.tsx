@@ -96,14 +96,14 @@ export default function AdminGroupsPage({ params }: { params: { id: string, depI
 
 
   return (
-    <>
+    <div className="pt-32">
         <div className="text-center mb-12">
-            <h1 className="text-5xl md:text-7xl font-black text-white">
-                <span className="bg-gradient-to-r from-green-400 via-cyan-500 to-blue-600 bg-clip-text text-transparent">
+            <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
+                <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
                     Grupos de {department?.name}
                 </span>
             </h1>
-            <p className="text-white/60 mt-4 text-lg md:text-xl">Unidad de Negocio: {businessUnit?.name}</p>
+            <p className="text-xl text-white/80 max-w-2xl mx-auto">Unidad de Negocio: {businessUnit?.name}</p>
         </div>
 
         <div className="flex justify-end mb-8">
@@ -178,6 +178,6 @@ export default function AdminGroupsPage({ params }: { params: { id: string, depI
             businessUnitId={params.id}
             departmentId={params.depId}
         />
-    </>
+    </div>
   );
 }
