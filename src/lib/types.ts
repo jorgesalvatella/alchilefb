@@ -43,3 +43,26 @@ export type CartItem = {
     removed: string[];
   };
 };
+
+// Tipos para la dirección de entrega
+export interface Address {
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  phone: string;
+  name: string; // Nombre de quien recibe
+}
+
+// Tipos para el documento de Pedido en Firestore
+export interface Order {
+  userId: string;
+  items: CartItem[];
+  totalVerified: number;
+  paymentMethod: 'Efectivo' | 'Tarjeta a la entrega' | 'Transferencia bancaria';
+  status: 'Recibido' | 'En preparación' | 'En camino' | 'Entregado' | 'Cancelado';
+  createdAt: any; // Debería ser un Timestamp de Firestore, pero 'any' es más simple en cliente
+  shippingAddress: Address | 'whatsapp' | string; // Objeto, 'whatsapp', o URL de geolocalización
+}
+

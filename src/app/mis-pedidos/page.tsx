@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, query, where } from 'firebase/firestore';
-import type { Order } from '@/lib/data';
+import type { Order } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingBag, CookingPot, Bike, Pizza, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,7 @@ export default function OrdersPage() {
   const { user, isUserLoading: authLoading } = useUser();
 
   const ordersQuery = useMemoFirebase(
-    () => (firestore && user ? query(collection(firestore, 'orders'), where('userId', '==', user.uid)) : null),
+    () => (firestore && user ? query(collection(firestore, 'pedidos'), where('userId', '==', user.uid)) : null),
     [firestore, user]
   );
   const { data: orders, isLoading: ordersLoading } = useCollection<Order>(ordersQuery);
@@ -104,9 +104,9 @@ export default function OrdersPage() {
 
             <div className="space-y-6 max-w-4xl mx-auto">
                 {orders?.map((order, index) => {
-                    const Icon = statusIcons[order.orderStatus] || ShoppingBag;
+                    const Icon = statusIcons[order.status] || ShoppingBag;
                     return (
-                        <Link key={order.id} href={`/orders/${order.id}`} className="block fade-in-up" style={{animationDelay: `${index * 0.1}s`}}>
+                        <Link key={order.id} href={`/mis-pedidos/${order.id}`} className="block fade-in-up" style={{animationDelay: `${index * 0.1}s`}}>
                             <div className="group relative bg-black/50 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 hover:shadow-chile-red/30 hover:scale-105 border-2 border-white/10 hover:border-chile-red/50">
                                 <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                                     <div className="flex items-center gap-4">
@@ -116,19 +116,19 @@ export default function OrdersPage() {
                                         <div>
                                             <h3 className="text-xl font-black text-white">Pedido #{order.id.substring(0, 7)}</h3>
                                             <p className="text-white/60 text-sm">
-                                                {order.orderDate?.toDate().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                                {order.createdAt?.toDate().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-2xl font-bold bg-gradient-to-r from-yellow-200 via-yellow-400 to-orange-300 bg-clip-text text-transparent">${order.totalAmount.toFixed(2)}</p>
+                                        <p className="text-2xl font-bold bg-gradient-to-r from-yellow-200 via-yellow-400 to-orange-300 bg-clip-text text-transparent">${order.totalVerified.toFixed(2)}</p>
                                         <p className={cn(
                                             'font-bold text-sm',
-                                            order.orderStatus === 'Entregado' && 'text-green-400',
-                                            order.orderStatus === 'En Reparto' && 'text-blue-400',
-                                            order.orderStatus === 'Preparando' && 'text-orange-400',
-                                            order.orderStatus === 'Pedido Realizado' && 'text-gray-400',
-                                        )}>{order.orderStatus}</p>
+                                            order.status === 'Entregado' && 'text-green-400',
+                                            order.status === 'En camino' && 'text-blue-400',
+                                            order.status === 'En preparación' && 'text-orange-400',
+                                            order.status === 'Recibido' && 'text-gray-400',
+                                        )}>{order.status}</p>
                                     </div>
                                 </div>
                             </div>

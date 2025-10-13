@@ -1,11 +1,13 @@
 'use client';
 
+import { use } from 'react';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { CheckCircle, CookingPot, Bike, Pizza } from 'lucide-react';
-import { useDoc, useCollection } from '@/firebase/firestore/use-doc';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { doc, collection } from 'firebase/firestore';
 import type { Order, OrderItem, MenuItem } from '@/lib/data';
@@ -19,10 +21,10 @@ const allSteps = [
   { id: 4, name: 'Entregado', icon: Pizza, status: 'Entregado' },
 ];
 
-export default function OrderTrackingPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function OrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const firestore = useFirestore();
-  const mapImage = PlaceHolderImages.find((img) => img.id === 'map-placeholder');
+  const mapImage = PlaceHolderImages.getById('map-placeholder');
 
   const orderRef = useMemoFirebase(
     () => (firestore ? doc(firestore, 'orders', id) : null),

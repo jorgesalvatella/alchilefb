@@ -1,286 +1,260 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { useState, useEffect } from 'react';
+import { useCart } from '@/context/cart-context';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { useUser } from '@/firebase';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, addDoc } from 'firebase/firestore';
-import { CreditCard, Landmark, Wallet } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { getAuth } from 'firebase/auth';
+import { useFirebase } from '@/firebase/provider'; // Hook para obtener la app de Firebase
+import type { Address, Order } from '@/lib/types';
 
-const addressSchema = z.object({
-  street: z.string().min(1, 'La calle es requerida.'),
-  interior: z.string().optional(),
-  neighborhood: z.string().min(1, 'La colonia es requerida.'),
-  city: z.string().min(1, 'La ciudad es requerida.'),
-  state: z.string().min(1, 'El estado es requerido.'),
-  postalCode: z.string().min(5, 'El código postal debe tener 5 dígitos.'),
-  country: z.string().min(1, 'El país es requerido.'),
-  phone: z.string().min(10, 'El teléfono debe tener 10 dígitos.'),
-});
-
-const checkoutSchema = z.object({
-  deliveryAddress: z.string().min(1, 'Por favor, selecciona o añade una dirección de entrega.'),
-  paymentMethod: z.enum(['card', 'cash', 'transfer'], { required_error: 'Por favor, selecciona un método de pago.' }),
-});
-
-const cartItems = [
-  { id: 1, name: 'Tacos al Pastor', price: 3.50, quantity: 2, imageId: 'taco-al-pastor' },
-  { id: 2, name: 'Burrito de Carne Asada', price: 12.99, quantity: 1, imageId: 'burrito-asada' },
-  { id: 3, name: 'Horchata Clásica', price: 4.00, quantity: 2, imageId: 'horchata' },
+// Mock de datos de usuario, a reemplazar con una llamada a la API
+const mockUserAddresses: Address[] = [
+  {
+    name: 'Casa',
+    street: 'Av. Siempre Viva 742',
+    city: 'Springfield',
+    state: 'Estado Desconocido',
+    postalCode: '12345',
+    country: 'EE. UU.',
+    phone: '555-123-4567'
+  }
 ];
 
-const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-const tax = subtotal * 0.08;
-const total = subtotal + tax;
-
 export default function CheckoutPage() {
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const [showNewAddressForm, setShowNewAddressForm] = useState(false);
+  const { cartItems, clearCart, itemCount } = useCart();
+  const { app } = useFirebase(); // Obtener la app de Firebase inicializada
+  const auth = getAuth(app);
+  const router = useRouter();
+  
+  // Estado para la UI
+  const [addressOption, setAddressOption] = useState('main');
+  const [paymentMethod, setPaymentMethod] = useState<'Efectivo' | 'Tarjeta a la entrega' | 'Transferencia bancaria' | ''>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Estado para los datos
+  const [userAddresses, setUserAddresses] = useState<Address[]>(mockUserAddresses);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [verifiedTotal, setVerifiedTotal] = useState<number | null>(null);
 
-  const addressesCollection = useMemoFirebase(
-    () => (user ? collection(firestore, `users/${user.uid}/delivery_addresses`) : null),
-    [firestore, user]
-  );
-  const { data: addresses, isLoading: isLoadingAddresses } = useCollection(addressesCollection);
+  // Efecto para verificar el total del carrito con el backend
+  useEffect(() => {
+    const verifyTotals = async () => {
+      if (itemCount > 0) {
+        // En una implementación real, llamaríamos a /api/cart/verify-totals
+        // Por ahora, calculamos en cliente como placeholder
+        const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        setVerifiedTotal(total);
+      }
+    };
+    verifyTotals();
+  }, [cartItems, itemCount]);
 
-  const checkoutForm = useForm<z.infer<typeof checkoutSchema>>({
-    resolver: zodResolver(checkoutSchema),
-  });
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      setError('La geolocalización no es soportada por tu navegador.');
+      toast({ title: 'Error de Geolocalización', description: 'Tu navegador no soporta esta función.', variant: 'destructive' });
+      return;
+    }
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCurrentLocation({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        });
+        toast({ title: 'Ubicación Obtenida', description: 'Tu ubicación se ha guardado correctamente.' });
+      },
+      () => {
+        setError('No se pudo obtener la ubicación. Asegúrate de haber dado los permisos necesarios.');
+        toast({ title: 'Error de Permiso', description: 'No se pudo obtener la ubicación. Revisa los permisos de tu navegador.', variant: 'destructive' });
+      }
+    );
+  };
 
-  const addressForm = useForm<z.infer<typeof addressSchema>>({
-    resolver: zodResolver(addressSchema),
-    defaultValues: {
-      street: '',
-      interior: '',
-      neighborhood: '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: 'México',
-      phone: '',
-    },
-  });
+  const handlePlaceOrder = async () => {
+    if (!paymentMethod) {
+      toast({ title: 'Falta información', description: 'Por favor, selecciona un método de pago.', variant: 'destructive' });
+      return;
+    }
 
-  const onAddNewAddress = async (values: z.infer<typeof addressSchema>) => {
-    if (!user) return;
+    let shippingAddressPayload: Order['shippingAddress'];
+
+    switch (addressOption) {
+      case 'main':
+        if (userAddresses.length === 0) {
+          toast({ title: 'Falta información', description: 'No tienes una dirección principal guardada.', variant: 'destructive' });
+          return;
+        }
+        shippingAddressPayload = userAddresses[0];
+        break;
+      case 'whatsapp':
+        shippingAddressPayload = 'whatsapp';
+        break;
+      case 'location':
+        if (!currentLocation) {
+          toast({ title: 'Falta información', description: 'Por favor, obtén tu ubicación actual primero.', variant: 'destructive' });
+          return;
+        }
+        shippingAddressPayload = `https://maps.google.com/?q=${currentLocation.lat},${currentLocation.lon}`;
+        break;
+      default:
+        toast({ title: 'Error', description: 'Opción de dirección no válida.', variant: 'destructive' });
+        return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    toast({ title: 'Procesando tu pedido...' });
+
     try {
-      const newAddressRef = await addDoc(collection(firestore, `users/${user.uid}/delivery_addresses`), values);
-      checkoutForm.setValue('deliveryAddress', newAddressRef.id);
-      setShowNewAddressForm(false);
-      addressForm.reset();
-    } catch (error) {
-      console.error("Error adding new address: ", error);
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('Debes estar autenticado para realizar un pedido.');
+      }
+      const idToken = await user.getIdToken();
+
+      const response = await fetch('/api/pedidos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          items: cartItems,
+          shippingAddress: shippingAddressPayload,
+          paymentMethod,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Hubo un problema al crear tu pedido.');
+      }
+
+      const newOrder = await response.json();
+
+      toast({ title: '¡Pedido Confirmado!', description: `Tu pedido #${newOrder.id.slice(0, 6)} ha sido recibido.` });
+      clearCart();
+      router.push(`/mis-pedidos?order=${newOrder.id}`); // Redirigir a la lista de pedidos, resaltando el nuevo
+
+    } catch (err: any) {
+      setError(err.message);
+      toast({ title: 'Error al procesar el pedido', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  function onCheckoutSubmit(values: z.infer<typeof checkoutSchema>) {
-    console.log("Order submitted:", values);
-    alert('¡Pedido realizado con éxito! (simulación)');
+  if (itemCount === 0 && !isSubmitting) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-3xl font-bold mb-4">Checkout</h1>
+        <p>Tu carrito está vacío. ¡Añade algunos productos para continuar!</p>
+        <Button onClick={() => router.push('/menu')} className="mt-4">
+          Ir al Menú
+        </Button>
+      </div>
+    );
   }
 
   return (
-    <div className="relative min-h-screen bg-black text-white pt-32">
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-chile-red rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-red-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </div>
+    <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
+      <h1 className="text-3xl font-bold mb-8">Finalizar Compra</h1>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Columna Izquierda y Central: Opciones */}
+        <div className="lg:col-span-2">
+          <Card className="mb-8">
+            <CardHeader><CardTitle>1. Dirección de Entrega</CardTitle></CardHeader>
+            <CardContent>
+              <RadioGroup value={addressOption} onValueChange={setAddressOption} className="space-y-4">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="main" id="main" />
+                    <Label htmlFor="main">Usar mi dirección principal</Label>
+                  </div>
+                  {addressOption === 'main' && (
+                    <div className="pl-6 mt-2 text-sm text-muted-foreground border-l-2 ml-2">
+                      <p>{userAddresses[0]?.street}</p>
+                      <p>{`${userAddresses[0]?.city}, ${userAddresses[0]?.state} ${userAddresses[0]?.postalCode}`}</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="whatsapp" id="whatsapp" />
+                    <Label htmlFor="whatsapp">Coordinar por WhatsApp</Label>
+                  </div>
+                </div>
 
-      <div className="relative container mx-auto px-4 pb-12 md:pb-20">
-        <div className="text-center mb-12">
-          <h1 className="text-5xl md:text-7xl font-black text-white mb-3">
-            <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
-              Finalizar Compra
-            </span>
-          </h1>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="location" id="location" />
+                    <Label htmlFor="location">Enviar mi ubicación actual</Label>
+                  </div>
+                  {addressOption === 'location' && (
+                    <div className="pl-6 mt-2 ml-2">
+                      <Button variant="outline" onClick={handleGetLocation}>Obtener Ubicación</Button>
+                      {currentLocation && <p className="text-sm text-green-600 mt-2">Ubicación guardada: {currentLocation.lat.toFixed(4)}, {currentLocation.lon.toFixed(4)}</p>}
+                    </div>
+                  )}
+                </div>
+              </RadioGroup>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>2. Método de Pago</CardTitle></CardHeader>
+            <CardContent>
+              <RadioGroup value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as any)}>
+                <div className="flex items-center space-x-2"><RadioGroupItem value="Efectivo" id="efectivo" /><Label htmlFor="efectivo">Efectivo</Label></div>
+                <div className="flex items-center space-x-2"><RadioGroupItem value="Tarjeta a la entrega" id="tarjeta" /><Label htmlFor="tarjeta">Tarjeta a la entrega</Label></div>
+                <div className="flex items-center space-x-2"><RadioGroupItem value="Transferencia bancaria" id="transferencia" /><Label htmlFor="transferencia">Transferencia bancaria</Label></div>
+              </RadioGroup>
+            </CardContent>
+          </Card>
         </div>
 
-        <Form {...checkoutForm}>
-          <form onSubmit={checkoutForm.handleSubmit(onCheckoutSubmit)} className="grid md:grid-cols-3 gap-8 items-start">
-            <div className="md:col-span-2 space-y-8">
-              {/* Delivery Address Section */}
-              <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl p-6">
-                <h2 className="font-headline text-3xl text-white mb-4">¿A dónde enviamos tu pedido?</h2>
-                {isLoadingAddresses ? (
-                  <p>Cargando direcciones...</p>
-                ) : addresses && addresses.length > 0 ? (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-orange-400 mb-2">Dirección Principal</h3>
-                      <div className="rounded-lg border border-orange-500 bg-white/5 p-4">
-                        <p className="font-semibold">{addresses[0].street}, {addresses[0].interior}</p>
-                        <p className="text-white/70">{addresses[0].neighborhood}, {addresses[0].city}, {addresses[0].state} {addresses[0].postalCode}</p>
-                        <p className="text-white/70">{addresses[0].phone}</p>
-                      </div>
-                      <Button onClick={() => checkoutForm.setValue('deliveryAddress', addresses[0].id)} className="mt-4 w-full md:w-auto bg-gradient-to-r from-orange-400 to-red-500">Enviar a esta dirección</Button>
-                    </div>
-                    
-                    <Button variant="link" onClick={() => setShowNewAddressForm(!showNewAddressForm)} className="text-orange-400 hover:text-orange-300">
-                      {showNewAddressForm ? 'Cancelar' : 'Enviar a otra dirección'}
-                    </Button>
-
-                    {showNewAddressForm && (
-                      <div>
-                        <h3 className="text-lg font-semibold text-white mb-2">Otras Direcciones</h3>
-                        <FormField
-                          control={checkoutForm.control}
-                          name="deliveryAddress"
-                          render={({ field }) => (
-                            <FormItem>
-                              <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="space-y-4">
-                                {addresses.slice(1).map((address: any) => (
-                                  <FormItem key={address.id}>
-                                    <Label className={cn("flex items-start gap-4 rounded-lg border border-white/20 p-4 cursor-pointer transition-all hover:bg-white/5", field.value === address.id && "bg-white/10 border-orange-500")}>
-                                      <RadioGroupItem value={address.id} className="mt-1" />
-                                      <div className="text-sm">
-                                        <p className="font-semibold">{address.street}, {address.interior}</p>
-                                        <p className="text-white/70">{address.neighborhood}, {address.city}, {address.state} {address.postalCode}</p>
-                                        <p className="text-white/70">{address.phone}</p>
-                                      </div>
-                                    </Label>
-                                  </FormItem>
-                                ))}
-                              </RadioGroup>
-                              <FormMessage className="mt-2" />
-                            </FormItem>
-                          )}
-                        />
-                        <h3 className="text-lg font-semibold text-white mt-6 mb-2">Añadir Nueva Dirección</h3>
-                        <Form {...addressForm}>
-                          <div className="space-y-4">
-                            <Input {...addressForm.register('street')} placeholder="Calle y Número" className="bg-white/5 border-white/20" />
-                            <Input {...addressForm.register('interior')} placeholder="Interior / Apartamento (Opcional)" className="bg-white/5 border-white/20" />
-                            <Input {...addressForm.register('neighborhood')} placeholder="Colonia" className="bg-white/5 border-white/20" />
-                            <div className="grid grid-cols-2 gap-4">
-                              <Input {...addressForm.register('city')} placeholder="Ciudad" className="bg-white/5 border-white/20" />
-                              <Input {...addressForm.register('state')} placeholder="Estado" className="bg-white/5 border-white/20" />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <Input {...addressForm.register('postalCode')} placeholder="Código Postal" className="bg-white/5 border-white/20" />
-                              <Input {...addressForm.register('country')} placeholder="País" className="bg-white/5 border-white/20" />
-                            </div>
-                            <Input {...addressForm.register('phone')} placeholder="Teléfono" className="bg-white/5 border-white/20" />
-                            <Button onClick={addressForm.handleSubmit(onAddNewAddress)} className="w-full bg-orange-500 hover:bg-orange-600">Guardar y Usar esta Dirección</Button>
-                          </div>
-                        </Form>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-white/70 mb-4">No tienes direcciones guardadas. Por favor, añade una.</p>
-                    <Form {...addressForm}>
-                      <div className="space-y-4">
-                         <Input {...addressForm.register('street')} placeholder="Calle y Número" className="bg-white/5 border-white/20" />
-                         <Input {...addressForm.register('interior')} placeholder="Interior / Apartamento (Opcional)" className="bg-white/5 border-white/20" />
-                         <Input {...addressForm.register('neighborhood')} placeholder="Colonia" className="bg-white/5 border-white/20" />
-                         <div className="grid grid-cols-2 gap-4">
-                           <Input {...addressForm.register('city')} placeholder="Ciudad" className="bg-white/5 border-white/20" />
-                           <Input {...addressForm.register('state')} placeholder="Estado" className="bg-white/5 border-white/20" />
-                         </div>
-                         <div className="grid grid-cols-2 gap-4">
-                           <Input {...addressForm.register('postalCode')} placeholder="Código Postal" className="bg-white/5 border-white/20" />
-                           <Input {...addressForm.register('country')} placeholder="País" className="bg-white/5 border-white/20" />
-                         </div>
-                         <Input {...addressForm.register('phone')} placeholder="Teléfono" className="bg-white/5 border-white/20" />
-                         <Button onClick={addressForm.handleSubmit(onAddNewAddress)} className="w-full bg-orange-500 hover:bg-orange-600">Guardar Dirección</Button>
-                      </div>
-                    </Form>
-                  </div>
-                )}
-              </div>
-
-              {/* Payment Method Section */}
-              <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl p-6">
-                <h2 className="font-headline text-3xl text-white mb-4">Método de Pago</h2>
-                <FormField
-                  control={checkoutForm.control}
-                  name="paymentMethod"
-                  render={({ field }) => (
-                    <FormItem>
-                      <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="grid md:grid-cols-3 gap-4">
-                        <FormItem>
-                          <Label className={cn("relative flex flex-col items-center justify-center gap-2 rounded-lg border border-white/20 p-4 cursor-pointer transition-all h-32 group", field.value === 'card' && "border-orange-500")}>
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
-                            <div className="relative z-10 flex flex-col items-center justify-center gap-2">
-                              <RadioGroupItem value="card" className="sr-only" />
-                              <CreditCard className="h-8 w-8" />
-                              <span className="font-semibold">Tarjeta</span>
-                            </div>
-                          </Label>
-                        </FormItem>
-                        <FormItem>
-                          <Label className={cn("relative flex flex-col items-center justify-center gap-2 rounded-lg border border-white/20 p-4 cursor-pointer transition-all h-32 group", field.value === 'cash' && "border-orange-500")}>
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
-                            <div className="relative z-10 flex flex-col items-center justify-center gap-2">
-                              <RadioGroupItem value="cash" className="sr-only" />
-                              <Wallet className="h-8 w-8" />
-                              <span className="font-semibold">Efectivo</span>
-                            </div>
-                          </Label>
-                        </FormItem>
-                        <FormItem>
-                          <Label className={cn("relative flex flex-col items-center justify-center gap-2 rounded-lg border border-white/20 p-4 cursor-pointer transition-all h-32 group", field.value === 'transfer' && "border-orange-500")}>
-                            <div className="absolute -inset-0.5 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 rounded-lg blur opacity-0 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-tilt"></div>
-                            <div className="relative z-10 flex flex-col items-center justify-center gap-2">
-                              <RadioGroupItem value="transfer" className="sr-only" />
-                              <Landmark className="h-8 w-8" />
-                              <span className="font-semibold">Transferencia</span>
-                            </div>
-                          </Label>
-                        </FormItem>
-                      </RadioGroup>
-                      <FormMessage className="mt-2" />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Order Summary */}
-            <div className="sticky top-32 bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl p-6">
-              <h2 className="font-headline text-3xl text-white mb-4">Resumen del Pedido</h2>
-              <div className="space-y-4">
+        {/* Columna Derecha: Resumen */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader><CardTitle>3. Resumen del Pedido</CardTitle></CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
                 {cartItems.map(item => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
-                    <span className="font-semibold">{item.name} (x{item.quantity})</span>
-                    <span className="text-white/80">${(item.price * item.quantity).toFixed(2)}</span>
-                  </div>
+                  <li key={item.cartItemId} className="flex justify-between text-sm">
+                    <span>{item.quantity} x {item.name}</span>
+                    <span className="font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                  </li>
                 ))}
-                <Separator className="bg-white/20" />
-                <div className="flex justify-between text-white/80">
-                  <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-white/80">
-                  <span>Impuestos y Tarifas</span>
-                  <span>${tax.toFixed(2)}</span>
-                </div>
-                <Separator className="bg-white/20" />
-                <div className="flex justify-between font-bold text-xl text-white">
-                  <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
-                </div>
+              </ul>
+              <hr className="my-4" />
+              <div className="flex justify-between font-bold text-lg">
+                <span>Total</span>
+                <span>
+                  {verifiedTotal !== null ? `$${verifiedTotal.toFixed(2)}` : 'Calculando...'}
+                </span>
               </div>
-              <Button type="submit" size="lg" className="w-full font-headline text-lg mt-6 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white hover:scale-105 transition-transform duration-300">
-                Realizar Pedido
+              <Button 
+                onClick={handlePlaceOrder} 
+                disabled={isSubmitting || !paymentMethod || !addressOption || verifiedTotal === null}
+                className="w-full mt-6"
+                size="lg"
+              >
+                {isSubmitting ? 'Confirmando...' : 'Confirmar Pedido'}
               </Button>
-            </div>
-          </form>
-        </Form>
+              {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

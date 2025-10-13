@@ -167,6 +167,20 @@ service cloud.firestore {
        allow delete: if isAdmin() || isSuperAdmin();
     }
 
+    match /pedidos/{pedidoId} {
+      /**
+       * @description Manages new orders ('pedidos'). Users can create them and only read their own.
+       * @path /pedidos/{pedidoId}
+       * @allow (list, get) A user can read an order if their UID matches the order's userId field.
+       * @allow (create) Any signed-in user can create an order.
+       * @principle Enforces ownership for reads, allows creation for authenticated users.
+       */
+      allow list, get: if request.auth.uid == resource.data.userId;
+      allow create: if isSignedIn();
+      // Admins/SuperAdmins can manage all orders
+      allow read, write: if isAdmin() || isSuperAdmin();
+    }
+
     match /menu_items/{menuItemId} {
       /**
        * @description Manages menu items available in the app. Publicly accessible for reading, admin-only for writes.

@@ -2338,87 +2338,11 @@ app.put('/api/me/addresses/set-default/:id', authMiddleware, async (req, res) =>
 });
 
 // --- Cart Verification ---
-app.post('/api/cart/verify-totals', async (req, res) => {
-  const { items } = req.body;
+const cartRouter = require('./cart').router;
+app.use('/api/cart', cartRouter);
 
-  if (!items || !Array.isArray(items)) {
-    return res.status(400).json({ message: 'Request body must contain an array of items.' });
-  }
-
-  try {
-    let grandSubtotal = 0;
-    let grandTotal = 0;
-    const detailedItems = [];
-
-    for (const item of items) {
-      if (!item.productId || !item.quantity) {
-        return res.status(400).json({ message: `Invalid item in cart: ${JSON.stringify(item)}` });
-      }
-
-      const productRef = db.collection('productosDeVenta').doc(item.productId);
-      const docSnap = await productRef.get();
-
-      if (!docSnap.exists) {
-        return res.status(400).json({ message: `Producto con ID ${item.productId} no encontrado.` });
-      }
-
-      const productData = docSnap.data();
-      let itemSubtotal = productData.basePrice || 0;
-      let itemTotal = productData.price || 0;
-      let customName = productData.name;
-      const addedCustomizations = [];
-
-      // Handle added ingredients securely from DB
-      if (item.customizations && item.customizations.added && Array.isArray(item.customizations.added)) {
-        for (const addedName of item.customizations.added) {
-          const extra = (productData.ingredientesExtra || []).find(e => e.nombre === addedName);
-          if (extra && extra.precio) {
-            const extraPrice = parseFloat(extra.precio);
-            // If the main product is taxable, assume extras are too.
-            const extraBasePrice = productData.isTaxable ? extraPrice / 1.16 : extraPrice;
-            itemSubtotal += extraBasePrice;
-            itemTotal += extraPrice;
-            addedCustomizations.push(extra.nombre);
-          }
-        }
-      }
-      
-      if (addedCustomizations.length > 0) {
-        customName = `${productData.name} (+ ${addedCustomizations.join(', ')})`;
-      }
-
-      const finalItemSubtotal = itemSubtotal * item.quantity;
-      const finalItemTotal = itemTotal * item.quantity;
-
-      grandSubtotal += finalItemSubtotal;
-      grandTotal += finalItemTotal;
-
-      detailedItems.push({
-        ...item,
-        name: customName,
-        subtotalItem: finalItemSubtotal,
-        totalItem: finalItemTotal,
-        removed: (item.customizations && item.customizations.removed) || [],
-      });
-    }
-
-    const ivaDesglosado = grandTotal - grandSubtotal;
-
-    res.status(200).json({
-      items: detailedItems,
-      summary: {
-        subtotalGeneral: grandSubtotal,
-        ivaDesglosado: ivaDesglosado,
-        totalFinal: grandTotal,
-      },
-    });
-
-  } catch (error) {
-    console.error("Error verifying cart totals:", error);
-    res.status(500).json({ message: 'Internal Server Error', error: error.message });
-  }
-});
-
+const pedidosRouter = require('./pedidos');
+app.use('/api/pedidos', pedidosRouter);
 
 module.exports = app;
 
