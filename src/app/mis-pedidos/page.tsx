@@ -31,20 +31,17 @@ export default function OrdersPage() {
   const isLoading = authLoading || ordersLoading;
 
   const renderSkeleton = () => (
-    <div className="relative min-h-screen overflow-hidden pt-32 pb-20">
-        <div className="absolute inset-0 bg-black"></div>
-        <div className="relative z-10 container mx-auto px-6">
-            <div className="text-center mb-16">
-                <Skeleton className="h-16 w-3/4 mx-auto mb-4" />
-                <Skeleton className="h-6 w-1/2 mx-auto" />
-            </div>
-            <div className="space-y-6 max-w-4xl mx-auto">
-                {Array.from({ length: 3 }).map((_, i) => (
-                    <Skeleton key={i} className="h-32 w-full rounded-2xl" />
-                ))}
-            </div>
+    <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
+        <div className="text-center mb-12">
+            <Skeleton className="h-16 w-3/4 mx-auto mb-4 bg-gray-700" />
+            <Skeleton className="h-6 w-1/2 mx-auto bg-gray-600" />
         </div>
-    </div>
+        <div className="space-y-6 max-w-4xl mx-auto">
+            {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-32 w-full rounded-xl bg-gray-700" />
+            ))}
+        </div>
+    </main>
   );
 
   if (isLoading) {
@@ -53,90 +50,74 @@ export default function OrdersPage() {
 
   if (!user) {
     return (
-        <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-20 text-center">
-            <div className="absolute inset-0 bg-black"></div>
-            <div className="absolute top-20 left-10 w-72 h-72 bg-chile-red rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-            <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
-            <div className="relative z-10 container mx-auto px-6">
-                <h1 className="text-5xl md:text-6xl font-black text-white mb-6 drop-shadow-2xl">Inicia Sesión para Ver tus Pedidos</h1>
-                <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">Para poder ver tu historial de pedidos, primero necesitas iniciar sesión.</p>
-                <Button size="lg" asChild className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white font-bold hover:scale-105 transition-transform">
-                    <Link href="/login">Iniciar Sesión</Link>
-                </Button>
-            </div>
-        </div>
+        <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32 text-center">
+            <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl text-white mb-6">Inicia Sesión para Ver tus Pedidos</h1>
+            <p className="mt-4 max-w-2xl mx-auto text-xl text-white/70 mb-8">Para poder ver tu historial de pedidos, primero necesitas iniciar sesión.</p>
+            <Button size="lg" asChild className="bg-orange-500 text-white hover:bg-orange-600 font-bold">
+                <Link href="/login">Iniciar Sesión</Link>
+            </Button>
+        </main>
     );
   }
 
   if (orders && orders.length === 0) {
     return (
-        <div className="relative min-h-screen flex items-center justify-center overflow-hidden pt-32 pb-20 text-center">
-            <div className="absolute inset-0 bg-black"></div>
-            <div className="absolute top-20 left-10 w-72 h-72 bg-chile-red rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-            <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
-            <div className="relative z-10 container mx-auto px-6">
-                <ShoppingBag className="mx-auto h-24 w-24 text-orange-400/80 mb-8 drop-shadow-lg" />
-                <h1 className="text-5xl md:text-6xl font-black text-white mb-6 drop-shadow-2xl">Aún no tienes pedidos</h1>
-                <p className="text-xl text-white/80 mb-12 max-w-2xl mx-auto">Parece que todavía no has hecho ningún pedido. ¡Anímate a probar nuestras delicias!</p>
-                <Button size="lg" asChild className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white font-bold hover:scale-105 transition-transform">
-                    <Link href="/menu">Ver el Menú</Link>
-                </Button>
-            </div>
-      </div>
+        <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32 text-center">
+            <ShoppingBag className="mx-auto h-24 w-24 text-orange-400 mb-8" />
+            <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl text-white mb-6">Aún no tienes pedidos</h1>
+            <p className="mt-4 max-w-2xl mx-auto text-xl text-white/70 mb-8">Parece que todavía no has hecho ningún pedido. ¡Anímate a probar nuestras delicias!</p>
+            <Button size="lg" asChild className="bg-orange-500 text-white hover:bg-orange-600 font-bold">
+                <Link href="/menu">Ver el Menú</Link>
+            </Button>
+        </main>
     );
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden pt-32 pb-20">
-        <div className="absolute inset-0 bg-black"></div>
-        <div className="absolute top-20 left-10 w-72 h-72 bg-chile-red rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-orange-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" style={{ animationDelay: '1s' }}></div>
+    <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
+        <div className="text-center mb-12">
+            <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
+                <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">Mis Pedidos</span>
+            </h1>
+            <p className="text-xl text-white/80 max-w-2xl mx-auto">
+                Aquí puedes ver el historial de todos tus pedidos y rastrear los que están en curso.
+            </p>
+        </div>
 
-        <div className="relative z-10 container mx-auto px-6">
-            <div className="text-center mb-16 fade-in-up">
-                <h1 className="text-6xl md:text-8xl font-black text-white mb-6 drop-shadow-2xl">
-                    <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">Mis Pedidos</span>
-                </h1>
-                <p className="text-xl text-white/80 max-w-2xl mx-auto">
-                    Aquí puedes ver el historial de todos tus pedidos y rastrear los que están en curso.
-                </p>
-            </div>
-
-            <div className="space-y-6 max-w-4xl mx-auto">
-                {orders?.map((order, index) => {
-                    const Icon = statusIcons[order.status] || ShoppingBag;
-                    return (
-                        <Link key={order.id} href={`/mis-pedidos/${order.id}`} className="block fade-in-up" style={{animationDelay: `${index * 0.1}s`}}>
-                            <div className="group relative bg-black/50 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 hover:shadow-chile-red/30 hover:scale-105 border-2 border-white/10 hover:border-chile-red/50">
-                                <div className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-16 h-16 bg-chile-red/20 rounded-2xl flex items-center justify-center">
-                                            <Icon className="w-8 h-8 text-chile-red" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-xl font-black text-white">Pedido #{order.id.substring(0, 7)}</h3>
-                                            <p className="text-white/60 text-sm">
-                                                {order.createdAt?.toDate().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
-                                            </p>
-                                        </div>
+        <div className="space-y-6 max-w-4xl mx-auto">
+            {orders?.map((order) => {
+                const Icon = statusIcons[order.status] || ShoppingBag;
+                return (
+                    <Link key={order.id} href={`/mis-pedidos/${order.id}`} className="block">
+                        <Card className="bg-gray-900/50 border-gray-700 text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-orange-500/50">
+                            <CardContent className="p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center">
+                                        <Icon className="w-8 h-8 text-orange-400" />
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-2xl font-bold bg-gradient-to-r from-yellow-200 via-yellow-400 to-orange-300 bg-clip-text text-transparent">${order.totalVerified.toFixed(2)}</p>
-                                        <p className={cn(
-                                            'font-bold text-sm',
-                                            order.status === 'Entregado' && 'text-green-400',
-                                            order.status === 'En camino' && 'text-blue-400',
-                                            order.status === 'En preparación' && 'text-orange-400',
-                                            order.status === 'Recibido' && 'text-gray-400',
-                                        )}>{order.status}</p>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">Pedido #{order.id.substring(0, 7)}</h3>
+                                        <p className="text-white/60 text-sm">
+                                            {order.createdAt?.toDate().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                        </p>
                                     </div>
                                 </div>
-                            </div>
-                        </Link>
-                    )
-                })}
-            </div>
+                                <div className="text-right">
+                                    <p className="text-2xl font-bold text-orange-400">${order.totalVerified.toFixed(2)}</p>
+                                    <p className={cn(
+                                        'font-bold text-sm',
+                                        order.status === 'Entregado' && 'text-fresh-green',
+                                        order.status === 'En Reparto' && 'text-blue-400',
+                                        order.status === 'Preparando' && 'text-orange-400',
+                                        order.status === 'Pedido Realizado' && 'text-white/70',
+                                    )}>{order.status}</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </Link>
+                )
+            })}
         </div>
-    </div>
+    </main>
   );
 }
