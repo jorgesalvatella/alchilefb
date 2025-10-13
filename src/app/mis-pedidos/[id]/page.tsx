@@ -10,7 +10,8 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { doc, collection } from 'firebase/firestore';
-import type { Order, OrderItem, MenuItem } from '@/lib/data';
+import type { Order } from '@/lib/types';
+import type { OrderItem, MenuItem } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -73,12 +74,12 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const currentStepIndex = allSteps.findIndex(step => step.status === order.orderStatus);
+  const currentStepIndex = allSteps.findIndex(step => step.status === order.status);
 
   const getStepTime = (stepIndex: number) => {
-    if (!order.orderDate) return null;
+    if (!order.createdAt) return null;
     if (stepIndex < currentStepIndex) return 'Completado';
-    if (stepIndex === currentStepIndex) return order.orderDate?.toDate().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) || 'Ahora';
+    if (stepIndex === currentStepIndex) return order.createdAt?.toDate().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) || 'Ahora';
     return null;
   }
 
@@ -154,10 +155,39 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
           <div className="lg:col-span-1">
             <Card className="bg-gray-900/50 border-gray-700 text-white">
               <CardHeader>
-                <CardTitle className="text-orange-400">Mapa en Vivo</CardTitle>
+                <CardTitle className="text-orange-400">
+                  {typeof order.shippingAddress === 'string' && order.shippingAddress.startsWith('https://maps.google.com')
+                    ? 'Ubicación de Entrega'
+                    : 'Información de Entrega'}
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-gray-800">
+                {typeof order.shippingAddress === 'string' && order.shippingAddress.startsWith('https://maps.google.com') ? (
+                  <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-gray-800">
+                    <iframe
+                      src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${order.shippingAddress.split('?q=')[1]}`}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      className="absolute inset-0"
+                    />
+                  </div>
+                ) : order.shippingAddress === 'whatsapp' ? (
+                  <div className="text-center p-4">
+                    <p className="text-white/80">Dirección coordinada por WhatsApp</p>
+                  </div>
+                ) : typeof order.shippingAddress === 'object' ? (
+                  <div className="text-sm text-white/80 space-y-1">
+                    <p className="font-semibold text-white">{order.shippingAddress.name}</p>
+                    <p>{order.shippingAddress.street}</p>
+                    <p>{order.shippingAddress.city}, {order.shippingAddress.state}</p>
+                    <p>{order.shippingAddress.postalCode}</p>
+                    <p className="text-white/60 mt-2">{order.shippingAddress.phone}</p>
+                  </div>
+                ) : (
+                  <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-gray-800">
                     {mapImage && (
                         <Image
                         src={mapImage.imageUrl}
@@ -167,7 +197,8 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
                         data-ai-hint={mapImage.imageHint}
                         />
                     )}
-                </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
