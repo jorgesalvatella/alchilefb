@@ -37,6 +37,22 @@ const db = admin.firestore();
  *       '400':
  *         description: Datos inválidos
  */
+// Helper function to remove undefined values from an object
+const removeUndefined = (obj) => {
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefined(item));
+  }
+  if (obj !== null && typeof obj === 'object') {
+    return Object.entries(obj).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = removeUndefined(value);
+      }
+      return acc;
+    }, {});
+  }
+  return obj;
+};
+
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { items, shippingAddress, paymentMethod } = req.body;
@@ -50,7 +66,7 @@ router.post('/', authMiddleware, async (req, res) => {
     const itemsToVerify = items.map(item => ({
       productId: item.id,
       quantity: item.quantity,
-      customizations: item.customizations,
+      customizations: item.customizations || null,
     }));
     const verificationResult = await verifyCartTotals(itemsToVerify);
 
@@ -70,15 +86,18 @@ router.post('/', authMiddleware, async (req, res) => {
       }]
     };
 
+    // Remove undefined values to prevent Firestore errors
+    const cleanOrder = removeUndefined(newOrder);
+
     // 3. Guardar en Firestore
-    const docRef = await db.collection('pedidos').add(newOrder);
+    const docRef = await db.collection('pedidos').add(cleanOrder);
 
     // 4. Devolver respuesta
-    res.status(201).json({ id: docRef.id, ...newOrder });
+    res.status(201).json({ id: docRef.id, ...cleanOrder });
 
   } catch (error) {
     console.error('Error creando pedido:', error);
-    res.status(500).json({ message: 'Error interno del servidor' });
+    res.status(500).json({ message: 'Error interno del servidor', error: error.message });
   }
 });
 

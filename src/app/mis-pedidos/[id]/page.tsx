@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +22,24 @@ const allSteps = [
   { id: 4, name: 'Entregado', icon: Pizza, status: 'Entregado' },
 ];
 
+// Función para geocodificar una dirección a coordenadas
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const response = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+    );
+    const data = await response.json();
+
+    if (data.status === 'OK' && data.results[0]) {
+      return data.results[0].geometry.location;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error geocoding address:', error);
+    return null;
+  }
+}
+
 export default function OrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const firestore = useFirestore();
@@ -38,6 +56,52 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
     [firestore, id]
   );
   const { data: orderItems, isLoading: isLoadingItems } = useCollection<OrderItem>(orderItemsCollection);
+
+  // Estado para las coordenadas geocodificadas
+  const [deliveryCoords, setDeliveryCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+
+  // Extraer coordenadas de la dirección
+  useEffect(() => {
+    if (!order?.shippingAddress) return;
+
+    const address = order.shippingAddress;
+
+    // Si ya es una URL de Google Maps, extraer coordenadas
+    if (typeof address === 'string' && address.startsWith('https://maps.google.com')) {
+      const coordsMatch = address.match(/q=([-\d.]+),([-\d.]+)/);
+      if (coordsMatch) {
+        setDeliveryCoords({ lat: parseFloat(coordsMatch[1]), lng: parseFloat(coordsMatch[2]) });
+      }
+      return;
+    }
+
+    // Si es un objeto con lat/lng directamente (nueva estructura)
+    if (typeof address === 'object' && address.lat && address.lng) {
+      setDeliveryCoords({ lat: address.lat, lng: address.lng });
+      return;
+    }
+
+    // Si es un objeto de dirección legacy, geocodificar
+    if (typeof address === 'object' && address.street && !address.lat) {
+      const fullAddress = `${address.street}, ${address.city}, ${address.state}, ${address.postalCode}, ${address.country || 'Chile'}`;
+      setIsGeocoding(true);
+      geocodeAddress(fullAddress).then(coords => {
+        setDeliveryCoords(coords);
+        setIsGeocoding(false);
+      });
+      return;
+    }
+
+    // Si es texto plano (dirección escrita), geocodificar
+    if (typeof address === 'string' && address !== 'whatsapp') {
+      setIsGeocoding(true);
+      geocodeAddress(address).then(coords => {
+        setDeliveryCoords(coords);
+        setIsGeocoding(false);
+      });
+    }
+  }, [order?.shippingAddress]);
 
   if (isLoading || isLoadingItems) {
     return (
@@ -152,20 +216,25 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
             </Card>
           </div>
 
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-4">
             <Card className="bg-gray-900/50 border-gray-700 text-white">
               <CardHeader>
-                <CardTitle className="text-orange-400">
-                  {typeof order.shippingAddress === 'string' && order.shippingAddress.startsWith('https://maps.google.com')
-                    ? 'Ubicación de Entrega'
-                    : 'Información de Entrega'}
-                </CardTitle>
+                <CardTitle className="text-orange-400">Ubicación de Entrega</CardTitle>
               </CardHeader>
               <CardContent>
-                {typeof order.shippingAddress === 'string' && order.shippingAddress.startsWith('https://maps.google.com') ? (
+                {isGeocoding ? (
+                  <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-gray-800 flex items-center justify-center">
+                    <p className="text-white/60">Cargando mapa...</p>
+                  </div>
+                ) : order.shippingAddress === 'whatsapp' ? (
+                  <div className="text-center p-4">
+                    <p className="text-white/80">Dirección coordinada por WhatsApp</p>
+                    <p className="text-sm text-white/60 mt-2">El mapa se mostrará una vez confirmada la ubicación</p>
+                  </div>
+                ) : deliveryCoords ? (
                   <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-gray-800">
                     <iframe
-                      src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${order.shippingAddress.split('?q=')[1]}`}
+                      src={`https://www.google.com/maps/embed/v1/place?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&q=${deliveryCoords.lat},${deliveryCoords.lng}&zoom=15`}
                       width="100%"
                       height="100%"
                       style={{ border: 0 }}
@@ -174,33 +243,60 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
                       className="absolute inset-0"
                     />
                   </div>
-                ) : order.shippingAddress === 'whatsapp' ? (
-                  <div className="text-center p-4">
-                    <p className="text-white/80">Dirección coordinada por WhatsApp</p>
-                  </div>
-                ) : typeof order.shippingAddress === 'object' ? (
-                  <div className="text-sm text-white/80 space-y-1">
-                    <p className="font-semibold text-white">{order.shippingAddress.name}</p>
-                    <p>{order.shippingAddress.street}</p>
-                    <p>{order.shippingAddress.city}, {order.shippingAddress.state}</p>
-                    <p>{order.shippingAddress.postalCode}</p>
-                    <p className="text-white/60 mt-2">{order.shippingAddress.phone}</p>
-                  </div>
                 ) : (
                   <div className="relative aspect-square w-full rounded-lg overflow-hidden bg-gray-800">
                     {mapImage && (
-                        <Image
+                      <Image
                         src={mapImage.imageUrl}
                         alt={mapImage.description}
                         fill
                         className="object-cover opacity-70"
                         data-ai-hint={mapImage.imageHint}
-                        />
+                      />
                     )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                      <p className="text-white/80 text-center px-4">No se pudo determinar la ubicación</p>
+                    </div>
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            {/* Card adicional con información de dirección (solo si no es WhatsApp) */}
+            {order.shippingAddress !== 'whatsapp' && typeof order.shippingAddress === 'object' && (
+              <Card className="bg-gray-900/50 border-gray-700 text-white">
+                <CardHeader>
+                  <CardTitle className="text-orange-400">Detalles de Dirección</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-white/80 space-y-1">
+                    {/* Nueva estructura con formattedAddress */}
+                    {order.shippingAddress.formattedAddress ? (
+                      <>
+                        <p className="font-semibold text-white">{order.shippingAddress.formattedAddress}</p>
+                        {order.shippingAddress.neighborhood && (
+                          <p className="text-white/60">Barrio: {order.shippingAddress.neighborhood}</p>
+                        )}
+                        {order.shippingAddress.lat && order.shippingAddress.lng && (
+                          <p className="text-white/50 text-xs mt-2">
+                            📍 {order.shippingAddress.lat.toFixed(6)}, {order.shippingAddress.lng.toFixed(6)}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      /* Estructura legacy */
+                      <>
+                        <p className="font-semibold text-white">{order.shippingAddress.name}</p>
+                        <p>{order.shippingAddress.street}</p>
+                        <p>{order.shippingAddress.city}, {order.shippingAddress.state}</p>
+                        <p>{order.shippingAddress.postalCode}</p>
+                        <p className="text-white/60 mt-2">{order.shippingAddress.phone}</p>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
     </main>

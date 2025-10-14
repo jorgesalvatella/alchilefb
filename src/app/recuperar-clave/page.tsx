@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center text-white/80">
               <p>Se han enviado las instrucciones para restablecer tu contraseña a tu correo electrónico.</p>
               <Button asChild className="mt-6">
-                <Link href="/login">Volver a Iniciar Sesión</Link>
+                <Link href="/ingresar">Volver a Iniciar Sesión</Link>
               </Button>
             </div>
           ) : (
@@ -104,7 +104,7 @@ export default function ForgotPasswordPage() {
 
           <div className="mt-8 text-center text-sm text-white/50">
             ¿Recuerdas tu contraseña?{' '}
-            <Link href="/login" className="font-semibold text-orange-400 hover:text-orange-300 transition-colors">
+            <Link href="/ingresar" className="font-semibold text-orange-400 hover:text-orange-300 transition-colors">
               Inicia Sesión
             </Link>
           </div>
