@@ -18,6 +18,26 @@ const statusIcons: { [key: string]: React.ElementType } = {
   'Entregado': Pizza,
 };
 
+// Función de utilidad para convertir Timestamps de Firestore de forma segura
+function safeTimestampToDate(timestamp: any): Date | null {
+  if (!timestamp) return null;
+  if (typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  }
+  if (typeof timestamp === 'object' && '_seconds' in timestamp) {
+    return new Date(timestamp._seconds * 1000);
+  }
+  try {
+    const date = new Date(timestamp);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  } catch (e) {
+    // Ignorar errores
+  }
+  return null;
+}
+
 export default function OrdersPage() {
   const firestore = useFirestore();
   const { user, isUserLoading: authLoading } = useUser();
@@ -86,7 +106,9 @@ export default function OrdersPage() {
 
         <div className="space-y-6 max-w-4xl mx-auto">
             {orders?.map((order) => {
+                console.log('Raw order object:', order); // <-- DEBUG LOG
                 const Icon = statusIcons[order.status] || ShoppingBag;
+                const orderDate = safeTimestampToDate(order.createdAt);
                 return (
                     <Link key={order.id} href={`/mis-pedidos/${order.id}`} className="block">
                         <Card className="bg-gray-900/50 border-gray-700 text-white transition-all duration-300 hover:scale-105 hover:shadow-lg hover:border-orange-500/50">
@@ -98,11 +120,9 @@ export default function OrdersPage() {
                                     <div>
                                         <h3 className="text-xl font-bold text-white">Pedido #{order.id.substring(0, 7)}</h3>
                                         <p className="text-white/60 text-sm">
-                                            {order.createdAt?.toDate
-                                                ? order.createdAt.toDate().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
-                                                : order.createdAt
-                                                    ? new Date(order.createdAt._seconds * 1000).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
-                                                    : 'Fecha no disponible'
+                                            {orderDate
+                                                ? orderDate.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
+                                                : 'Fecha no disponible'
                                             }
                                         </p>
                                     </div>
