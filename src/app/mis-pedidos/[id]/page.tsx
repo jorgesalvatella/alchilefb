@@ -73,12 +73,7 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
     [firestore, id]
   );
   const { data: order, isLoading } = useDoc<Order>(orderRef);
-
-  const orderItemsCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, `pedidos/${id}/order_items`) : null),
-    [firestore, id]
-  );
-  const { data: orderItems, isLoading: isLoadingItems } = useCollection<OrderItem>(orderItemsCollection);
+  console.log('DATOS CRUDOS RECIBIDOS POR useDoc:', order);
 
   // Estado para las coordenadas geocodificadas
   const [deliveryCoords, setDeliveryCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -126,7 +121,7 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
     }
   }, [order?.shippingAddress]);
 
-  if (isLoading || isLoadingItems) {
+  if (isLoading) {
     return (
       <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
         <div className="text-center mb-12">
@@ -230,13 +225,46 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
               <CardHeader>
                 <CardTitle className="text-orange-400">Artículos del Pedido</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                  {orderItems?.map(item => (
-                      <div key={item.id} className="flex justify-between items-center text-sm">
-                          <span className="font-semibold text-white">{item.name} (x{item.quantity})</span>
-                          <span className="text-white/70">${(item.price * item.quantity).toFixed(2)}</span>
+              <CardContent>
+                <div className="space-y-4">
+                  {order.items?.map((item, index) => (
+                    <div key={index} className="p-3 rounded-lg bg-gray-800/50 border border-gray-700">
+                      <div className="flex justify-between items-center font-semibold">
+                        <span className="text-white">{item.quantity} x {item.name}</span>
+                        <span className="text-white/90">${item.totalItem ? item.totalItem.toFixed(2) : '0.00'}</span>
                       </div>
+                      {item.customizations && (
+                        <div className="text-xs text-white/60 mt-1 pl-2">
+                          {item.customizations.added && item.customizations.added.length > 0 && (
+                            <p>+ {item.customizations.added.map(a => a.nombre).join(', ')}</p>
+                          )}
+                          {item.customizations.removed && item.customizations.removed.length > 0 && (
+                            <p>- {item.customizations.removed.join(', ')}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   ))}
+                </div>
+                <hr className="my-4 border-gray-700" />
+                <div className="space-y-2">
+                  {order.subtotalVerified !== undefined && order.taxVerified !== undefined && (
+                    <>
+                      <div className="flex justify-between text-white/80">
+                        <span>Subtotal</span>
+                        <span>${order.subtotalVerified.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-white/80">
+                        <span>IVA</span>
+                        <span>${order.taxVerified.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between font-bold text-xl mt-2">
+                    <span className="text-white">Total</span>
+                    <span className="text-orange-400">${order.totalVerified.toFixed(2)}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

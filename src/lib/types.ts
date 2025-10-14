@@ -73,6 +73,8 @@ export interface Order {
   id?: string; // ID del documento (opcional al crear)
   userId: string;
   items: CartItem[];
+  subtotalVerified: number;
+  taxVerified: number;
   totalVerified: number;
   paymentMethod: 'Efectivo' | 'Tarjeta a la entrega' | 'Transferencia bancaria';
   status: OrderStatus;
