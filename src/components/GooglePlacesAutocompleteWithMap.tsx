@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useJsApiLoader, GoogleMap, Marker } from '@react-google-maps/api';
-import { MapPin, CheckCircle2, Mouse, Search, MapPinned } from 'lucide-react';
+import { MapPin, CheckCircle2, Mouse, Search, MapPinned, LocateFixed, Loader2 } from 'lucide-react';
 
 const libraries: ('places')[] = ['places'];
 
@@ -47,6 +47,7 @@ export default function GooglePlacesAutocompleteWithMap({
     lat: -33.4489, lng: -70.6693 // Santiago, Chile como default
   });
   const [showMap, setShowMap] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
@@ -109,6 +110,70 @@ export default function GooglePlacesAutocompleteWithMap({
     }
     return null;
   }, []);
+
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      setError("La geolocalización no es soportada por tu navegador.");
+      return;
+    }
+
+    setIsLocating(true);
+    setError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        setSelectedLocation({ lat, lng });
+        setMapCenter({ lat, lng });
+        setIsAddressValid(true);
+        setMode('manual');
+
+        const address = await reverseGeocode(lat, lng);
+        if (address) {
+          onChange(address.formattedAddress);
+          if (onAddressSelect) {
+            onAddressSelect(address);
+          }
+        } else {
+          const fallbackAddress = `Ubicación actual: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+          onChange(fallbackAddress);
+          if (onAddressSelect) {
+            onAddressSelect({
+              street: 'Ubicación actual',
+              neighborhood: '',
+              city: '',
+              state: '',
+              postalCode: '',
+              country: '',
+              lat,
+              lng,
+              formattedAddress: fallbackAddress,
+            });
+          }
+        }
+        setIsLocating(false);
+      },
+      (error) => {
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setError("Permiso de ubicación denegado. Actívalo en tu navegador.");
+            break;
+          case error.POSITION_UNAVAILABLE:
+            setError("La información de ubicación no está disponible.");
+            break;
+          case error.TIMEOUT:
+            setError("La solicitud de ubicación ha caducado.");
+            break;
+          default:
+            setError("Ocurrió un error al obtener la ubicación.");
+            break;
+        }
+        setIsLocating(false);
+      }
+    );
+  };
 
   // Manejar click en el mapa (modo manual)
   const handleMapClick = useCallback(async (e: google.maps.MapMouseEvent) => {
@@ -262,13 +327,13 @@ export default function GooglePlacesAutocompleteWithMap({
   return (
     <div className="space-y-3">
       {/* Selector de modo */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant={mode === 'search' ? 'default' : 'outline'}
           size="sm"
           onClick={() => switchMode('search')}
-          className="flex-1"
+          className="flex-1 min-w-[140px]"
         >
           <Search className="h-4 w-4 mr-2" />
           Buscar dirección
@@ -278,10 +343,25 @@ export default function GooglePlacesAutocompleteWithMap({
           variant={mode === 'manual' ? 'default' : 'outline'}
           size="sm"
           onClick={() => switchMode('manual')}
-          className="flex-1"
+          className="flex-1 min-w-[140px]"
         >
           <Mouse className="h-4 w-4 mr-2" />
           Marcar en mapa
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleLocateMe}
+          disabled={isLocating}
+          className="flex-1 min-w-[140px]"
+        >
+          {isLocating ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <LocateFixed className="h-4 w-4 mr-2" />
+          )}
+          {isLocating ? 'Ubicando...' : 'Mi ubicación'}
         </Button>
       </div>
 
