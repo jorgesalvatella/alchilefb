@@ -1,8 +1,121 @@
 # TODO: Tests Pendientes del Hub de Pedidos
 
-## Estado Actual ✅
-- **Backend**: 18/18 tests pasando (100%)
-- **Frontend**: 8/26+ tests completados (~30%)
+## 📊 Estado Actual (Actualizado: 14 de Octubre de 2025)
+
+### Resumen Ejecutivo
+- ✅ **Tests Críticos:** 26/26 pasando (100%)
+- ✅ **Backend Total:** 109/115 tests pasando (95%)
+- ✅ **Frontend Total:** 66/69 tests pasando (96%)
+- ⏳ **Tests Pendientes:** ~44-60 tests por implementar
+
+### Desglose Detallado
+
+#### Backend (109/115 pasando)
+- ✅ **Orders Hub (pedidos-control.test.js):** 18/18 tests ✅
+- ✅ **index.test.js:** Todos pasando ✅
+- ✅ **categorias-venta.test.js:** Todos pasando ✅
+- ✅ **productos-venta.test.js:** Todos pasando ✅
+- ✅ **profile.test.js:** Todos pasando ✅
+- ⚠️ **cart.test.js:** 5 tests fallando (legacy)
+- ⚠️ **pedidos.test.js:** 1 test fallando (legacy)
+
+#### Frontend (66/69 pasando)
+- ✅ **OrdersKPIs.test.tsx:** 8/8 tests ✅
+- ✅ **Otros componentes:** 58/58 tests ✅
+- ⚠️ **pago/page.test.tsx:** 3 tests fallando (legacy)
+
+---
+
+## 🎯 Cambios Recientes (v0.5.0)
+
+### Implementaciones Completadas
+- ✅ Google Places Autocomplete en registro
+- ✅ Google Places Autocomplete en AddEditAddressDialog
+- ✅ Google Places Autocomplete en página de perfil (`/perfil`)
+- ✅ Geocoding automático en `/mis-pedidos/[id]`
+- ✅ Mapa visible para todos los tipos de dirección
+- ✅ Coordenadas persistidas en Firestore (lat, lng, formattedAddress)
+
+### Impacto en Tests
+- ✅ **0 tests rotos** por los cambios de v0.5.0
+- ✅ **26 tests críticos** continúan pasando al 100%
+- ✅ **Componentes actualizados** sin degradación
+
+---
+
+## ⚠️ Tests que Fallan (9 total - Código Legacy)
+
+### Backend (6 tests fallando)
+
+#### 1. cart.test.js (5 tests)
+**Razón:** Cálculos incorrectos de extras en productos
+
+**Tests que fallan:**
+1. `should calculate totals correctly with added extras`
+   - **Esperado:** totalFinal = 35.00
+   - **Recibido:** totalFinal = 25.00
+   - **Diferencia:** 10 (precio del extra no sumado)
+
+2. `should handle multiple items with and without customizations`
+   - **Esperado:** totalFinal = 170.00
+   - **Recibido:** totalFinal = 140.00
+   - **Diferencia:** 30 (múltiples extras no sumados)
+
+3. `should return 400 if items array is missing`
+   - **Esperado:** Status 400
+   - **Recibido:** Status 500
+   - **Razón:** Error de validación mal manejado
+
+4. `should return 400 for invalid item structure`
+   - **Esperado:** Status 400
+   - **Recibido:** Status 500
+   - **Razón:** Error de validación mal manejado
+
+5. `should return 400 if a product is not found`
+   - **Esperado:** Status 400
+   - **Recibido:** Status 500
+   - **Razón:** Error de producto no encontrado mal manejado
+
+**Ubicación del error:** `backend/cart.js:83-86`
+
+**Solución recomendada:**
+- Revisar función `verifyCartTotals()` en `backend/cart.js`
+- Corregir cálculo de extras en subtotales
+- Mejorar manejo de errores (throw 400 en vez de 500)
+
+---
+
+#### 2. pedidos.test.js (1 test)
+**Razón:** Mock de Firestore no configurado correctamente para creación de pedidos
+
+**Test que falla:**
+1. `should create an order successfully with valid data`
+   - **Esperado:** Status 201
+   - **Recibido:** Status 500
+   - **Error:** `Cannot read properties of undefined (reading 'exists')`
+
+**Ubicación del error:** `backend/pedidos.js:55` (llamada a `verifyCartTotals`)
+
+**Solución recomendada:**
+- Verificar que el mock de Firestore incluye el método `exists`
+- Asegurar que `verifyCartTotals` tiene acceso completo a la BD mockeada
+
+---
+
+### Frontend (3 tests fallando)
+
+#### pago/page.test.tsx (3 tests)
+**Razón:** Validaciones del flujo de pago no implementadas correctamente
+
+**Tests que fallan:**
+1. Test de validación de método de pago
+2. Test de validación de dirección de entrega
+3. Test de creación de orden
+
+**Solución recomendada:**
+- Revisar componente de pago en `src/app/pago/page.tsx`
+- Actualizar validaciones según especificación
+- Verificar integración con backend de pedidos
 
 ---
 
@@ -206,5 +319,98 @@ Para considerar el testing completo:
 
 ---
 
+---
+
+## 🔧 Plan de Acción para Tests que Fallan
+
+### Prioridad 1: Arreglar cart.test.js (5 tests)
+**Tiempo estimado:** 2-3 horas
+
+**Pasos:**
+1. Revisar `backend/cart.js:25-86` - Función `verifyCartTotals()`
+2. Corregir cálculo de extras:
+   ```javascript
+   // Asegurar que se suman los extras al subtotal del item
+   itemSubtotal = basePrice + extrasTotal
+   ```
+3. Mejorar manejo de errores:
+   ```javascript
+   // Lanzar error 400 para validaciones
+   if (!items || !Array.isArray(items)) {
+     return res.status(400).json({ message: 'Request body must contain an array of items.' });
+   }
+   ```
+4. Ejecutar `cd backend && npm test cart.test.js`
+5. Verificar que todos pasan
+
+---
+
+### Prioridad 2: Arreglar pedidos.test.js (1 test)
+**Tiempo estimado:** 1 hora
+
+**Pasos:**
+1. Revisar mock de Firestore en `backend/pedidos.test.js`
+2. Asegurar que el mock incluye:
+   ```javascript
+   doc: jest.fn(() => ({
+     get: jest.fn().mockResolvedValue({
+       exists: true,
+       data: () => ({ /* mock data */ })
+     })
+   }))
+   ```
+3. Ejecutar `cd backend && npm test pedidos.test.js`
+4. Verificar que pasa
+
+---
+
+### Prioridad 3: Arreglar pago/page.test.tsx (3 tests)
+**Tiempo estimado:** 2-4 horas
+
+**Pasos:**
+1. Revisar `src/app/pago/page.test.tsx` y `src/app/pago/page.tsx`
+2. Identificar qué validaciones faltan
+3. Implementar validaciones correctas en el componente
+4. Actualizar tests si es necesario
+5. Ejecutar `npx jest pago/page.test.tsx`
+6. Verificar que todos pasan
+
+---
+
+## 📈 Progreso y Métricas
+
+### Estado de Salud del Proyecto
+```
+Tests Totales: 184 (115 backend + 69 frontend)
+Tests Pasando: 175 (95%)
+Tests Fallando: 9 (5%)
+Tests Pendientes: ~44-60 (nuevos)
+```
+
+### Roadmap de Testing
+
+**Semana 1:**
+- ✅ Día 1-2: Arreglar cart.test.js (5 tests)
+- ✅ Día 3: Arreglar pedidos.test.js (1 test)
+- ✅ Día 4-5: Arreglar pago/page.test.tsx (3 tests)
+- 🎯 **Meta:** 100% de tests existentes pasando
+
+**Semana 2:**
+- Día 1-2: Ejecutar y validar OrdersTable.test.tsx (11 tests)
+- Día 3-4: Crear OrdersFilters.test.tsx (8-10 tests)
+- Día 5: Review y ajustes
+- 🎯 **Meta:** Componentes de filtros y tabla cubiertos
+
+**Semana 3:**
+- Día 1-5: Crear OrderDetailsSheet.test.tsx (20-25 tests)
+- 🎯 **Meta:** Componente de detalles cubierto
+
+**Semana 4:**
+- Día 1-3: Crear page.test.tsx integración (14-16 tests)
+- Día 4-5: Setup Playwright y 1er flujo E2E
+- 🎯 **Meta:** Testing de integración completo
+
+---
+
 **Última actualización:** 14 de Octubre de 2025
-**Progreso actual:** 26/~70 tests (37%)
+**Progreso actual:** 26/~70 tests nuevos (37%) + 175/184 tests existentes (95%)

@@ -1,8 +1,44 @@
-# Firebase Studio
+# Al Chile - Food Delivery App
 
-This is a NextJS starter in Firebase Studio.
+Aplicación completa de delivery de comida construida con Next.js 15, Firebase y Google Maps.
 
-To get started, take a look at src/app/page.tsx.
+## 🚀 Características Principales
+
+### Para Clientes
+- 🛒 **Menú Interactivo**: Navegación por categorías con productos personalizables
+- 🗺️ **Google Places Autocomplete**: Registro de direcciones con autocompletado inteligente
+- 📍 **Tracking en Tiempo Real**: Seguimiento de pedidos con mapa interactivo
+- 💳 **Múltiples Métodos de Pago**: Efectivo, tarjeta a la entrega
+- 📱 **Responsive Design**: Optimizado para móviles y desktop
+
+### Para Administradores
+- 📊 **Hub de Pedidos**: Centro de comando con KPIs en tiempo real
+- 🔍 **Filtros Avanzados**: Por estado, fecha, búsqueda de clientes
+- 🎯 **Gestión de Estados**: Cambio de estado con historial completo
+- 📦 **Catálogo Completo**: Gestión de productos, categorías y proveedores
+- 👥 **Gestión de Clientes**: Visualización de datos y pedidos históricos
+
+### Integraciones
+- 🗺️ **Google Maps Platform**:
+  - Places API para autocomplete de direcciones
+  - Geocoding API para conversión dirección → coordenadas
+  - Maps Embed API para visualización de ubicaciones
+- 🔥 **Firebase Suite**:
+  - Authentication para usuarios y admins
+  - Firestore para base de datos en tiempo real
+  - Storage para imágenes de productos
+  - Custom Claims para roles (admin, super_admin)
+
+## 📋 Versión Actual: 0.5.0
+
+### Últimas Actualizaciones
+- ✅ Google Places Autocomplete integrado en registro y edición de direcciones
+- ✅ Mapa siempre visible en seguimiento de pedidos (todas las direcciones)
+- ✅ Geocoding automático con coordenadas persistidas en Firestore
+- ✅ Hub de Pedidos completamente funcional con KPIs y filtros
+- ✅ Sistema de testing con 26+ tests pasando
+
+Ver [CHANGELOG.md](./CHANGELOG.md) para detalles completos.
 
 ---
 
@@ -49,7 +85,32 @@ Dentro de la carpeta de tu proyecto, ejecuta el siguiente comando para instalar 
 npm install
 ```
 
-### 5. Trabaja en Local
+### 5. Configura las Variables de Entorno
+
+Crea un archivo `.env.local` en la raíz del proyecto con las siguientes variables:
+
+```bash
+# Firebase Configuration (ya configuradas en Studio)
+NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-auth-domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-storage-bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
+NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
+
+# Google Maps Platform (REQUERIDO para autocomplete y mapas)
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+```
+
+**Importante sobre Google Maps API:**
+- Necesitas crear una API key en [Google Cloud Console](https://console.cloud.google.com/)
+- Habilita las siguientes APIs:
+  - Places API (para autocomplete de direcciones)
+  - Geocoding API (para conversión dirección → coordenadas)
+  - Maps Embed API (para mostrar mapas)
+- Para desarrollo local, agrega `http://localhost:9002` a las restricciones de la API
+
+### 6. Trabaja en Local
 
 ¡Ya está todo listo! Para arrancar la aplicación en tu computador y verla en tu navegador, ejecuta:
 

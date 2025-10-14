@@ -9,25 +9,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getAuth, signOut } from 'firebase/auth';
-import { Pen, Trash2, User as UserIcon, MapPin } from 'lucide-react';
+import { Pen, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
-import AddEditAddressDialog from '@/components/AddEditAddressDialog';
 
-// ... (imports and interfaces remain the same)
+interface UserProfile {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phoneNumber?: string;
+  profilePictureUrl?: string;
+}
 
 export default function ProfilePage() {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  
-  const [activeTab, setActiveTab] = useState('profile');
+
   const [isEditing, setIsEditing] = useState(false);
-  const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false);
-  const [addressToEdit, setAddressToEdit] = useState<DeliveryAddress | null>(null);
 
   // State for data fetched from API
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [addresses, setAddresses] = useState<DeliveryAddress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,30 +46,23 @@ export default function ProfilePage() {
   // Effect to fetch data from our API
   useEffect(() => {
     if (user) {
-      const fetchWithAuth = async (url: string) => {
-        const token = await user.getIdToken();
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!response.ok) {
-          throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
-        }
-        return response.json();
-      };
-
       const fetchData = async () => {
         setIsLoading(true);
         setError(null);
         try {
-          const [profileData, addressesData] = await Promise.all([
-            fetchWithAuth('/api/me/profile'),
-            fetchWithAuth('/api/me/addresses'),
-          ]);
+          const token = await user.getIdToken();
+          const response = await fetch('/api/me/profile', {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
 
+          if (!response.ok) {
+            throw new Error(`Failed to fetch profile: ${response.statusText}`);
+          }
+
+          const profileData = await response.json();
           setUserProfile(profileData);
-          setAddresses(addressesData);
 
           // Initialize form state correctly
           setFirstName(profileData.firstName || '');
@@ -96,7 +90,7 @@ export default function ProfilePage() {
       const token = await user.getIdToken();
       const response = await fetch('/api/me/profile', {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
@@ -104,94 +98,17 @@ export default function ProfilePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update profile.');
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Server error response:', errorData);
+        throw new Error(errorData.message || `Failed to update profile (${response.status})`);
       }
 
       setUserProfile(prev => prev ? { ...prev, firstName, lastName, phoneNumber } : null);
       setIsEditing(false);
+      alert('Perfil actualizado correctamente');
     } catch (error) {
       console.error("Error updating profile: ", error);
-    }
-  };
-
-  const handleOpenAddressDialog = (address: DeliveryAddress | null = null) => {
-    setAddressToEdit(address);
-    setIsAddressDialogOpen(true);
-  };
-
-  const handleSaveAddress = async (address: DeliveryAddress) => {
-    if (!user) return;
-    const isEditing = !!address.id;
-    const url = isEditing ? `/api/me/addresses/${address.id}` : '/api/me/addresses';
-    const method = isEditing ? 'PUT' : 'POST';
-
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch(url, {
-        method,
-        headers: { 
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(address),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save address.');
-      }
-
-      if (isEditing) {
-        setAddresses(prev => prev.map(a => a.id === address.id ? { ...a, ...address } : a));
-      } else {
-        const newAddress = await response.json();
-        setAddresses(prev => [...prev, newAddress]);
-      }
-      setIsAddressDialogOpen(false);
-    } catch (error) {
-      console.error("Error saving address:", error);
-    }
-  };
-
-  const handleDeleteAddress = async (addressId: string) => {
-    if (!user || !window.confirm('¿Estás seguro de que quieres eliminar esta dirección?')) return;
-
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch(`/api/me/addresses/${addressId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete address.');
-      }
-
-      setAddresses(prev => prev.filter(a => a.id !== addressId));
-    } catch (error) {
-      console.error("Error deleting address:", error);
-    }
-  };
-
-  const handleSetDefaultAddress = async (addressId: string) => {
-    if (!user) return;
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch(`/api/me/addresses/set-default/${addressId}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to set default address.');
-      }
-
-      setUserProfile(prev => prev ? { ...prev, defaultDeliveryAddressId: addressId } : null);
-    } catch (error) {
-      console.error("Error setting default address:", error);
+      alert(`Error al actualizar perfil: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   };
 
@@ -233,109 +150,57 @@ export default function ProfilePage() {
         <div className="text-center mb-12">
             <h1 className="text-6xl md:text-8xl font-black text-white mb-6">
                 <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
-                    Mi Cuenta
+                    Mi Perfil
                 </span>
             </h1>
             <p className="text-xl text-white/80 max-w-2xl mx-auto">
-                Administra tu información personal y direcciones de entrega.
+                Administra tu información personal.
             </p>
         </div>
 
-        <div className="grid md:grid-cols-4 gap-8 items-start">
-            <div className="md:col-span-1 space-y-2">
-                <Button onClick={() => setActiveTab('profile')} variant={activeTab === 'profile' ? 'default' : 'ghost'} className={cn("w-full justify-start gap-2 font-headline text-lg", activeTab === 'profile' && "bg-white/10 text-white")}>
-                    <UserIcon className="h-5 w-5" /> Perfil
-                </Button>
-                <Button onClick={() => setActiveTab('addresses')} variant={activeTab === 'addresses' ? 'default' : 'ghost'} className={cn("w-full justify-start gap-2 font-headline text-lg", activeTab === 'addresses' && "bg-white/10 text-white")}>
-                    <MapPin className="h-5 w-5" /> Direcciones
-                </Button>
-            </div>
+        <div className="max-w-2xl mx-auto">
+            <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl p-8 space-y-6">
+                <div className="space-y-2">
+                    <h2 className="text-3xl font-bold">{displayName} {displayLastName}</h2>
+                    <p className="text-white/60">{displayEmail}</p>
+                    <p className="text-white/60">{displayPhone}</p>
+                </div>
 
-            <div className="md:col-span-3">
-                {activeTab === 'profile' && (
-                    <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl p-8 space-y-6">
-                        <div className="space-y-2">
-                            <h2 className="text-3xl font-bold">{displayName} {displayLastName}</h2>
-                            <p className="text-white/60">{displayEmail}</p>
-                            <p className="text-white/60">{displayPhone}</p>
+                {isEditing ? (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="firstName">Nombre</Label>
+                                <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="bg-white/5 border-white/20" />
+                            </div>
+                            <div>
+                                <Label htmlFor="lastName">Apellido</Label>
+                                <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="bg-white/5 border-white/20" />
+                            </div>
                         </div>
-
-                        {isEditing ? (
-                            <div className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label htmlFor="firstName">Nombre</Label>
-                                        <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} className="bg-white/5 border-white/20" />
-                                    </div>
-                                    <div>
-                                        <Label htmlFor="lastName">Apellido</Label>
-                                        <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} className="bg-white/5 border-white/20" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <Label htmlFor="phone">Teléfono</Label>
-                                    <Input id="phone" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="bg-white/5 border-white/20" />
-                                </div>
-                                <div className="flex gap-4">
-                                    <Button onClick={handleProfileUpdate} className="bg-orange-500 hover:bg-orange-600">Guardar Cambios</Button>
-                                    <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancelar</Button>
-                                </div>
-                            </div>
-                        ) : (
-                            <Button variant="outline" onClick={() => setIsEditing(true)} className="bg-white/10 border-white/20 hover:bg-white/20">
-                                <Pen className="mr-2 h-4 w-4" /> Editar Perfil
-                            </Button>
-                        )}
-
-                        <Separator className="bg-white/20" />
-
-                        <Button onClick={handleSignOut} className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white font-bold text-lg py-6 hover:scale-105 transition-transform duration-300">
-                            Cerrar Sesión
-                        </Button>
+                        <div>
+                            <Label htmlFor="phone">Teléfono</Label>
+                            <Input id="phone" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="bg-white/5 border-white/20" />
+                        </div>
+                        <div className="flex gap-4">
+                            <Button onClick={handleProfileUpdate} className="bg-orange-500 hover:bg-orange-600">Guardar Cambios</Button>
+                            <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancelar</Button>
+                        </div>
                     </div>
+                ) : (
+                    <Button variant="outline" onClick={() => setIsEditing(true)} className="bg-white/10 border-white/20 hover:bg-white/20">
+                        <Pen className="mr-2 h-4 w-4" /> Editar Perfil
+                    </Button>
                 )}
 
-                {activeTab === 'addresses' && (
-                    <div className="bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl p-8 space-y-6">
-                        <h2 className="text-3xl font-bold mb-4">Mis Direcciones</h2>
-                        {isLoading ? (
-                            <p>Cargando direcciones...</p>
-                        ) : (
-                            <div className="space-y-4">
-                                {addresses?.map((address) => (
-                                    <div key={address.id} className="flex justify-between items-start p-4 rounded-lg border border-white/20 bg-white/5 relative">
-                                        {userProfile?.defaultDeliveryAddressId === address.id && (
-                                          <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">Default</div>
-                                        )}
-                                        <div>
-                                            <p className="font-semibold">{address.streetAddress}</p>
-                                            <p className="text-white/70">{address.city}, {address.state} {address.zipCode}</p>
-                                            {userProfile?.defaultDeliveryAddressId !== address.id && (
-                                              <Button onClick={() => handleSetDefaultAddress(address.id)} variant="link" className="p-0 h-auto text-orange-400 hover:text-orange-500 mt-2">
-                                                Establecer como principal
-                                              </Button>
-                                            )}
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <Button onClick={() => handleOpenAddressDialog(address)} variant="ghost" size="icon" className="text-white/60 hover:text-orange-400"><Pen className="h-4 w-4" /></Button>
-                                            <Button onClick={() => handleDeleteAddress(address.id)} variant="ghost" size="icon" className="text-white/60 hover:text-red-500"><Trash2 className="h-4 w-4" /></Button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        <Button onClick={() => handleOpenAddressDialog()} className="w-full bg-orange-500 hover:bg-orange-600">Añadir Nueva Dirección</Button>
-                    </div>
-                )}
+                <Separator className="bg-white/20" />
+
+                <Button onClick={handleSignOut} className="w-full bg-gradient-to-r from-red-600 to-orange-500 text-white font-bold text-lg py-6 hover:scale-105 transition-transform duration-300">
+                    Cerrar Sesión
+                </Button>
             </div>
         </div>
       </div>
-      <AddEditAddressDialog
-        isOpen={isAddressDialogOpen}
-        onClose={() => setIsAddressDialogOpen(false)}
-        onSave={handleSaveAddress}
-        addressToEdit={addressToEdit}
-      />
     </div>
   );
 }

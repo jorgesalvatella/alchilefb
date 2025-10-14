@@ -2246,6 +2246,10 @@ app.get('/api/me/profile', authMiddleware, async (req, res) => {
 // Update user profile
 app.put('/api/me/profile', authMiddleware, async (req, res) => {
   try {
+    console.log('[PUT /api/me/profile] Request received');
+    console.log('[PUT /api/me/profile] User UID:', req.user?.uid);
+    console.log('[PUT /api/me/profile] Body:', req.body);
+
     const { firstName, lastName, phoneNumber } = req.body;
     const userRef = db.collection('users').doc(req.user.uid);
 
@@ -2256,14 +2260,30 @@ app.put('/api/me/profile', authMiddleware, async (req, res) => {
       updatedAt: new Date().toISOString(),
     };
 
-    await userRef.update(updateData);
+    console.log('[PUT /api/me/profile] Updating with data:', updateData);
+
+    // Use set with merge to create document if it doesn't exist
+    await userRef.set(updateData, { merge: true });
+
+    console.log('[PUT /api/me/profile] Profile updated successfully');
     res.status(200).json({ message: 'Profile updated successfully' });
   } catch (error) {
-    console.error('Error updating user profile:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
+    console.error('[PUT /api/me/profile] ERROR:', error);
+    console.error('[PUT /api/me/profile] Error message:', error.message);
+    console.error('[PUT /api/me/profile] Error stack:', error.stack);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 });
 
+// ===================================================================
+// DEPRECATED: Saved Addresses System (Replaced by real-time geolocation)
+// ===================================================================
+// The following endpoints are commented out as we now use geolocation
+// at checkout time instead of managing saved addresses.
+// Keep this code for potential future reference or rollback.
+// ===================================================================
+
+/*
 // Get all user addresses
 app.get('/api/me/addresses', authMiddleware, async (req, res) => {
   try {
@@ -2280,12 +2300,20 @@ app.get('/api/me/addresses', authMiddleware, async (req, res) => {
 // Add a new address
 app.post('/api/me/addresses', authMiddleware, async (req, res) => {
   try {
-    const { streetAddress, city, state, zipCode } = req.body;
+    const { streetAddress, city, state, zipCode, lat, lng, formattedAddress } = req.body;
     if (!streetAddress || !city || !state || !zipCode) {
       return res.status(400).json({ message: 'Missing required address fields' });
     }
     const addressesRef = db.collection('users').doc(req.user.uid).collection('delivery_addresses');
-    const newAddress = { streetAddress, city, state, zipCode };
+    const newAddress = {
+      streetAddress,
+      city,
+      state,
+      zipCode,
+      lat: lat || null,
+      lng: lng || null,
+      formattedAddress: formattedAddress || null
+    };
     const docRef = await addressesRef.add(newAddress);
     res.status(201).json({ id: docRef.id, ...newAddress });
   } catch (error) {
@@ -2298,12 +2326,20 @@ app.post('/api/me/addresses', authMiddleware, async (req, res) => {
 app.put('/api/me/addresses/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { streetAddress, city, state, zipCode } = req.body;
+    const { streetAddress, city, state, zipCode, lat, lng, formattedAddress } = req.body;
     if (!streetAddress || !city || !state || !zipCode) {
       return res.status(400).json({ message: 'Missing required address fields' });
     }
     const addressRef = db.collection('users').doc(req.user.uid).collection('delivery_addresses').doc(id);
-    await addressRef.update({ streetAddress, city, state, zipCode });
+    await addressRef.update({
+      streetAddress,
+      city,
+      state,
+      zipCode,
+      lat: lat || null,
+      lng: lng || null,
+      formattedAddress: formattedAddress || null
+    });
     res.status(200).json({ message: 'Address updated successfully' });
   } catch (error) {
     console.error('Error updating address:', error);
@@ -2336,6 +2372,7 @@ app.put('/api/me/addresses/set-default/:id', authMiddleware, async (req, res) =>
     res.status(500).json({ message: 'Internal Server Error' });
   }
 });
+*/
 
 // --- Cart Verification ---
 const cartRouter = require('./cart').router;

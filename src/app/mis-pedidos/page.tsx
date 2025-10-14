@@ -54,7 +54,7 @@ export default function OrdersPage() {
             <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl text-white mb-6">Inicia Sesión para Ver tus Pedidos</h1>
             <p className="mt-4 max-w-2xl mx-auto text-xl text-white/70 mb-8">Para poder ver tu historial de pedidos, primero necesitas iniciar sesión.</p>
             <Button size="lg" asChild className="bg-orange-500 text-white hover:bg-orange-600 font-bold">
-                <Link href="/login">Iniciar Sesión</Link>
+                <Link href="/ingresar">Iniciar Sesión</Link>
             </Button>
         </main>
     );
@@ -98,7 +98,12 @@ export default function OrdersPage() {
                                     <div>
                                         <h3 className="text-xl font-bold text-white">Pedido #{order.id.substring(0, 7)}</h3>
                                         <p className="text-white/60 text-sm">
-                                            {order.createdAt?.toDate().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                            {order.createdAt?.toDate
+                                                ? order.createdAt.toDate().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
+                                                : order.createdAt
+                                                    ? new Date(order.createdAt._seconds * 1000).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
+                                                    : 'Fecha no disponible'
+                                            }
                                         </p>
                                     </div>
                                 </div>
