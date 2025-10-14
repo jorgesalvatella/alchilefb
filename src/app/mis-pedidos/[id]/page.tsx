@@ -40,6 +40,29 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
   }
 }
 
+// Función de utilidad para convertir Timestamps de Firestore de forma segura
+function safeTimestampToDate(timestamp: any): Date | null {
+  if (!timestamp) return null;
+  // Caso 1: Es un objeto Timestamp de Firestore (del lado del cliente)
+  if (typeof timestamp.toDate === 'function') {
+    return timestamp.toDate();
+  }
+  // Caso 2: Es un objeto serializado desde la API (con _seconds)
+  if (typeof timestamp === 'object' && '_seconds' in timestamp) {
+    return new Date(timestamp._seconds * 1000);
+  }
+  // Fallback por si ya es una fecha o un string de fecha
+  try {
+    const date = new Date(timestamp);
+    if (!isNaN(date.getTime())) {
+      return date;
+    }
+  } catch (e) {
+    // Ignorar errores de conversión
+  }
+  return null;
+}
+
 export default function OrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const firestore = useFirestore();
@@ -141,9 +164,11 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
   const currentStepIndex = allSteps.findIndex(step => step.status === order.status);
 
   const getStepTime = (stepIndex: number) => {
-    if (!order.createdAt) return null;
+    const createdAtDate = safeTimestampToDate(order.createdAt);
+    if (!createdAtDate) return null;
+
     if (stepIndex < currentStepIndex) return 'Completado';
-    if (stepIndex === currentStepIndex) return order.createdAt?.toDate().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) || 'Ahora';
+    if (stepIndex === currentStepIndex) return createdAtDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) || 'Ahora';
     return null;
   }
 
