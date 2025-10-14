@@ -1,5 +1,15 @@
 # Changelog
 
+## Versión 0.6.1 - 14 de Octubre de 2025
+
+### 🐛 Correcciones Críticas (Bug Fixes)
+
+- **Error de Creación de Pedidos sin Fecha:**
+  - **Problema:** Los nuevos pedidos se creaban sin fecha (`createdAt`), lo que provocaba que en la interfaz de "Mis Pedidos" se mostrara "Fecha no disponible".
+  - **Causa Raíz:** Se identificó que una función de utilidad en el backend (`removeUndefined`), diseñada para limpiar objetos antes de guardarlos en Firestore, estaba siendo demasiado agresiva. Esta función eliminaba por error los objetos especiales de fecha de Firebase (`FieldValue.serverTimestamp()`) y los objetos estándar de JavaScript (`new Date()`), convirtiéndolos en objetos vacíos.
+  - **Solución:** Se modificó la función `removeUndefined` en `backend/pedidos.js` para que detecte y respete explícitamente los tipos de datos `admin.firestore.FieldValue` y `Date`, asegurando que no sean alterados durante el proceso de limpieza.
+  - **Impacto:** Todos los nuevos pedidos ahora se guardan con una fecha de creación válida, solucionando el error de visualización de forma definitiva.
+
 ## Versión 0.6.0 - 14 de Octubre de 2025
 
 ### 🔄 Arquitectura - Migración a Geolocalización en Tiempo Real

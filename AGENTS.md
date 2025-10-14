@@ -1612,6 +1612,49 @@ module.exports = {
         }, [cartItems, user, isUserLoading]); // <-- Dependencias completas
         ```
 
+### 3.9. Manejo de Tipos de Datos Especiales en Funciones de Limpieza
+
+**Lección Aprendida:** Las funciones genéricas que recorren y "limpian" objetos recursivamente son peligrosas si no se hacen conscientes de los tipos de datos especiales, como los que utiliza Firebase.
+
+**Problema:**
+- Se creó una función `removeUndefined` para eliminar campos con valor `undefined` de los objetos antes de enviarlos a Firestore.
+- Esta función, al no ser "consciente" de los tipos de datos de Firebase, interceptaba los objetos `FieldValue.serverTimestamp()` y los objetos estándar de JavaScript `Date`.
+- Al tratarlos como objetos genéricos, intentaba recorrer sus propiedades, lo que resultaba en su destrucción y conversión a un objeto vacío (`{}`).
+
+**Síntoma:**
+- Los pedidos se creaban en Firestore con el campo `createdAt: {}`.
+- El frontend no podía procesar este objeto vacío, mostrando errores como "Invalid Date" o "Fecha no disponible".
+
+**Solución:**
+La función de limpieza **debe** identificar explícitamente estos tipos de datos especiales y devolverlos sin modificarlos.
+
+**Implementación Correcta (`backend/pedidos.js`):**
+```javascript
+// Helper function to remove undefined values from an object
+const removeUndefined = (obj) => {
+  // Guardia para tipos de datos especiales: si es uno de ellos, devolverlo intacto.
+  if (obj instanceof admin.firestore.FieldValue || obj instanceof Date) {
+    return obj;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefined(item));
+  }
+
+  if (obj !== null && typeof obj === 'object') {
+    return Object.entries(obj).reduce((acc, [key, value]) => {
+      if (value !== undefined) {
+        acc[key] = removeUndefined(value);
+      }
+      return acc;
+    }, {});
+  }
+  
+  return obj;
+};
+```
+**Regla de Oro para Nexus:** Antes de aplicar cualquier transformación genérica a un objeto que se enviará a Firestore, asegúrate de que respeta los tipos de datos `FieldValue` y `Date`.
+
 ---
 
 ## 4. Comando de Ayuda Rápida

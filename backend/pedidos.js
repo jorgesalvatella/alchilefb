@@ -39,6 +39,9 @@ const db = admin.firestore();
  */
 // Helper function to remove undefined values from an object
 const removeUndefined = (obj) => {
+  if (obj instanceof admin.firestore.FieldValue || obj instanceof Date) {
+    return obj;
+  }
   if (Array.isArray(obj)) {
     return obj.map(item => removeUndefined(item));
   }
@@ -81,16 +84,19 @@ router.post('/', authMiddleware, async (req, res) => {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       statusHistory: [{
         status: 'Pedido Realizado',
-        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        timestamp: new Date(),
         changedBy: userId
       }]
     };
+    console.log('1. Objeto newOrder antes de limpiar:', newOrder);
 
     // Remove undefined values to prevent Firestore errors
     const cleanOrder = removeUndefined(newOrder);
+    console.log('2. Objeto cleanOrder después de limpiar (lo que se envía a Firestore):', cleanOrder);
 
     // 3. Guardar en Firestore
     const docRef = await db.collection('pedidos').add(cleanOrder);
+    console.log('3. Pedido guardado con ID:', docRef.id);
 
     // 4. Devolver respuesta
     res.status(201).json({ id: docRef.id, ...cleanOrder });
