@@ -44,7 +44,7 @@ export default function GooglePlacesAutocompleteWithMap({
   const [isAddressValid, setIsAddressValid] = useState(false);
   const [mode, setMode] = useState<'search' | 'manual'>('search');
   const [mapCenter, setMapCenter] = useState<{ lat: number; lng: number }>({
-    lat: -33.4489, lng: -70.6693 // Santiago, Chile como default
+    lat: 20.6296, lng: -87.0739 // Playa del Carmen, Q.R.
   });
   const [showMap, setShowMap] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -53,6 +53,24 @@ export default function GooglePlacesAutocompleteWithMap({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
     libraries,
   });
+
+  // Auto-centrar en la ubicación del usuario al cargar
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setMapCenter({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        () => {
+          // Fallback a Playa del Carmen ya está en el estado inicial
+          console.log("No se pudo obtener la ubicación, mostrando ubicación por defecto.");
+        }
+      );
+    }
+  }, []); // Se ejecuta solo una vez al montar el componente
 
   // Geocoding inverso: coordenadas -> dirección
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
