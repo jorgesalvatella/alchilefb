@@ -137,7 +137,7 @@ export default function CheckoutPage() {
 
         {/* Columna Izquierda y Central: Opciones */}
         <div className="lg:col-span-2">
-          <Card className="mb-8 bg-gray-900/50 border-gray-700 text-white">
+          <Card className="bg-gray-900/50 border-gray-700 text-white">
             <CardHeader>
               <CardTitle className="text-orange-400">1. Ubicación de Entrega</CardTitle>
               <p className="text-white/70 text-sm mt-2">
@@ -153,7 +153,10 @@ export default function CheckoutPage() {
               />
             </CardContent>
           </Card>
+        </div>
 
+        {/* Columna Derecha: Resumen */}
+        <div className="lg:col-span-1 space-y-8">
           <Card className="bg-gray-900/50 border-gray-700 text-white">
             <CardHeader><CardTitle className="text-orange-400">2. Método de Pago</CardTitle></CardHeader>
             <CardContent>
@@ -164,10 +167,7 @@ export default function CheckoutPage() {
               </RadioGroup>
             </CardContent>
           </Card>
-        </div>
 
-        {/* Columna Derecha: Resumen */}
-        <div className="lg:col-span-1">
           <Card className="bg-gray-900/50 border-gray-700 text-white">
             <CardHeader><CardTitle className="text-orange-400">3. Resumen del Pedido</CardTitle></CardHeader>
             <CardContent>
