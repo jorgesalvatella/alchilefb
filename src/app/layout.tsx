@@ -4,6 +4,7 @@ import { CartProvider } from '@/context/cart-context';
 import { Footer } from '@/components/layout/footer';
 import { Header } from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from 'sonner';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 const roboto = Roboto({
@@ -28,6 +29,7 @@ export default function RootLayout({
             <main className="min-h-screen">{children}</main>
             <Footer />
             <Toaster />
+            <SonnerToaster position="top-right" theme="dark" richColors />
           </CartProvider>
         </FirebaseClientProvider>
       </body>
