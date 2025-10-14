@@ -73,10 +73,16 @@ router.post('/', authMiddleware, async (req, res) => {
     }));
     const verificationResult = await verifyCartTotals(itemsToVerify);
 
-    // 2. Construir el objeto del pedido
+    // 2. Calcular subtotal y tax a partir de los items verificados
+    const subtotalVerified = verificationResult.items.reduce((acc, item) => acc + (item.subtotalItem || 0), 0);
+    const taxVerified = verificationResult.summary.totalFinal - subtotalVerified;
+
+    // 3. Construir el objeto del pedido
     const newOrder = {
       userId,
       items: verificationResult.items,
+      subtotalVerified,
+      taxVerified,
       totalVerified: verificationResult.summary.totalFinal,
       paymentMethod,
       shippingAddress,
@@ -98,7 +104,11 @@ router.post('/', authMiddleware, async (req, res) => {
     const docRef = await db.collection('pedidos').add(cleanOrder);
     console.log('3. Pedido guardado con ID:', docRef.id);
 
-    // 4. Devolver respuesta
+    // 4. VERIFICACIÓN: Leer el documento recién guardado para confirmar su estructura
+    const savedDoc = await docRef.get();
+    console.log('4. Documento REAL guardado en Firestore:', savedDoc.data());
+
+    // 5. Devolver respuesta
     res.status(201).json({ id: docRef.id, ...cleanOrder });
 
   } catch (error) {
