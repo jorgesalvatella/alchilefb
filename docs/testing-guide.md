@@ -47,6 +47,40 @@ npx playwright test --ui
 - Verifica cálculos de rentabilidad
 - Crea el producto y redirige
 
+### Ejecución Manual (Recomendado para Depuración)
+
+Las pruebas E2E requieren que **ambos servidores (backend y frontend) estén corriendo**. El `webServer` en la configuración de Playwright solo inicia el frontend, por lo que el backend debe iniciarse manualmente.
+
+**Paso 1: Iniciar Backend**
+En una terminal, navega al directorio del backend e inícialo:
+```bash
+cd backend
+node index.js
+```
+
+**Paso 2: Iniciar Frontend**
+En una **segunda** terminal, inicia el servidor de desarrollo de Next.js:
+```bash
+npm run dev
+```
+
+**Paso 3: Ejecutar Pruebas E2E**
+Una vez que ambos servidores estén corriendo, en una **tercera** terminal, ejecuta las pruebas de Playwright:
+```bash
+npx playwright test
+```
+
+### Depuración de Pruebas E2E
+
+Si las pruebas fallan, la herramienta más poderosa es el modo de depuración de Playwright, que te permite ejecutar las pruebas paso a paso en un navegador real.
+
+**Comando de Depuración:**
+```bash
+# Asegúrate de que ambos servidores (backend y frontend) sigan corriendo
+npx playwright test --debug
+```
+Esto abrirá el "Playwright Inspector", donde podrás avanzar en la prueba y usar las herramientas de desarrollador del navegador para inspeccionar la consola, la red y el DOM.
+
 ---
 
 ## 📊 ¿Cuándo usar cada tipo?

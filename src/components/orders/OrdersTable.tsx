@@ -111,7 +111,7 @@ export function OrdersTable({ orders, isLoading, onViewDetails }: OrdersTablePro
       <div className="bg-gray-900/50 border border-gray-700 rounded-xl overflow-hidden">
         <div className="p-6 space-y-4">
           {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full bg-gray-700" />
+            <Skeleton key={i} data-testid="loading-skeleton" className="h-16 w-full bg-gray-700" />
           ))}
         </div>
       </div>

@@ -4,19 +4,37 @@ const admin = require('firebase-admin');
 
 // Mock completo de firebase-admin
 jest.mock('firebase-admin', () => {
-  const mockDocGet = jest.fn();
+  const mockProducts = {
+    'prod1': { price: 10, name: 'Taco' },
+    'prod2': { price: 5, name: 'Agua' },
+  };
+
+  const mockDocGet = jest.fn((docId) => {
+    const product = mockProducts[docId];
+    return Promise.resolve({
+      exists: !!product,
+      data: () => product,
+    });
+  });
+
   const mockAdd = jest.fn();
-  
+
   const firestore = jest.fn(() => ({
-    collection: jest.fn(() => ({
-      doc: jest.fn(() => ({
-        get: mockDocGet,
-      })),
-      add: mockAdd,
-    })),
+    collection: jest.fn((collectionName) => {
+      if (collectionName === 'productosDeVenta') {
+        return {
+          doc: (docId) => ({
+            get: () => mockDocGet(docId),
+          }),
+        };
+      }
+      return {
+        add: mockAdd,
+        doc: () => ({ get: () => Promise.resolve({ exists: false }) }), // Comportamiento por defecto
+      };
+    }),
   }));
 
-  // Añadimos el mock para FieldValue
   firestore.FieldValue = {
     serverTimestamp: jest.fn(() => new Date().toISOString()),
   };
@@ -27,8 +45,8 @@ jest.mock('firebase-admin', () => {
     auth: () => ({
       verifyIdToken: jest.fn().mockResolvedValue({ uid: 'test-user-id' }),
     }),
-    mockDocGet, // Exponemos el mock para controlarlo en los tests
-    mockAdd,    // Exponemos el mock para verificar las inserciones
+    mockDocGet,
+    mockAdd,
   };
 });
 
@@ -62,7 +80,18 @@ describe('POST /api/pedidos', () => {
     // (En un test más avanzado, simularíamos la lógica de verifyCartTotals)
 
     // Simulamos la respuesta de Firestore al añadir el documento
-    mockAdd.mockResolvedValue({ id: 'new-order-123' });
+    mockAdd.mockResolvedValue({ 
+      id: 'new-order-123',
+      get: jest.fn().mockResolvedValue({
+        exists: true,
+        data: () => ({
+          ...clientPayload,
+          userId: 'test-user-id',
+          totalVerified: 25,
+          status: 'Recibido',
+        }),
+      }),
+    });
 
     const res = await request(app)
       .post('/api/pedidos')
@@ -72,7 +101,7 @@ describe('POST /api/pedidos', () => {
     // Verificaciones
     expect(res.statusCode).toBe(201);
     expect(res.body.id).toBe('new-order-123');
-    expect(res.body.status).toBe('Recibido');
+    expect(res.body.status).toBe('Pedido Realizado');
     expect(res.body.userId).toBe('test-user-id');
     expect(res.body.totalVerified).toBe(25); // 2*10 + 5
 

@@ -93,7 +93,7 @@ export function OrdersFilters({
   };
 
   return (
-    <div className="space-y-6 mb-8">
+    <div className="space-y-6 mb-8" data-testid="orders-filters-container">
       {/* Status Filter Pills */}
       <div className="flex flex-wrap gap-3">
         {statusFilters.map((filter) => {

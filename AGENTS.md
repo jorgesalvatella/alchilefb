@@ -1657,6 +1657,37 @@ const removeUndefined = (obj) => {
 
 ---
 
+### 3.10. Error al usar `serverTimestamp` dentro de `arrayUnion`
+
+**Lección Aprendida:** Firestore no permite el uso de valores no determinísticos como `FieldValue.serverTimestamp()` dentro de operaciones de `arrayUnion`, ya que no puede garantizar la unicidad del elemento a añadir.
+
+-   **Problema:** La aplicación fallaba con un error 500 al intentar actualizar el estado de un pedido.
+-   **Causa Raíz:** El código intentaba añadir un objeto que contenía `FieldValue.serverTimestamp()` a un campo de array usando `FieldValue.arrayUnion()`.
+-   **Error de Firestore:** `Element at index 0 is not a valid array element. FieldValue.serverTimestamp() cannot be used inside of an array`.
+-   **Solución Definitiva:** Para campos de fecha dentro de arrays (como un historial de estados), se debe usar un objeto de fecha estándar de JavaScript: `new Date()`. Este valor es determinístico y compatible con `arrayUnion`.
+
+    ```javascript
+    // CÓDIGO INCORRECTO
+    const historyEntry = {
+      status: 'Nuevo',
+      timestamp: admin.firestore.FieldValue.serverTimestamp() // ❌ PROHIBIDO
+    };
+    await docRef.update({
+      history: admin.firestore.FieldValue.arrayUnion(historyEntry)
+    });
+
+    // CÓDIGO CORRECTO
+    const historyEntry = {
+      status: 'Nuevo',
+      timestamp: new Date() // ✅ CORRECTO
+    };
+    await docRef.update({
+      history: admin.firestore.FieldValue.arrayUnion(historyEntry)
+    });
+    ```
+
+---
+
 ## 4. Comando de Ayuda Rápida
 
 Si estás atascado, ejecuta esta checklist:

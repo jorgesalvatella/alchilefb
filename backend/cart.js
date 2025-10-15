@@ -32,13 +32,17 @@ async function verifyCartTotals(items) {
     const addedCustomizations = [];
 
     if (item.customizations && item.customizations.added && Array.isArray(item.customizations.added)) {
-      for (const addedItem of item.customizations.added) {
-        const extra = (productData.ingredientesExtra || []).find(e => e.nombre === addedItem.nombre);
+      for (const addedItemName of item.customizations.added) {
+        const extra = (productData.ingredientesExtra || []).find(e => e.nombre === addedItemName);
         if (extra && extra.precio) {
           const extraPrice = parseFloat(extra.precio);
-          const extraBasePrice = productData.isTaxable ? extraPrice / 1.16 : extraPrice;
-          itemSubtotal += extraBasePrice;
           itemTotal += extraPrice;
+          if (productData.isTaxable) {
+            const extraBasePrice = extraPrice / 1.16;
+            itemSubtotal += extraBasePrice;
+          } else {
+            itemSubtotal += extraPrice;
+          }
           addedCustomizations.push(extra.nombre);
         }
       }
@@ -80,6 +84,11 @@ router.post('/verify-totals', async (req, res) => {
     const result = await verifyCartTotals(req.body.items);
     res.status(200).json(result);
   } catch (error) {
+    // Si el error es por validación, es un error del cliente (400)
+    if (error.message.includes('Request body must contain') || error.message.includes('Invalid item in cart') || error.message.includes('no encontrado')) {
+      return res.status(400).json({ message: error.message });
+    }
+    // Otros errores son del servidor (500)
     console.error("Error verifying cart totals:", error);
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }

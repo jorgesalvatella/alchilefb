@@ -2228,15 +2228,65 @@ app.delete('/api/control/productos-venta/:id', authMiddleware, requireAdmin, asy
 
                     // --- User Profile and Addresses ---
 
-// Get user profile
+app.get('/api/me/orders', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.uid;
+    const snapshot = await db.collection('pedidos')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching user orders:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+app.get('/api/me/orders/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.uid;
+    const { id } = req.params;
+
+    const docRef = db.collection('pedidos').doc(id);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const orderData = docSnap.data();
+
+    // Security check: ensure the user is requesting their own order
+    if (orderData.userId !== userId) {
+      return res.status(404).json({ message: 'Order not found' }); // Use 404 to avoid revealing existence
+    }
+
+    res.status(200).json({ id: docSnap.id, ...orderData });
+  } catch (error) {
+    console.error('Error fetching single order:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// --- User Profile Endpoints ---
 app.get('/api/me/profile', authMiddleware, async (req, res) => {
   try {
-    const userRef = db.collection('users').doc(req.user.uid);
-    const doc = await userRef.get();
-    if (!doc.exists) {
-      return res.status(404).json({ message: 'Profile not found' });
-    }
-    res.status(200).json({ id: doc.id, ...doc.data() });
+    const user = await admin.auth().getUser(req.user.uid);
+    const userDoc = await db.collection('users').doc(req.user.uid).get();
+
+    const profileData = {
+      email: user.email,
+      uid: user.uid,
+      ...(userDoc.exists ? userDoc.data() : {})
+    };
+
+    res.status(200).json(profileData);
   } catch (error) {
     console.error('Error fetching user profile:', error);
     res.status(500).json({ message: 'Internal Server Error' });

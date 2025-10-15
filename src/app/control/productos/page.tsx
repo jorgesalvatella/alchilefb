@@ -6,7 +6,7 @@ import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection } from 'firebase/firestore';
 import { PlusCircle, Pen } from 'lucide-react';
 import { useState } from 'react';
-import { AddEditProductDialog } from '@/components/admin/add-edit-product-dialog';
+import { AddEditProductDialog } from '@/components/control/add-edit-product-dialog';
 import type { MenuItem } from '@/lib/data';
 
 export default function AdminProductsPage() {
@@ -75,6 +75,7 @@ export default function AdminProductsPage() {
                       size="icon"
                       onClick={() => handleEdit(item as MenuItem)}
                       className="text-white/60 hover:text-orange-400"
+                      data-testid={`edit-button-${item.id}`}
                     >
                       <Pen className="h-4 w-4" />
                     </Button>

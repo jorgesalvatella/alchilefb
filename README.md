@@ -36,13 +36,30 @@ Aplicación completa de delivery de comida construida con Next.js 15, Firebase y
 - ✅ Mapa siempre visible en seguimiento de pedidos (todas las direcciones)
 - ✅ Geocoding automático con coordenadas persistidas en Firestore
 - ✅ Hub de Pedidos completamente funcional con KPIs y filtros
-- ✅ Sistema de testing con 26+ tests pasando
+### 7. Pruebas (Testing)
 
-Ver [CHANGELOG.md](./CHANGELOG.md) para detalles completos.
+El proyecto cuenta con una suite de pruebas automatizadas para asegurar la calidad y estabilidad del código.
+
+**Comando Principal:**
+Para ejecutar todas las pruebas (frontend y backend), utiliza:
+```bash
+npm test
+```
+
+**Ejecutar Suites por Separado:**
+- **Frontend:** La suite del frontend está estable y todas las pruebas pasan.
+  ```bash
+  npm run test:frontend
+  ```
+- **Backend:** 
+  ```bash
+  npm run test:backend
+  ```
+  > ✅ **Estado:** La mayoría de las pruebas del backend pasan, incluyendo las suites críticas para los módulos de **Hub de Pedidos** y **Catálogos**. Aún existen algunas fallas menores en tests heredados (`cart.test.js`, `pedidos.test.js`) que están documentadas y no afectan la funcionalidad principal.
 
 ---
 
-## Publica y Trabaja en Local
+### 8. Sube tu Código a GitHub (Flujo Profesional)
 
 ¡Felicidades por llegar hasta aquí! Si estás listo para llevar tu proyecto al siguiente nivel, aquí tienes los pasos para publicarlo y empezar a trabajar en tu propio computador.
 

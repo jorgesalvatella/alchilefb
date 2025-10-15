@@ -21,8 +21,9 @@ const StorageImage = ({ filePath, alt, fill, objectFit = 'cover', className }: S
         src={filePath}
         alt={alt}
         fill={fill}
+        sizes="100vw"
         className={className}
-        objectFit={objectFit}
+        style={{ objectFit }}
       />
     );
   }
@@ -63,8 +64,9 @@ const StorageImage = ({ filePath, alt, fill, objectFit = 'cover', className }: S
       src={signedUrl}
       alt={alt}
       fill={fill}
+      sizes="100vw"
       className={className}
-      objectFit={objectFit}
+      style={{ objectFit }}
     />
   );
 };

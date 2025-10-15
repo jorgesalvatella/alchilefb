@@ -13,7 +13,7 @@ const customJestConfig = {
   moduleNameMapper: {
     // Handle module aliases
     '^@/components/(.*)$': '<rootDir>/src/components/$1',
-    '^@/firebase/(.*)$': '<rootDir>/src/firebase/$1',
+    '^@/firebase(.*)$': '<rootDir>/src/firebase$1',
     '^@/lib/(.*)$': '<rootDir>/src/lib/$1',
     '^@/hooks/(.*)$': '<rootDir>/src/hooks/$1',
     '^@/context/(.*)$': '<rootDir>/src/context/$1',

@@ -116,14 +116,14 @@ export default function ProfilePage() {
     return (
         <div className="relative min-h-screen bg-black text-white pt-32">
             <div className="container mx-auto px-4 pb-12 md:pb-20">
-                <Skeleton className="h-16 w-1/2 mx-auto mb-12 bg-white/10" />
+                <Skeleton data-testid="loading-skeleton" className="h-16 w-1/2 mx-auto mb-12 bg-white/10" />
                 <div className="grid md:grid-cols-4 gap-8">
                     <div className="md:col-span-1">
-                        <Skeleton className="h-12 w-full mb-4 bg-white/10" />
-                        <Skeleton className="h-12 w-full bg-white/10" />
+                        <Skeleton data-testid="loading-skeleton" className="h-12 w-full mb-4 bg-white/10" />
+                        <Skeleton data-testid="loading-skeleton" className="h-12 w-full bg-white/10" />
                     </div>
                     <div className="md:col-span-3">
-                        <Skeleton className="h-64 w-full bg-white/10 rounded-2xl" />
+                        <Skeleton data-testid="loading-skeleton" className="h-64 w-full bg-white/10 rounded-2xl" />
                     </div>
                 </div>
             </div>

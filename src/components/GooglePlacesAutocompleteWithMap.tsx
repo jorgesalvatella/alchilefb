@@ -65,11 +65,11 @@ export default function GooglePlacesAutocompleteWithMap({
           });
         },
         () => {
-          // Fallback a Playa del Carmen ya está en el estado inicial
-          console.log("No se pudo obtener la ubicación, mostrando ubicación por defecto.");
+          // Fallback a Playa del Carmen ya está en el estado inicial, no se necesita hacer nada.
         }
       );
     }
+    // Si navigator.geolocation no existe, simplemente se usará el estado inicial.
   }, []); // Se ejecuta solo una vez al montar el componente
 
   // Geocoding inverso: coordenadas -> dirección
@@ -335,7 +335,7 @@ export default function GooglePlacesAutocompleteWithMap({
 
   if (!isLoaded) {
     return (
-      <div className="space-y-3">
+      <div data-testid="loading-state" className="space-y-3">
         <div className="h-10 bg-gray-200 animate-pulse rounded-md"></div>
         <div className="h-64 bg-gray-100 animate-pulse rounded-lg"></div>
       </div>
