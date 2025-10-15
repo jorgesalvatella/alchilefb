@@ -6,14 +6,11 @@ import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { CheckCircle, CookingPot, Bike, Pizza } from 'lucide-react';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { doc, collection } from 'firebase/firestore';
+import { useUser } from '@/firebase/provider';
 import type { Order } from '@/lib/types';
-import type { OrderItem, MenuItem } from '@/lib/data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { getAuth } from 'firebase/auth';
 
 const allSteps = [
   { id: 1, name: 'Pedido Realizado', icon: CheckCircle, status: 'Pedido Realizado' },
@@ -65,15 +62,46 @@ function safeTimestampToDate(timestamp: any): Date | null {
 
 export default function OrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const firestore = useFirestore();
+  const { user, isUserLoading: authLoading } = useUser();
+  const [order, setOrder] = useState<Order | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const mapImage = PlaceHolderImages.getById('map-placeholder');
 
-  const orderRef = useMemoFirebase(
-    () => (firestore ? doc(firestore, 'pedidos', id) : null),
-    [firestore, id]
-  );
-  const { data: order, isLoading } = useDoc<Order>(orderRef);
-  console.log('DATOS CRUDOS RECIBIDOS POR useDoc:', order);
+  useEffect(() => {
+    const fetchOrder = async () => {
+      if (user) {
+        try {
+          const auth = getAuth();
+          const token = await auth.currentUser?.getIdToken();
+          const response = await fetch(`/api/me/orders/${id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+
+          if (response.status === 404) {
+            notFound();
+            return;
+          }
+          if (!response.ok) {
+            throw new Error('Failed to fetch order details');
+          }
+
+          const data = await response.json();
+          setOrder(data);
+        } catch (error) {
+          console.error(error);
+          // Consider setting an error state to show a message
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (!authLoading) {
+        setIsLoading(false);
+      }
+    };
+
+    fetchOrder();
+  }, [user, authLoading, id]);
 
   // Estado para las coordenadas geocodificadas
   const [deliveryCoords, setDeliveryCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -125,16 +153,16 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
     return (
       <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
         <div className="text-center mb-12">
-            <Skeleton className="h-16 w-3/4 mx-auto mb-4 bg-gray-700" />
-            <Skeleton className="h-6 w-1/2 mx-auto bg-gray-600" />
+            <Skeleton data-testid="loading-skeleton" className="h-16 w-3/4 mx-auto mb-4 bg-gray-700" />
+            <Skeleton data-testid="loading-skeleton" className="h-6 w-1/2 mx-auto bg-gray-600" />
         </div>
         <div className="grid lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-1 space-y-8">
-                <Skeleton className="h-64 w-full rounded-xl bg-gray-700" />
-                <Skeleton className="h-80 w-full rounded-xl bg-gray-700" />
+                <Skeleton data-testid="loading-skeleton" className="h-64 w-full rounded-xl bg-gray-700" />
+                <Skeleton data-testid="loading-skeleton" className="h-80 w-full rounded-xl bg-gray-700" />
             </div>
             <div className="lg:col-span-2">
-                <Skeleton className="h-96 w-full rounded-xl bg-gray-700" />
+                <Skeleton data-testid="loading-skeleton" className="h-96 w-full rounded-xl bg-gray-700" />
             </div>
         </div>
       </main>
@@ -156,7 +184,7 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const currentStepIndex = allSteps.findIndex(step => step.status === order.status);
+  const currentStepIndex = order ? allSteps.findIndex(step => step.status === order.status) : -1;
 
   const getStepTime = (stepIndex: number) => {
     const createdAtDate = safeTimestampToDate(order.createdAt);

@@ -118,7 +118,6 @@ export default function AdminOrdersPage() {
 
       setStatusCounts(counts);
     } catch (error) {
-      console.error('Error fetching orders:', error);
       toast.error('Error al cargar los pedidos');
     } finally {
       setIsLoadingOrders(false);

@@ -218,7 +218,7 @@ export function OrderDetailsSheet({
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent className="w-full sm:max-w-2xl bg-gray-900 border-gray-700 text-white overflow-y-auto">
-          <SheetHeader>
+          <SheetHeader data-testid="order-details-header">
             <div className="flex items-center justify-between">
               <SheetTitle className="text-2xl font-bold text-white">
                 Pedido #{order.id?.slice(-6).toUpperCase()}
@@ -374,16 +374,24 @@ export function OrderDetailsSheet({
                       )}
                     </div>
                     <div className="text-sm font-medium text-white">
-                      {formatCurrency(item.price * item.quantity)}
+                      {formatCurrency(item.subtotalItem || (item.price * item.quantity) || 0)}
                     </div>
                   </div>
                 ))}
                 <Separator className="bg-gray-700" />
-                <div className="flex justify-between items-center">
-                  <span className="text-base font-bold text-white">Total</span>
-                  <span className="text-base font-bold text-orange-400">
-                    {formatCurrency(order.totalVerified)}
-                  </span>
+                <div className="space-y-2 pt-2">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-white/80">Subtotal</span>
+                    <span className="text-white/80">{formatCurrency(order.subtotalVerified || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-white/80">IVA (Impuestos)</span>
+                    <span className="text-white/80">{formatCurrency(order.taxVerified || 0)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-base font-bold">
+                    <span className="text-white">Total</span>
+                    <span className="text-orange-400">{formatCurrency(order.totalVerified || 0)}</span>
+                  </div>
                 </div>
               </div>
             </div>

@@ -99,7 +99,11 @@ export default function AdminConceptsPage({ params }: { params: { id: string, de
   };
 
   const handleDelete = (id: string) => {
-    console.log(`TODO: Implementar borrado para el ID: ${id} a través de la API`);
+    // TODO: Implementar borrado real a través de la API
+    toast({
+      title: 'Función no implementada',
+      description: `El borrado para el ID: ${id} aún no está conectado a la API.`,
+    });
   };
 
 

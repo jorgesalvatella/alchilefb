@@ -111,7 +111,7 @@ export default function AdminSaleProductsPage() {
                     <Pen className="h-4 w-4" />
                   </Link>
                 </Button>
-                <Button variant="ghost" size="icon" onClick={() => handleDelete(product.id)} className="text-white/60 hover:text-red-500"><Trash2 className="h-4 w-4" /></Button>
+                <Button variant="ghost" size="icon" onClick={() => handleDelete(product.id)} className="text-white/60 hover:text-red-500" data-testid={`delete-button-${product.id}`}><Trash2 className="h-4 w-4" /></Button>
               </CardFooter>
             </Card>
           ))
@@ -143,7 +143,7 @@ export default function AdminSaleProductsPage() {
                       <Pen className="h-4 w-4" />
                     </Link>
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(product.id)} className="text-white/60 hover:text-red-500"><Trash2 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" onClick={() => handleDelete(product.id)} className="text-white/60 hover:text-red-500" data-testid={`delete-button-${product.id}`}><Trash2 className="h-4 w-4" /></Button>
                 </TableCell>
               </TableRow>
             ))}

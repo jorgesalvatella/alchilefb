@@ -4,6 +4,21 @@ import 'whatwg-fetch';
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// Mock PointerEvent for Radix UI components
+class MockPointerEvent extends Event {
+  button;
+  ctrlKey;
+  pointerType;
+
+  constructor(type, props) {
+    super(type, props);
+    this.button = props.button || 0;
+    this.ctrlKey = props.ctrlKey || false;
+    this.pointerType = props.pointerType || 'mouse';
+  }
+}
+window.PointerEvent = MockPointerEvent;
+
 // Polyfill for Pointer Events API used by Radix UI in JSDOM
 if (typeof window !== 'undefined') {
   window.HTMLElement.prototype.hasPointerCapture = jest.fn();
@@ -44,6 +59,16 @@ jest.mock('@radix-ui/react-focus-scope', () => {
   return {
     ...actual,
     FocusScope: ({ children }) => children,
+  };
+});
+
+// Mock de @radix-ui/react-portal para que renderice inline en lugar de usar portales
+// Esto es necesario para que las opciones del Select sean accesibles en las pruebas
+jest.mock('@radix-ui/react-portal', () => {
+  const actual = jest.requireActual('@radix-ui/react-portal');
+  return {
+    ...actual,
+    Portal: ({ children }) => children,
   };
 });
 

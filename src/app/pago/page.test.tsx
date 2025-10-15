@@ -43,6 +43,26 @@ jest.mock('@/hooks/use-toast', () => ({
   toast: jest.fn(),
 }));
 
+// Mock GooglePlacesAutocompleteWithMap to prevent API errors in JSDOM
+jest.mock('@/components/GooglePlacesAutocompleteWithMap', () => {
+  return jest.fn(({ onAddressSelect }) => (
+    <div data-testid="mock-google-maps">
+      <button onClick={() => onAddressSelect({
+        street: '123 Mock St',
+        city: 'Testville',
+        state: 'TS',
+        postalCode: '12345',
+        country: 'Mockland',
+        lat: 0,
+        lng: 0,
+        formattedAddress: '123 Mock St, Testville',
+      })}>
+        Select Mock Address
+      </button>
+    </div>
+  ));
+});
+
 const mockUseCart = useCart as jest.Mock;
 const mockUseRouter = useRouter as jest.Mock;
 
@@ -111,7 +131,8 @@ describe('CheckoutPage', () => {
     });
     renderWithProviders(<CheckoutPage />);
     expect(screen.getByText('Finalizar Compra')).toBeInTheDocument();
-    expect(screen.getByText(/Dirección de Entrega/i)).toBeInTheDocument(); // Selector flexible
+    // El CardTitle se renderiza como un div, no un heading. Buscamos por texto.
+    expect(screen.getByText(/1. Ubicación de Entrega/i)).toBeInTheDocument();
     expect(screen.getByText(/Método de Pago/i)).toBeInTheDocument(); // Selector flexible
     expect(screen.getByText(/Resumen del Pedido/i)).toBeInTheDocument(); // Selector flexible
   });
@@ -130,6 +151,13 @@ describe('CheckoutPage', () => {
     // Select payment method
     fireEvent.click(screen.getByLabelText('Efectivo'));
     
+    // Address is still missing, so it should be disabled
+    expect(confirmButton).toBeDisabled();
+
+    // Select address via the mock component's button
+    fireEvent.click(screen.getByText('Select Mock Address'));
+
+    // Now it should be enabled
     expect(confirmButton).toBeEnabled();
   });
 
@@ -143,6 +171,9 @@ describe('CheckoutPage', () => {
 
     // Select payment method
     fireEvent.click(screen.getByLabelText('Efectivo'));
+
+    // Select address via the mock component's button
+    fireEvent.click(screen.getByText('Select Mock Address'));
     
     const confirmButton = screen.getByRole('button', { name: /Confirmar Pedido/i });
     fireEvent.click(confirmButton);

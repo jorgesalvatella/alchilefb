@@ -1,8 +1,8 @@
 # Módulo: Sistema Completo de Gestión y Seguimiento de Pedidos
 
-**Estado:** En Desarrollo (Fase 0 - Hub de Pedidos)
+**Estado:** Fase 0 (Hub de Pedidos) Completada. Planificando Fase 1.
 **Coordinador:** Sentinel
-**Última Actualización:** 13 de Octubre de 2025
+**Última Actualización:** 15 de Octubre de 2025
 
 Este documento describe la arquitectura completa del sistema de gestión y seguimiento de pedidos, que incluye:
 1. **Hub de Pedidos** (`/control/pedidos`) - Centro de comando para administración
@@ -616,6 +616,36 @@ type OrderStatus =
 
 ---
 
+### 0.5. Funcionalidades Detalladas del Hub (Fase 0 - Completada)
+
+El Hub de Pedidos es un panel de control integral que ofrece las siguientes capacidades:
+
+**1. Dashboard de KPIs (Indicadores Clave de Rendimiento):**
+*   **Visión General Instantánea:** Cuatro tarjetas principales que muestran en tiempo real:
+    *   **Pedidos Hoy:** Conteo total de pedidos del día y una comparación porcentual con el día anterior.
+    *   **Pedidos Activos:** Suma de pedidos en estado "Preparando" y "En Reparto".
+    *   **Ingresos del Día:** Monto total facturado y el ticket promedio por pedido.
+    *   **Tiempo Promedio de Entrega:** Media de tiempo desde la creación hasta la entrega para los pedidos completados en el día.
+
+**2. Sistema de Filtros y Búsqueda Dinámica:**
+*   **Filtro por Estado:** Botones interactivos para filtrar la lista de pedidos por cada estado (Recibido, Preparando, En Reparto, etc.), incluyendo un contador de cuántos pedidos hay en cada estado.
+*   **Filtro por Fecha:** Un selector permite ver los pedidos de "Hoy", "Última Semana", "Este Mes" o un rango de fechas personalizado.
+*   **Búsqueda Inteligente:** Un campo de búsqueda que filtra pedidos por ID, nombre del cliente o dirección de entrega, con un `debounce` de 300ms para una experiencia fluida.
+
+**3. Gestión de Pedidos en Panel de Detalles:**
+*   **Vista Rápida:** Al hacer clic en un pedido, se abre un panel lateral (`Sheet`) sin abandonar la página principal.
+*   **Cambio de Estado:** Un selector permite al administrador cambiar el estado de un pedido (ej. de "Preparando" a "En Reparto"). La acción se bloquea para pedidos ya entregados o cancelados.
+*   **Historial Completo:** Un timeline visual muestra cada cambio de estado que ha tenido el pedido y cuándo ocurrió.
+*   **Detalles Completos:** El panel muestra toda la información del cliente, los artículos del pedido (con sus personalizaciones), el desglose de subtotal, IVA y total, y el método de pago.
+*   **Cancelación de Pedidos:** Un botón permite cancelar un pedido, solicitando obligatoriamente una razón para la cancelación.
+
+**4. Tabla de Pedidos Optimizada:**
+*   Presenta la información más relevante de cada pedido en 8 columnas, incluyendo ID, cliente, fecha, dirección, total y estado (con badges de color).
+*   Maneja de forma inteligente distintos tipos de dirección (dirección guardada, ubicación GPS, o coordinación por WhatsApp).
+*   Incluye estados de carga (skeletons) para una mejor experiencia de usuario.
+
+---
+
 ## PARTE II: SEGUIMIENTO DE REPARTIDORES EN TIEMPO REAL
 
 ### 1. Resumen de la Funcionalidad
@@ -786,26 +816,14 @@ service cloud.firestore {
 
 ### Roadmap General
 
-**Fase 0: Hub de Pedidos (Centro de Comando)** ⬅️ **ACTUAL**
+**Fase 0: Hub de Pedidos (Centro de Comando)** - ✅ **COMPLETADA**
 - Duración: 2-3 días
-- Estado: En Desarrollo
+- Estado: Completado
 - Objetivo: Crear el centro de comando para gestionar todos los pedidos
-- Entregables:
-  - Dashboard con KPIs en tiempo real
-  - Sistema de filtros y búsqueda avanzada
-  - Tabla mejorada con información completa
-  - Panel de detalles lateral
-  - Endpoints de backend para gestión de pedidos
 
-**Fase 1: Asignación de Repartidores**
+**Fase 1: Asignación de Repartidores** ⬅️ **PRÓXIMA FASE**
 - Duración: 3-4 días
 - Estado: Pendiente (Requiere Fase 0 completa)
-- Objetivo: Permitir asignar pedidos a repartidores desde el Hub
-- Entregables:
-  - Colección `drivers` en Firestore
-  - Endpoint de asignación con transacciones atómicas
-  - UI de asignación en el Hub de Pedidos
-  - Sistema de gestión de estados de repartidores
 
 **Fase 2: App del Repartidor**
 - Duración: 3-4 días

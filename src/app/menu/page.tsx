@@ -97,7 +97,6 @@ export default function MenuPage() {
         }
 
         const productsData = await productsRes.json();
-        console.log('>>> DEBUG: Datos de productos recibidos del backend:', JSON.stringify(productsData, null, 2));
         const categoriesData = await categoriesRes.json();
 
         setProducts(productsData);

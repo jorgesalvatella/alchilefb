@@ -1,15 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase/provider';
-import { collection, query, where } from 'firebase/firestore';
+import { useUser } from '@/firebase/provider';
 import type { Order } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingBag, CookingPot, Bike, Pizza, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getAuth } from 'firebase/auth';
 
 const statusIcons: { [key: string]: React.ElementType } = {
   'Pedido Realizado': CheckCircle,
@@ -39,16 +39,43 @@ function safeTimestampToDate(timestamp: any): Date | null {
 }
 
 export default function OrdersPage() {
-  const firestore = useFirestore();
   const { user, isUserLoading: authLoading } = useUser();
+  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const ordersQuery = useMemoFirebase(
-    () => (firestore && user ? query(collection(firestore, 'pedidos'), where('userId', '==', user.uid)) : null),
-    [firestore, user]
-  );
-  const { data: orders, isLoading: ordersLoading } = useCollection<Order>(ordersQuery);
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (user) {
+        try {
+          const auth = getAuth();
+          const token = await auth.currentUser?.getIdToken();
 
-  const isLoading = authLoading || ordersLoading;
+          const response = await fetch('/api/me/orders', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch orders');
+          }
+
+          const data = await response.json();
+          setOrders(data);
+        } catch (error) {
+          console.error(error);
+          setOrders([]); // Set to empty array on error
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (!authLoading) {
+        // If auth is done loading and there's no user, stop loading.
+        setIsLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [user, authLoading]);
 
   const renderSkeleton = () => (
     <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
@@ -106,7 +133,6 @@ export default function OrdersPage() {
 
         <div className="space-y-6 max-w-4xl mx-auto">
             {orders?.map((order) => {
-                console.log('Raw order object:', order); // <-- DEBUG LOG
                 const Icon = statusIcons[order.status] || ShoppingBag;
                 const orderDate = safeTimestampToDate(order.createdAt);
                 return (

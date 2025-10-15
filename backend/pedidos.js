@@ -37,14 +37,16 @@ const db = admin.firestore();
  *       '400':
  *         description: Datos inválidos
  */
-// Helper function to remove undefined values from an object
 const removeUndefined = (obj) => {
+  // Guardia para tipos de datos especiales: si es uno de ellos, devolverlo intacto.
   if (obj instanceof admin.firestore.FieldValue || obj instanceof Date) {
     return obj;
   }
+
   if (Array.isArray(obj)) {
     return obj.map(item => removeUndefined(item));
   }
+
   if (obj !== null && typeof obj === 'object') {
     return Object.entries(obj).reduce((acc, [key, value]) => {
       if (value !== undefined) {
@@ -53,6 +55,7 @@ const removeUndefined = (obj) => {
       return acc;
     }, {});
   }
+  
   return obj;
 };
 
@@ -429,7 +432,7 @@ router.put('/control/:orderId/status', authMiddleware, async (req, res) => {
     // Crear entrada para statusHistory
     const statusHistoryEntry = {
       status,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      timestamp: new Date(),
       changedBy: req.user.uid
     };
 

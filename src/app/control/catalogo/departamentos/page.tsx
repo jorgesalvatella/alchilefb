@@ -65,8 +65,11 @@ export default function AdminDepartmentsPage() {
   };
 
   const handleDelete = (id: string) => {
-    // TODO: Implement API call for deletion
-    console.log("Deletion via API not implemented yet for ID:", id);
+    // TODO: Implementar borrado real a través de la API
+    toast({
+      title: 'Función no implementada',
+      description: `El borrado para el ID: ${id} aún no está conectado a la API.`,
+    });
     // const docRef = doc(collection(firestore, 'departments'), id);
     // deleteDocumentNonBlocking(docRef);
   };
