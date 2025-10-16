@@ -1536,6 +1536,53 @@ app.delete('/api/control/conceptos/:conceptoId/proveedores/:proveedorId', authMi
     }
 });
 
+// --- Driver Management ---
+
+/**
+ * @swagger
+ * /api/control/drivers:
+ *   get:
+ *     summary: Obtiene una lista de repartidores
+ *     tags: [Repartidores]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [available, busy, offline]
+ *         description: Filtrar repartidores por estado.
+ *     responses:
+ *       '200':
+ *         description: Lista de repartidores
+ *       '403':
+ *         description: No autorizado
+ */
+app.get('/api/control/drivers', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let driversQuery = db.collection('drivers');
+
+    if (status) {
+      driversQuery = driversQuery.where('status', '==', status);
+    }
+
+    const snapshot = await driversQuery.get();
+
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const drivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.status(200).json(drivers);
+
+  } catch (error) {
+    console.error('Error fetching drivers:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
 // --- Sale Categories (categoriasDeVenta) Endpoints ---
 
 /**

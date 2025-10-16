@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Building, Briefcase, Users, Lightbulb, Truck, PlusCircle } from 'lucide-react';
+import { Building, Briefcase, Users, Lightbulb, Truck, PlusCircle, Package } from 'lucide-react';
 import { AddEditBusinessUnitDialog } from '@/components/control/add-edit-business-unit-dialog';
 
 const catalogs = [
@@ -16,10 +16,22 @@ const catalogs = [
     action: 'openBusinessUnitDialog',
   },
   {
+    name: 'Productos de Venta',
+    description: 'Gestiona el menú que se ofrece a los clientes finales.',
+    icon: Package,
+    href: '/control/productos-venta',
+  },
+  {
     name: 'Proveedores',
     description: 'Gestiona la lista global de todos los proveedores.',
     icon: Truck,
     href: '/control/finanzas/proveedores'
+  },
+  {
+    name: 'Repartidores',
+    description: 'Añade, edita y gestiona los repartidores del servicio.',
+    icon: Users,
+    href: '/control/repartidores'
   }
 ];
 
@@ -41,7 +53,7 @@ export default function CatalogoPage() {
         {catalogs.map((catalog, index) => (
           <Card 
             key={catalog.name} 
-            className={`bg-black/50 backdrop-blur-sm border-white/10 text-white flex flex-col ${index === 0 ? 'lg:col-start-2' : ''}`}
+            className={`bg-black/50 backdrop-blur-sm border-white/10 text-white flex flex-col`}
           >
             <CardHeader className="flex-grow">
               <div className="flex items-center gap-4">

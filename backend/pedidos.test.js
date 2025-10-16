@@ -35,9 +35,10 @@ jest.mock('firebase-admin', () => {
     }),
   }));
 
-  firestore.FieldValue = {
-    serverTimestamp: jest.fn(() => new Date().toISOString()),
-  };
+  // Correctly mock FieldValue so 'instanceof' works
+  function MockFieldValue() {}
+  MockFieldValue.serverTimestamp = jest.fn(() => new MockFieldValue());
+  firestore.FieldValue = MockFieldValue;
 
   return {
     initializeApp: jest.fn(),

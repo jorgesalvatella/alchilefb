@@ -325,6 +325,7 @@ export default function AdminOrdersPage() {
           }}
           onStatusChange={handleStatusChange}
           onCancelOrder={handleCancelOrder}
+          onActionSuccess={fetchOrders}
         />
       </div>
     </div>
