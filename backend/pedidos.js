@@ -616,4 +616,115 @@ router.delete('/control/:orderId/cancel', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/pedidos/control/{orderId}/asignar-repartidor:
+ *   put:
+ *     summary: Asigna un repartidor a un pedido
+ *     tags: [Pedidos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               driverId:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Repartidor asignado exitosamente
+ *       '400':
+ *         description: Faltan datos o el repartidor no está disponible
+ *       '403':
+ *         description: No autorizado
+ *       '404':
+ *         description: Pedido o repartidor no encontrado
+ *       '409':
+ *         description: El repartidor ya está ocupado
+ */
+router.put('/control/:orderId/asignar-repartidor', authMiddleware, async (req, res) => {
+  try {
+    if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+      return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+    }
+
+    const { orderId } = req.params;
+    const { driverId } = req.body;
+
+    if (!driverId) {
+      return res.status(400).json({ message: 'Falta el campo requerido: driverId' });
+    }
+
+    const orderRef = db.collection('pedidos').doc(orderId);
+    const driverRef = db.collection('drivers').doc(driverId);
+
+    await db.runTransaction(async (transaction) => {
+      const orderDoc = await transaction.get(orderRef);
+      const driverDoc = await transaction.get(driverRef);
+
+      if (!orderDoc.exists) {
+        throw new Error('Pedido no encontrado');
+      }
+      if (!driverDoc.exists) {
+        throw new Error('Repartidor no encontrado');
+      }
+
+      const driverData = driverDoc.data();
+      if (driverData.status !== 'available') {
+        const error = new Error('El repartidor no está disponible.');
+        error.statusCode = 409; // Conflict
+        throw error;
+      }
+      
+      const orderData = orderDoc.data();
+      if (orderData.status !== 'Pedido Realizado' && orderData.status !== 'Preparando') {
+          const error = new Error('Solo se pueden asignar repartidores a pedidos en estado "Pedido Realizado" o "Preparando".');
+          error.statusCode = 400;
+          throw error;
+      }
+
+      // Update Order
+      const statusHistoryEntry = {
+        status: 'En Reparto',
+        timestamp: new Date(),
+        changedBy: req.user.uid
+      };
+      transaction.update(orderRef, {
+        status: 'En Reparto',
+        driverId: driverId,
+        driverName: driverData.name,
+        driverPhone: driverData.phone,
+        statusHistory: admin.firestore.FieldValue.arrayUnion(statusHistoryEntry)
+      });
+
+      // Update Driver
+      transaction.update(driverRef, {
+        status: 'busy',
+        currentOrderId: orderId
+      });
+    });
+
+    res.status(200).json({ message: 'Repartidor asignado exitosamente.' });
+
+  } catch (error) {
+    console.error('Error asignando repartidor:', error);
+    if (error.statusCode) {
+        return res.status(error.statusCode).json({ message: error.message });
+    }
+    if (error.message === 'Pedido no encontrado' || error.message === 'Repartidor no encontrado') {
+        return res.status(404).json({ message: error.message });
+    }
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
 module.exports = router;

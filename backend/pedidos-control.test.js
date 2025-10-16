@@ -5,6 +5,8 @@ const app = require('./app');
 const mockGet = jest.fn();
 const mockUpdate = jest.fn();
 const mockAdd = jest.fn();
+const mockTransactionUpdate = jest.fn();
+const mockTransactionGet = jest.fn();
 const mockSnapshot = {
   empty: false,
   size: 0,
@@ -14,9 +16,10 @@ const mockSnapshot = {
 
 jest.mock('firebase-admin', () => {
   const mockCollection = jest.fn(() => ({
-    doc: jest.fn(() => ({
+    doc: jest.fn((docId) => ({
       get: mockGet,
       update: mockUpdate,
+      id: docId,
     })),
     add: mockAdd,
     where: jest.fn().mockReturnThis(),
@@ -28,6 +31,13 @@ jest.mock('firebase-admin', () => {
 
   const firestore = jest.fn(() => ({
     collection: mockCollection,
+    runTransaction: jest.fn(async (updateFunction) => {
+      const transaction = {
+        get: mockTransactionGet,
+        update: mockTransactionUpdate,
+      };
+      return await updateFunction(transaction);
+    }),
   }));
 
   firestore.FieldValue = {
@@ -72,6 +82,8 @@ describe('Orders Hub Backend Endpoints', () => {
     mockSnapshot.size = 0;
     mockSnapshot.docs = [];
     mockSnapshot.forEach = jest.fn();
+    mockTransactionGet.mockClear();
+    mockTransactionUpdate.mockClear();
   });
 
   describe('GET /api/pedidos/control', () => {
@@ -473,6 +485,134 @@ describe('Orders Hub Backend Endpoints', () => {
         .delete('/api/pedidos/control/order123/cancel')
         .set('Authorization', 'Bearer regular-token')
         .send({ reason: 'Cancelación' });
+
+      expect(res.statusCode).toBe(403);
+    });
+  });
+
+  describe('PUT /api/pedidos/control/:orderId/asignar-repartidor', () => {
+    const mockOrder = {
+      status: 'Preparando',
+      userId: 'user1',
+    };
+    const mockDriver = {
+      name: 'Pedro Picapiedra',
+      phone: '987654321',
+      status: 'available',
+    };
+
+    beforeEach(() => {
+      mockTransactionGet.mockClear();
+      mockTransactionUpdate.mockClear();
+    });
+
+    it('should assign a driver successfully', async () => {
+      mockTransactionGet
+        .mockResolvedValueOnce({ exists: true, data: () => mockOrder }) // First get is order
+        .mockResolvedValueOnce({ exists: true, data: () => mockDriver }); // Second get is driver
+
+      const res = await request(app)
+        .put('/api/pedidos/control/order123/asignar-repartidor')
+        .set('Authorization', 'Bearer admin-token')
+        .send({ driverId: 'driver456' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.message).toContain('exitosamente');
+      expect(mockTransactionUpdate).toHaveBeenCalledTimes(2);
+
+      // Check order update
+      expect(mockTransactionUpdate).toHaveBeenCalledWith(expect.anything(), {
+        status: 'En Reparto',
+        driverId: 'driver456',
+        driverName: 'Pedro Picapiedra',
+        driverPhone: '987654321',
+        statusHistory: expect.any(Object),
+      });
+
+      // Check driver update
+      expect(mockTransactionUpdate).toHaveBeenCalledWith(expect.anything(), {
+        status: 'busy',
+        currentOrderId: 'order123',
+      });
+    });
+
+    it('should return 404 if order does not exist', async () => {
+      mockTransactionGet.mockResolvedValueOnce({ exists: false });
+
+      const res = await request(app)
+        .put('/api/pedidos/control/order999/asignar-repartidor')
+        .set('Authorization', 'Bearer admin-token')
+        .send({ driverId: 'driver456' });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.body.message).toBe('Pedido no encontrado');
+    });
+
+    it('should return 404 if driver does not exist', async () => {
+      mockTransactionGet
+        .mockResolvedValueOnce({ exists: true, data: () => mockOrder })
+        .mockResolvedValueOnce({ exists: false });
+
+      const res = await request(app)
+        .put('/api/pedidos/control/order123/asignar-repartidor')
+        .set('Authorization', 'Bearer admin-token')
+        .send({ driverId: 'driver999' });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.body.message).toBe('Repartidor no encontrado');
+    });
+
+    it('should return 409 if driver is not available', async () => {
+      const busyDriver = { ...mockDriver, status: 'busy' };
+      mockTransactionGet
+        .mockResolvedValueOnce({ exists: true, data: () => mockOrder })
+        .mockResolvedValueOnce({ exists: true, data: () => busyDriver });
+
+      const res = await request(app)
+        .put('/api/pedidos/control/order123/asignar-repartidor')
+        .set('Authorization', 'Bearer admin-token')
+        .send({ driverId: 'driver456' });
+
+      expect(res.statusCode).toBe(409);
+      expect(res.body.message).toBe('El repartidor no está disponible.');
+    });
+    
+    it('should return 400 if order is in a non-assignable state', async () => {
+      const deliveredOrder = { ...mockOrder, status: 'Entregado' };
+      mockTransactionGet
+        .mockResolvedValueOnce({ exists: true, data: () => deliveredOrder })
+        .mockResolvedValueOnce({ exists: true, data: () => mockDriver });
+
+      const res = await request(app)
+        .put('/api/pedidos/control/order123/asignar-repartidor')
+        .set('Authorization', 'Bearer admin-token')
+        .send({ driverId: 'driver456' });
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('Solo se pueden asignar repartidores a pedidos en estado');
+    });
+
+    it('should return 400 if driverId is missing', async () => {
+      const res = await request(app)
+        .put('/api/pedidos/control/order123/asignar-repartidor')
+        .set('Authorization', 'Bearer admin-token')
+        .send({});
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('Falta el campo requerido: driverId');
+    });
+    
+    it('should return 403 if user is not an admin', async () => {
+      const authMiddleware = require('./authMiddleware');
+      authMiddleware.mockImplementationOnce((req, res, next) => {
+        req.user = { uid: 'regular-user', admin: false, super_admin: false };
+        next();
+      });
+
+      const res = await request(app)
+        .put('/api/pedidos/control/order123/asignar-repartidor')
+        .set('Authorization', 'Bearer regular-token')
+        .send({ driverId: 'driver456' });
 
       expect(res.statusCode).toBe(403);
     });

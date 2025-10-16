@@ -46,6 +46,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { AssignDriverDialog } from './AssignDriverDialog';
 
 interface OrderDetailsSheetProps {
   order: Order | null;
@@ -53,6 +54,7 @@ interface OrderDetailsSheetProps {
   onClose: () => void;
   onStatusChange: (orderId: string, newStatus: OrderStatus) => Promise<void>;
   onCancelOrder: (orderId: string, reason: string) => Promise<void>;
+  onActionSuccess: () => void;
 }
 
 export function OrderDetailsSheet({
@@ -61,11 +63,13 @@ export function OrderDetailsSheet({
   onClose,
   onStatusChange,
   onCancelOrder,
+  onActionSuccess,
 }: OrderDetailsSheetProps) {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
 
   if (!order) return null;
 
@@ -345,6 +349,40 @@ export function OrderDetailsSheet({
               <p className="text-sm text-white/80">{formatAddress(order.shippingAddress)}</p>
             </div>
 
+            {/* Driver Information */}
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-white/80 mb-3 flex items-center gap-2">
+                <Truck className="h-4 w-4" />
+                Repartidor
+              </h3>
+              {order.driverName ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <User className="h-4 w-4 text-white/40" />
+                    <span className="text-white/80">{order.driverName}</span>
+                  </div>
+                  {order.driverPhone && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="h-4 w-4 text-white/40" />
+                      <span className="text-white/80">{order.driverPhone}</span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-2">
+                  <p className="text-sm text-white/60 mb-3">No hay repartidor asignado.</p>
+                  <Button 
+                    size="sm" 
+                    className="bg-orange-500 hover:bg-orange-600"
+                    onClick={() => setIsAssignDialogOpen(true)}
+                    disabled={order.status !== 'Pedido Realizado' && order.status !== 'Preparando'}
+                  >
+                    Asignar Repartidor
+                  </Button>
+                </div>
+              )}
+            </div>
+
             {/* Order Items */}
             <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
               <h3 className="text-sm font-semibold text-white/80 mb-3 flex items-center gap-2">
@@ -407,28 +445,6 @@ export function OrderDetailsSheet({
                 <span className="text-sm text-white/80">{order.paymentMethod}</span>
               </div>
             </div>
-
-            {/* Driver Information (if assigned) */}
-            {order.driverName && (
-              <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-white/80 mb-3 flex items-center gap-2">
-                  <Truck className="h-4 w-4" />
-                  Repartidor Asignado
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
-                    <User className="h-4 w-4 text-white/40" />
-                    <span className="text-white/80">{order.driverName}</span>
-                  </div>
-                  {order.driverPhone && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="h-4 w-4 text-white/40" />
-                      <span className="text-white/80">{order.driverPhone}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {/* Cancellation Info */}
             {order.status === 'Cancelado' && order.cancelReason && (
@@ -493,6 +509,13 @@ export function OrderDetailsSheet({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AssignDriverDialog 
+        isOpen={isAssignDialogOpen} 
+        onClose={() => setIsAssignDialogOpen(false)} 
+        order={order} 
+        onSuccess={onActionSuccess}
+      />
     </>
   );
 }
