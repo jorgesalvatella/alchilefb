@@ -1,16 +1,15 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { notFound } from 'next/navigation';
+import { notFound, useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { CheckCircle, CookingPot, Bike, Pizza } from 'lucide-react';
-import { useUser } from '@/firebase/provider';
 import type { Order } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { getAuth } from 'firebase/auth';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
 const allSteps = [
   { id: 1, name: 'Pedido Realizado', icon: CheckCircle, status: 'Pedido Realizado' },
@@ -40,15 +39,12 @@ async function geocodeAddress(address: string): Promise<{ lat: number; lng: numb
 // Función de utilidad para convertir Timestamps de Firestore de forma segura
 function safeTimestampToDate(timestamp: any): Date | null {
   if (!timestamp) return null;
-  // Caso 1: Es un objeto Timestamp de Firestore (del lado del cliente)
   if (typeof timestamp.toDate === 'function') {
     return timestamp.toDate();
   }
-  // Caso 2: Es un objeto serializado desde la API (con _seconds)
   if (typeof timestamp === 'object' && '_seconds' in timestamp) {
     return new Date(timestamp._seconds * 1000);
   }
-  // Fallback por si ya es una fecha o un string de fecha
   try {
     const date = new Date(timestamp);
     if (!isNaN(date.getTime())) {
@@ -60,9 +56,9 @@ function safeTimestampToDate(timestamp: any): Date | null {
   return null;
 }
 
-export default function OrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const { user, isUserLoading: authLoading } = useUser();
+function OrderTrackingPage({ user }: WithAuthProps) {
+  const params = useParams();
+  const id = params.id as string;
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const mapImage = PlaceHolderImages.getById('map-placeholder');
@@ -71,8 +67,7 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
     const fetchOrder = async () => {
       if (user) {
         try {
-          const auth = getAuth();
-          const token = await auth.currentUser?.getIdToken();
+          const token = await user.getIdToken();
           const response = await fetch(`/api/me/orders/${id}`, {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -91,29 +86,23 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
           setOrder(data);
         } catch (error) {
           console.error(error);
-          // Consider setting an error state to show a message
         } finally {
           setIsLoading(false);
         }
-      } else if (!authLoading) {
-        setIsLoading(false);
       }
     };
 
     fetchOrder();
-  }, [user, authLoading, id]);
+  }, [user, id]);
 
-  // Estado para las coordenadas geocodificadas
   const [deliveryCoords, setDeliveryCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
 
-  // Extraer coordenadas de la dirección
   useEffect(() => {
     if (!order?.shippingAddress) return;
 
     const address = order.shippingAddress;
 
-    // Si ya es una URL de Google Maps, extraer coordenadas
     if (typeof address === 'string' && address.startsWith('https://maps.google.com')) {
       const coordsMatch = address.match(/q=([-\d.]+),([-\d.]+)/);
       if (coordsMatch) {
@@ -122,13 +111,11 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
       return;
     }
 
-    // Si es un objeto con lat/lng directamente (nueva estructura)
     if (typeof address === 'object' && address.lat && address.lng) {
       setDeliveryCoords({ lat: address.lat, lng: address.lng });
       return;
     }
 
-    // Si es un objeto de dirección legacy, geocodificar
     if (typeof address === 'object' && address.street && !address.lat) {
       const fullAddress = `${address.street}, ${address.city}, ${address.state}, ${address.postalCode}, ${address.country || 'Chile'}`;
       setIsGeocoding(true);
@@ -139,7 +126,6 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
       return;
     }
 
-    // Si es texto plano (dirección escrita), geocodificar
     if (typeof address === 'string' && address !== 'whatsapp') {
       setIsGeocoding(true);
       geocodeAddress(address).then(coords => {
@@ -383,3 +369,5 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
     </main>
   );
 }
+
+export default withAuth(OrderTrackingPage, 'user');

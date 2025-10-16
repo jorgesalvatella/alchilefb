@@ -449,6 +449,29 @@ router.put('/control/:orderId/status', authMiddleware, async (req, res) => {
 
     await orderRef.update(updateData);
 
+    // NEW LOGIC FOR MULTIPLE DELIVERIES
+    // If the order was delivered and had a driver, check if they are now free.
+    if (status === 'Entregado' && currentOrder.driverId) {
+      const driverId = currentOrder.driverId;
+      
+      // Check for other active orders for this driver
+      const otherOrdersSnapshot = await db.collection('pedidos')
+        .where('driverId', '==', driverId)
+        .where('status', 'in', ['En Reparto', 'Preparando'])
+        .limit(1) // We only need to know if at least one other exists
+        .get();
+
+      // If there are no other active orders, set the driver to available
+      if (otherOrdersSnapshot.empty) {
+        const driverRef = db.collection('drivers').doc(driverId);
+        await driverRef.update({
+          status: 'available',
+          currentOrderId: null
+        });
+        console.log(`Driver ${driverId} is now available.`);
+      }
+    }
+
     // Obtener el pedido actualizado
     const updatedDoc = await orderRef.get();
     const updatedOrder = { id: updatedDoc.id, ...updatedDoc.data() };
@@ -679,11 +702,7 @@ router.put('/control/:orderId/asignar-repartidor', authMiddleware, async (req, r
       }
 
       const driverData = driverDoc.data();
-      if (driverData.status !== 'available') {
-        const error = new Error('El repartidor no está disponible.');
-        error.statusCode = 409; // Conflict
-        throw error;
-      }
+
       
       const orderData = orderDoc.data();
       if (orderData.status !== 'Pedido Realizado' && orderData.status !== 'Preparando') {

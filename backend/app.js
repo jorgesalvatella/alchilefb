@@ -1583,6 +1583,62 @@ app.get('/api/control/drivers', authMiddleware, requireAdmin, async (req, res) =
   }
 });
 
+/**
+ * @swagger
+ * /api/control/drivers:
+ *   post:
+ *     summary: Crea un nuevo repartidor
+ *     tags: [Repartidores]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               vehicle:
+ *                 type: string
+ *     responses:
+ *       '201':
+ *         description: Repartidor creado exitosamente
+ *       '400':
+ *         description: Faltan campos requeridos
+ *       '403':
+ *         description: No autorizado
+ */
+app.post('/api/control/drivers', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { name, phone, vehicle } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ message: 'El campo "name" es requerido.' });
+    }
+
+    const newDriver = {
+      name,
+      phone: phone || '',
+      vehicle: vehicle || '',
+      status: 'available', // Default status
+      currentOrderId: null,
+      createdAt: new Date(),
+    };
+
+    const docRef = await db.collection('drivers').add(newDriver);
+
+    res.status(201).json({ id: docRef.id, ...newDriver });
+
+  } catch (error) {
+    console.error('Error creating driver:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
 // --- Sale Categories (categoriasDeVenta) Endpoints ---
 
 /**

@@ -319,6 +319,61 @@ describe('Orders Hub Backend Endpoints', () => {
 
       expect(res.statusCode).toBe(403);
     });
+
+    it('should set driver to available if it was their last delivery', async () => {
+      // Mock the order being delivered
+      mockGet.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          status: 'En Reparto',
+          userId: 'user1',
+          driverId: 'driver123',
+        }),
+      });
+      mockUpdate.mockResolvedValue({});
+
+      // Mock the check for other orders: return an empty snapshot
+      mockSnapshot.empty = true;
+
+      const res = await request(app)
+        .put('/api/pedidos/control/order123/status')
+        .set('Authorization', 'Bearer admin-token')
+        .send({ status: 'Entregado' });
+
+      expect(res.statusCode).toBe(200);
+      // The first update is for the order, the second for the driver
+      expect(mockUpdate).toHaveBeenCalledTimes(2);
+      expect(mockUpdate).toHaveBeenCalledWith({
+        status: 'available',
+        currentOrderId: null,
+      });
+    });
+
+    it('should NOT set driver to available if they have other deliveries', async () => {
+      // Mock the order being delivered
+      mockGet.mockResolvedValue({
+        exists: true,
+        data: () => ({
+          status: 'En Reparto',
+          userId: 'user1',
+          driverId: 'driver123',
+        }),
+      });
+      mockUpdate.mockResolvedValue({});
+
+      // Mock the check for other orders: return a non-empty snapshot
+      mockSnapshot.empty = false;
+      mockSnapshot.docs = [{ id: 'otherOrder', data: () => ({}) }];
+
+      const res = await request(app)
+        .put('/api/pedidos/control/order123/status')
+        .set('Authorization', 'Bearer admin-token')
+        .send({ status: 'Entregado' });
+
+      expect(res.statusCode).toBe(200);
+      // Only the order should be updated. The driver update should not be called.
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('GET /api/pedidos/control/:orderId', () => {
@@ -562,7 +617,7 @@ describe('Orders Hub Backend Endpoints', () => {
       expect(res.body.message).toBe('Repartidor no encontrado');
     });
 
-    it('should return 409 if driver is not available', async () => {
+    it('should assign a busy driver successfully', async () => {
       const busyDriver = { ...mockDriver, status: 'busy' };
       mockTransactionGet
         .mockResolvedValueOnce({ exists: true, data: () => mockOrder })
@@ -573,8 +628,9 @@ describe('Orders Hub Backend Endpoints', () => {
         .set('Authorization', 'Bearer admin-token')
         .send({ driverId: 'driver456' });
 
-      expect(res.statusCode).toBe(409);
-      expect(res.body.message).toBe('El repartidor no está disponible.');
+      expect(res.statusCode).toBe(200);
+      expect(res.body.message).toContain('exitosamente');
+      expect(mockTransactionUpdate).toHaveBeenCalledTimes(2);
     });
     
     it('should return 400 if order is in a non-assignable state', async () => {
@@ -613,6 +669,60 @@ describe('Orders Hub Backend Endpoints', () => {
         .put('/api/pedidos/control/order123/asignar-repartidor')
         .set('Authorization', 'Bearer regular-token')
         .send({ driverId: 'driver456' });
+
+      expect(res.statusCode).toBe(403);
+    });
+  });
+
+  describe('POST /api/control/drivers', () => {
+    const newDriverData = {
+      name: 'Nuevo Repartidor',
+      phone: '123456789',
+      vehicle: 'Moto XYZ',
+    };
+
+    it('should create a driver successfully', async () => {
+      mockAdd.mockResolvedValueOnce({ id: 'driver-new' });
+
+      const res = await request(app)
+        .post('/api/control/drivers')
+        .set('Authorization', 'Bearer admin-token')
+        .send(newDriverData);
+
+      expect(res.statusCode).toBe(201);
+      expect(res.body.id).toBe('driver-new');
+      expect(res.body.name).toBe(newDriverData.name);
+      expect(res.body.status).toBe('available');
+      expect(mockAdd).toHaveBeenCalledWith(expect.objectContaining({
+        name: newDriverData.name,
+        phone: newDriverData.phone,
+        vehicle: newDriverData.vehicle,
+        status: 'available',
+      }));
+    });
+
+    it('should return 400 if name is missing', async () => {
+      const { name, ...invalidData } = newDriverData;
+      const res = await request(app)
+        .post('/api/control/drivers')
+        .set('Authorization', 'Bearer admin-token')
+        .send(invalidData);
+
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('El campo "name" es requerido.');
+    });
+
+    it('should return 403 if user is not an admin', async () => {
+      const authMiddleware = require('./authMiddleware');
+      authMiddleware.mockImplementationOnce((req, res, next) => {
+        req.user = { uid: 'regular-user', admin: false, super_admin: false };
+        next();
+      });
+
+      const res = await request(app)
+        .post('/api/control/drivers')
+        .set('Authorization', 'Bearer regular-token')
+        .send(newDriverData);
 
       expect(res.statusCode).toBe(403);
     });

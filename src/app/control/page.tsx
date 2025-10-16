@@ -4,8 +4,9 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection } from 'firebase/firestore';
 import type { Order, MenuItem } from '@/lib/data';
+import { withAuth } from '@/firebase/withAuth';
 
-export default function AdminDashboardPage() {
+function AdminDashboardPage() {
     const firestore = useFirestore();
 
     const ordersCollection = useMemoFirebase(
@@ -66,3 +67,5 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
+export default withAuth(AdminDashboardPage, 'admin');

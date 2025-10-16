@@ -5,8 +5,9 @@ import { useFirestore, useMemoFirebase } from '@/firebase/provider';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import type { Order, UserProfile, Address } from '@/lib/data';
 import { useEffect, useState } from 'react';
+import { withAuth } from '@/firebase/withAuth';
 
-export default function AdminCustomersPage() {
+function AdminCustomersPage() {
   const firestore = useFirestore();
   const [customers, setCustomers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -95,3 +96,5 @@ export default function AdminCustomersPage() {
     </div>
   );
 }
+
+export default withAuth(AdminCustomersPage, 'admin');

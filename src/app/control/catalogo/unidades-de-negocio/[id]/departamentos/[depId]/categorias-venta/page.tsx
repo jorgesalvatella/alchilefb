@@ -5,14 +5,13 @@ import { Button } from '@/components/ui/button';
 import type { SaleCategory, Department, BusinessUnit } from '@/lib/data';
 import { PlusCircle, Pen, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
 import { AddEditSaleCategoryDialog } from '@/components/control/add-edit-sale-category-dialog';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import { useToast } from '@/hooks/use-toast';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
-export default function AdminSaleCategoriesPage() {
-  const { user } = useUser();
+function AdminSaleCategoriesPage({ user }: WithAuthProps) {
   const params = useParams();
   const businessUnitId = params.id as string;
   const departmentId = params.depId as string;
@@ -187,3 +186,5 @@ export default function AdminSaleCategoriesPage() {
     </div>
   );
 }
+
+export default withAuth(AdminSaleCategoriesPage, 'admin');

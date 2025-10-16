@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Building, Briefcase, Users, Lightbulb, Truck, PlusCircle, Package } from 'lucide-react';
 import { AddEditBusinessUnitDialog } from '@/components/control/add-edit-business-unit-dialog';
+import { withAuth } from '@/firebase/withAuth';
 
 const catalogs = [
   {
@@ -35,7 +36,7 @@ const catalogs = [
   }
 ];
 
-export default function CatalogoPage() {
+function CatalogoPage() {
   const [businessUnitDialogOpen, setBusinessUnitDialogOpen] = useState(false);
 
   return (
@@ -85,3 +86,5 @@ export default function CatalogoPage() {
     </div>
   );
 }
+
+export default withAuth(CatalogoPage, 'admin');

@@ -1,16 +1,15 @@
 'use client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { useUser } from '@/firebase/provider';
 import type { Department } from '@/lib/data';
 import { PlusCircle, Pen, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AddEditDepartmentDialog } from '@/components/admin/add-edit-department-dialog';
-// Nota: La lógica de borrado también deberá migrarse a la API en el futuro.
-// import { deleteDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
+import { useToast } from '@/hooks/use-toast';
 
-export default function AdminDepartmentsPage() {
-  const { user } = useUser();
+function AdminDepartmentsPage({ user }: WithAuthProps) {
+  const { toast } = useToast();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,8 +69,6 @@ export default function AdminDepartmentsPage() {
       title: 'Función no implementada',
       description: `El borrado para el ID: ${id} aún no está conectado a la API.`,
     });
-    // const docRef = doc(collection(firestore, 'departments'), id);
-    // deleteDocumentNonBlocking(docRef);
   };
 
   return (
@@ -151,3 +148,5 @@ export default function AdminDepartmentsPage() {
     </div>
   );
 }
+
+export default withAuth(AdminDepartmentsPage, 'admin');

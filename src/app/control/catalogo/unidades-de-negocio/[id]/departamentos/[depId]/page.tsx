@@ -6,10 +6,11 @@ import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AddEditGroupDialog } from '@/components/admin/add-edit-group-dialog';
 import Link from 'next/link';
-import { useUser } from '@/firebase/provider';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
+import { useToast } from '@/hooks/use-toast';
 
-export default function AdminGroupsPage({ params }: { params: { id: string, depId: string } }) {
-  const { user } = useUser();
+function AdminGroupsPage({ user, params }: WithAuthProps & { params: { id: string, depId: string } }) {
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
 
@@ -185,3 +186,5 @@ export default function AdminGroupsPage({ params }: { params: { id: string, depI
     </div>
   );
 }
+
+export default withAuth(AdminGroupsPage, 'admin');

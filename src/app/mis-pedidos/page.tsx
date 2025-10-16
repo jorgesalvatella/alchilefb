@@ -3,13 +3,12 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useUser } from '@/firebase/provider';
+import { Card, CardContent } from '@/components/ui/card';
 import type { Order } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingBag, CookingPot, Bike, Pizza, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getAuth } from 'firebase/auth';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
 const statusIcons: { [key: string]: React.ElementType } = {
   'Pedido Realizado': CheckCircle,
@@ -38,8 +37,7 @@ function safeTimestampToDate(timestamp: any): Date | null {
   return null;
 }
 
-export default function OrdersPage() {
-  const { user, isUserLoading: authLoading } = useUser();
+function OrdersPage({ user }: WithAuthProps) {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -47,8 +45,7 @@ export default function OrdersPage() {
     const fetchOrders = async () => {
       if (user) {
         try {
-          const auth = getAuth();
-          const token = await auth.currentUser?.getIdToken();
+          const token = await user.getIdToken();
 
           const response = await fetch('/api/me/orders', {
             headers: {
@@ -68,14 +65,11 @@ export default function OrdersPage() {
         } finally {
           setIsLoading(false);
         }
-      } else if (!authLoading) {
-        // If auth is done loading and there's no user, stop loading.
-        setIsLoading(false);
       }
     };
 
     fetchOrders();
-  }, [user, authLoading]);
+  }, [user]);
 
   const renderSkeleton = () => (
     <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
@@ -93,18 +87,6 @@ export default function OrdersPage() {
 
   if (isLoading) {
     return renderSkeleton();
-  }
-
-  if (!user) {
-    return (
-        <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32 text-center">
-            <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl text-white mb-6">Inicia Sesión para Ver tus Pedidos</h1>
-            <p className="mt-4 max-w-2xl mx-auto text-xl text-white/70 mb-8">Para poder ver tu historial de pedidos, primero necesitas iniciar sesión.</p>
-            <Button size="lg" asChild className="bg-orange-500 text-white hover:bg-orange-600 font-bold">
-                <Link href="/ingresar">Iniciar Sesión</Link>
-            </Button>
-        </main>
-    );
   }
 
   if (orders && orders.length === 0) {
@@ -172,3 +154,5 @@ export default function OrdersPage() {
     </main>
   );
 }
+
+export default withAuth(OrdersPage, 'user');

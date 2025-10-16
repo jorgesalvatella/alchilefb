@@ -6,13 +6,12 @@ import type { BusinessUnit } from '@/lib/data';
 import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AddEditBusinessUnitDialog } from '@/components/control/add-edit-business-unit-dialog';
-import { useUser } from '@/firebase/provider'; // Hook correcto para el estado del usuario
 import Link from 'next/link';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import { useToast } from '@/hooks/use-toast';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
-export default function AdminBusinessUnitsPage() {
-  const { user, isUserLoading } = useUser(); // Obtener el usuario y el estado de carga
+function AdminBusinessUnitsPage({ user }: WithAuthProps) {
   const { toast } = useToast();
   const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,12 +26,8 @@ export default function AdminBusinessUnitsPage() {
   ];
 
   useEffect(() => {
-    // El useEffect ahora espera a que la carga del usuario termine
-    if (isUserLoading) {
-      return; // No hacer nada mientras se verifica la sesión
-    }
     if (!user) {
-      setIsLoading(false); // Si no hay usuario, terminamos de cargar
+      setIsLoading(false);
       return;
     }
 
@@ -62,7 +57,7 @@ export default function AdminBusinessUnitsPage() {
     };
 
     fetchData();
-  }, [user, isUserLoading]); // Se ejecuta cuando cambia el usuario o el estado de carga
+  }, [user]);
 
   const handleEdit = (item: BusinessUnit) => {
     setSelectedBusinessUnit(item);
@@ -124,7 +119,7 @@ export default function AdminBusinessUnitsPage() {
             <Button 
               onClick={handleAddNew} 
               className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white font-bold py-6 px-8 rounded-full hover:scale-105 transition-transform duration-300"
-              disabled={isUserLoading} // Deshabilitado mientras carga el usuario
+              disabled={isLoading}
             >
                 <PlusCircle className="mr-2 h-5 w-5" />
                 Añadir Unidad de Negocio
@@ -133,7 +128,7 @@ export default function AdminBusinessUnitsPage() {
 
         {/* Mobile View: Cards */}
         <div className="md:hidden space-y-4">
-          {(isLoading || isUserLoading) ? (
+          {isLoading ? (
             <p className="text-center text-white/60 py-12">Cargando...</p>
           ) : error ? (
             <p className="text-center text-red-500 py-12">Error: {error}</p>
@@ -193,7 +188,7 @@ export default function AdminBusinessUnitsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(isLoading || isUserLoading) ? (
+              {isLoading ? (
                 <TableRow className="border-b-0">
                   <TableCell colSpan={5} className="text-center text-white/60 py-12">
                     Cargando...
@@ -248,8 +243,9 @@ export default function AdminBusinessUnitsPage() {
             onOpenChange={setDialogOpen}
             businessUnit={selectedBusinessUnit}
             user={user}
-            isUserLoading={isUserLoading}
         />
     </div>
   );
 }
+
+export default withAuth(AdminBusinessUnitsPage, 'admin');

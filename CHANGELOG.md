@@ -1,5 +1,58 @@
 # Changelog
 
+## Versión 0.7.0 - 16 de Octubre de 2025
+
+### ✨ Nuevas Características (Features)
+
+- **Fase 1: Asignación de Repartidores (Implementación Completa):**
+  - **Backend:** Creados y probados los endpoints para `GET /api/control/drivers`, `POST /api/control/drivers`, y `PUT /api/pedidos/control/:orderId/asignar-repartidor`.
+  - **Frontend:** Creada la nueva página de gestión en `/control/repartidores`.
+  - **UI:** Implementados los componentes `DriversTable` para listar repartidores y `AddEditDriverDialog` para crearlos.
+  - **Integración:** El Hub de Pedidos ahora cuenta con un botón para "Asignar Repartidor" que abre un diálogo funcional, completando el flujo de asignación.
+
+- **Mejoras de Navegación en Catálogos:**
+  - Añadidas tarjetas de acceso directo para "Productos de Venta" y "Repartidores" en la página `/control/catalogo`.
+
+### ⚙️ Mejoras de Lógica de Negocio
+
+- **Asignación Flexible de Repartidores:** Se eliminó la restricción que impedía asignar un repartidor si su estado era "ocupado", permitiendo mayor flexibilidad en la gestión de pedidos.
+- **Actualización Automática de Estado del Repartidor:**
+  - **Lógica:** Se implementó una nueva funcionalidad que se activa cuando un pedido es marcado como "Entregado".
+  - **Funcionamiento:** El sistema ahora verifica si al repartidor le quedan otros pedidos activos. Si la entrega completada era su última tarea, su estado se actualiza automáticamente a "disponible", dejándolo listo para nuevas asignaciones.
+  - **Pruebas:** Se añadieron tests específicos para cubrir este escenario de multi-entrega.
+
+### 🐛 Correcciones Críticas (Bug Fixes)
+
+- **Error "Failed to fetch orders" en 'Mis Pedidos':**
+  - **Causa:** La consulta para obtener los pedidos de un usuario (filtrando por `userId` y ordenando por `createdAt`) fallaba por la falta de un índice compuesto en Firestore.
+  - **Solución:** Se añadió la definición del índice requerido al archivo `firestore.indexes.json` para ser desplegado vía CLI, solucionando el error de forma permanente.
+
+- **Corrupción de Fechas en Pedidos (Solución Definitiva):**
+  - **Causa:** Se identificó que la función `removeUndefined` en el backend era defectuosa y corrompía las fechas `createdAt` al crear pedidos.
+  - **Solución:** Se reemplazó la función por una versión robusta que usa `instanceof` para proteger los tipos de datos de Firestore, previniendo la creación de nuevos datos corruptos.
+
+- **Error `NaN` en Detalles del Pedido:**
+  - **Causa:** El componente intentaba calcular un subtotal usando el campo `price` que no existía en los datos del pedido.
+  - **Solución:** Se hizo el cálculo más robusto para usar el campo `subtotalItem` que ya venía del backend.
+
+- **Errores de Lectura en Hub de Pedidos:**
+  - **Causa:** Múltiples errores (incluyendo `Error al cargar estadísticas`) eran causados por datos corruptos existentes y por consultas que no excluían los documentos con borrado lógico.
+  - **Solución:** Se realizó una limpieza de datos corruptos y se corrigió el error de permisos 403 al guiar al usuario a usar una cuenta de administrador.
+
+- **Corrección de Layout:** Arreglada la alineación del grid en la página de catálogos para que las 4 tarjetas se muestren en una sola fila.
+
+### 🧪 Pruebas (Testing)
+
+- **Nuevas Suites de Pruebas:** Añadidas pruebas de backend completas para los nuevos endpoints de repartidores.
+- **Mantenimiento:** Corregido un test antiguo que fallaba en `pedidos.test.js` al mejorar su mock de `firebase-admin`.
+
+### 📝 Documentación
+
+- **AGENTS.md:** Actualizado con lecciones aprendidas sobre el uso de `serverTimestamp` en `arrayUnion`.
+- **live-driver-tracking-module.md:** Actualizado para reflejar que la Fase 0 está completa.
+
+---
+
 ## Versión 0.6.1 - 14 de Octubre de 2025
 
 ### 🐛 Correcciones Críticas (Bug Fixes)

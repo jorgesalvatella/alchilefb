@@ -5,12 +5,11 @@ import { Button } from '@/components/ui/button';
 import type { Supplier } from '@/lib/data';
 import { PlusCircle, Pen, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useUser } from '@/firebase/provider';
 import { AddEditSupplierDialog } from '@/components/control/add-edit-supplier-dialog';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
-export default function AdminSuppliersPage() {
-  const { user, isUserLoading } = useUser();
+function AdminSuppliersPage({ user }: WithAuthProps) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,9 +18,6 @@ export default function AdminSuppliersPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
   useEffect(() => {
-    if (isUserLoading) {
-        return; // Esperar a que termine la carga del usuario
-    }
     if (!user) {
         setIsLoading(false);
         return; // No hay usuario, no hacer nada
@@ -45,7 +41,7 @@ export default function AdminSuppliersPage() {
       }
     };
     fetchData();
-  }, [user, isUserLoading]);
+  }, [user]);
 
   const handleAddNew = () => {
     setSelectedSupplier(null);
@@ -97,7 +93,7 @@ export default function AdminSuppliersPage() {
 
       {/* Mobile View: Cards */}
       <div className="md:hidden space-y-4">
-        {(isLoading || isUserLoading) ? (
+        {isLoading ? (
           <p className="text-center text-white/60 py-12">Cargando...</p>
         ) : error ? (
           <p className="text-center text-red-500 py-12">Error: {error}</p>
@@ -122,7 +118,7 @@ export default function AdminSuppliersPage() {
       </div>
 
       {/* Desktop View: Table */}
-      <div className="hidden md:block bg-black/50 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="hidden md:block bg-black/50 backdrop-blur-sm border-white/10 rounded-2xl shadow-2xl overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-b border-white/10 hover:bg-transparent">
@@ -134,7 +130,7 @@ export default function AdminSuppliersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(isLoading || isUserLoading) ? (
+            {isLoading ? (
               <TableRow><TableCell colSpan={5} className="text-center text-white/60 py-12">Cargando...</TableCell></TableRow>
             ) : error ? (
               <TableRow><TableCell colSpan={5} className="text-center text-red-500 py-12">Error: {error}</TableCell></TableRow>
@@ -162,3 +158,5 @@ export default function AdminSuppliersPage() {
     </div>
   );
 }
+
+export default withAuth(AdminSuppliersPage, 'admin');

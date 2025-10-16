@@ -1,14 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { useUser } from '@/firebase/provider';
 import { SaleProductForm } from '@/components/control/sale-product-form';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import type { SaleProduct } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
-export default function EditSaleProductPage() {
-  const { user } = useUser();
+function EditSaleProductPage({ user }: WithAuthProps) {
   const params = useParams();
   const productId = params.id as string;
 
@@ -70,3 +69,5 @@ export default function EditSaleProductPage() {
     </div>
   );
 }
+
+export default withAuth(EditSaleProductPage, 'admin');

@@ -1,8 +1,7 @@
 'use client';
 
-import { useUser } from '@/firebase';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +11,7 @@ import { getAuth, signOut } from 'firebase/auth';
 import { Pen, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
 interface UserProfile {
   firstName?: string;
@@ -21,8 +21,7 @@ interface UserProfile {
   profilePictureUrl?: string;
 }
 
-export default function ProfilePage() {
-  const { user, isUserLoading } = useUser();
+function ProfilePage({ user }: WithAuthProps) {
   const router = useRouter();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -36,12 +35,6 @@ export default function ProfilePage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/ingresar');
-    }
-  }, [user, isUserLoading, router]);
 
   // Effect to fetch data from our API
   useEffect(() => {
@@ -112,7 +105,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (isLoading || isUserLoading || !user) {
+  if (isLoading) {
     return (
         <div className="relative min-h-screen bg-black text-white pt-32">
             <div className="container mx-auto px-4 pb-12 md:pb-20">
@@ -204,3 +197,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+export default withAuth(ProfilePage, 'user');

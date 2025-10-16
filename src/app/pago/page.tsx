@@ -6,11 +6,10 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { getAuth } from 'firebase/auth';
-import { useFirebase } from '@/firebase/provider';
 import GooglePlacesAutocompleteWithMap from '@/components/GooglePlacesAutocompleteWithMap';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
 interface AddressComponents {
   street: string;
@@ -24,11 +23,10 @@ interface AddressComponents {
   formattedAddress: string;
 }
 
-export default function CheckoutPage() {
+function CheckoutPage({ user }: WithAuthProps) {
   const { cartItems, clearCart, itemCount } = useCart();
-  const { app } = useFirebase();
-  const auth = getAuth(app);
   const router = useRouter();
+  const { toast } = useToast();
 
   // Estado para la UI
   const [paymentMethod, setPaymentMethod] = useState<'Efectivo' | 'Tarjeta a la entrega' | 'Transferencia bancaria' | ''>('');
@@ -74,7 +72,6 @@ export default function CheckoutPage() {
     toast({ title: 'Procesando tu pedido...' });
 
     try {
-      const user = auth.currentUser;
       if (!user) {
         throw new Error('Debes estar autenticado para realizar un pedido.');
       }
@@ -202,3 +199,5 @@ export default function CheckoutPage() {
     </main>
   );
 }
+
+export default withAuth(CheckoutPage, 'user');

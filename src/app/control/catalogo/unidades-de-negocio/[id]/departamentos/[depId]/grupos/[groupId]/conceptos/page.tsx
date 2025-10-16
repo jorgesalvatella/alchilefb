@@ -5,16 +5,15 @@ import { Button } from '@/components/ui/button';
 import type { Concept, BusinessUnit, Department, Group, Supplier } from '@/lib/data';
 import { PlusCircle, Pen, Trash2, Link2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
 import { AddEditConceptDialog } from '@/components/control/add-edit-concept-dialog';
 import { ManageConceptSuppliersDialog } from '@/components/control/manage-concept-suppliers-dialog';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
-export default function AdminConceptsPage() {
-  const { user } = useUser();
+function AdminConceptsPage({ user }: WithAuthProps) {
   const params = useParams();
   const { toast } = useToast();
   const businessUnitId = params.id as string;
@@ -301,3 +300,5 @@ export default function AdminConceptsPage() {
     </div>
   );
 }
+
+export default withAuth(AdminConceptsPage, 'admin');

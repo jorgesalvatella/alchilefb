@@ -16,6 +16,10 @@
 - [x] Add tests for `src/components/AddEditAddressDialog.tsx`
 - [x] Add tests for `src/components/GooglePlacesAutocomplete.tsx`
 - [ ] Add tests for `src/components/GooglePlacesAutocompleteWithMap.tsx`
+- [ ] Add tests for `src/components/orders/AssignDriverDialog.tsx`
+- [ ] Add tests for `src/components/control/DriversTable.tsx`
+- [ ] Add tests for `src/components/control/AddEditDriverDialog.tsx`
+- [ ] Add tests for `src/app/control/repartidores/page.tsx`
 - [ ] Add tests for `src/components/control/add-edit-product-dialog.tsx`
 - [ ] Add tests for `src/components/control/products-table.tsx`
 - [ ] Add tests for `src/components/layout/footer.tsx`

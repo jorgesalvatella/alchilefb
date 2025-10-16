@@ -8,8 +8,9 @@ import { PlusCircle, Pen } from 'lucide-react';
 import { useState } from 'react';
 import { AddEditProductDialog } from '@/components/control/add-edit-product-dialog';
 import type { MenuItem } from '@/lib/data';
+import { withAuth } from '@/firebase/withAuth';
 
-export default function AdminProductsPage() {
+function AdminProductsPage() {
   const firestore = useFirestore();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<MenuItem | null>(null);
@@ -93,3 +94,5 @@ export default function AdminProductsPage() {
     </div>
   );
 }
+
+export default withAuth(AdminProductsPage, 'admin');

@@ -17,6 +17,8 @@ import { Order } from '@/lib/types';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { Badge } from '@/components/ui/badge';
+
 // Mock data for drivers as the endpoint doesn't exist yet
 const mockDrivers = [
   { id: 'driver-001', name: 'Juan Pérez', status: 'available' },
@@ -38,6 +40,16 @@ interface AssignDriverDialogProps {
   onSuccess: () => void;
 }
 
+const getStatusBadge = (status: Driver['status']) => {
+  const statusConfig = {
+    available: { className: 'bg-green-600/20 text-green-400', label: 'Disponible' },
+    busy: { className: 'bg-yellow-600/20 text-yellow-400', label: 'Ocupado' },
+    offline: { className: 'bg-gray-600/20 text-gray-400', label: 'Offline' },
+  };
+  const config = statusConfig[status] || statusConfig.offline;
+  return <Badge className={cn('ml-auto text-xs', config.className)}>{config.label}</Badge>;
+};
+
 export function AssignDriverDialog({ order, isOpen, onClose, onSuccess }: AssignDriverDialogProps) {
   const { user } = useUser();
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -51,7 +63,7 @@ export function AssignDriverDialog({ order, isOpen, onClose, onSuccess }: Assign
         setIsFetching(true);
         try {
           const token = await user.getIdToken();
-          const response = await fetch(`/api/control/drivers?status=available`, {
+          const response = await fetch(`/api/control/drivers`, {
             headers: {
               'Authorization': `Bearer ${token}`,
             },
@@ -128,15 +140,18 @@ export function AssignDriverDialog({ order, isOpen, onClose, onSuccess }: Assign
                 onSelect={() => {
                   setSelectedDriver(driver);
                 }}
-                className="text-white focus:bg-gray-700"
+                className="text-white focus:bg-gray-700 flex justify-between items-center"
               >
-                <Check
-                  className={cn(
-                    'mr-2 h-4 w-4',
-                    selectedDriver?.id === driver.id ? 'opacity-100' : 'opacity-0'
-                  )}
-                />
-                {driver.name}
+                <div className="flex items-center">
+                  <Check
+                    className={cn(
+                      'mr-2 h-4 w-4',
+                      selectedDriver?.id === driver.id ? 'opacity-100' : 'opacity-0'
+                    )}
+                  />
+                  {driver.name}
+                </div>
+                {getStatusBadge(driver.status)}
               </CommandItem>
             ))}
           </CommandGroup>

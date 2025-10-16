@@ -5,13 +5,12 @@ import { Button } from '@/components/ui/button';
 import type { SaleProduct } from '@/lib/data';
 import { PlusCircle, Pen, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useUser } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import Link from 'next/link';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
-export default function AdminSaleProductsPage() {
-  const { user } = useUser();
+function AdminSaleProductsPage({ user }: WithAuthProps) {
   const { toast } = useToast();
   
   const [products, setProducts] = useState<SaleProduct[]>([]);
@@ -43,7 +42,9 @@ export default function AdminSaleProductsPage() {
   };
 
   useEffect(() => {
-    fetchData();
+    if (user) {
+      fetchData();
+    }
   }, [user]);
 
   const handleDelete = async (id: string) => {
@@ -153,3 +154,5 @@ export default function AdminSaleProductsPage() {
     </div>
   );
 }
+
+export default withAuth(AdminSaleProductsPage, 'admin');
