@@ -6,9 +6,8 @@ import { OrdersKPIs } from '@/components/orders/OrdersKPIs';
 import { OrdersFilters } from '@/components/orders/OrdersFilters';
 import { OrdersTable } from '@/components/orders/OrdersTable';
 import { OrderDetailsSheet } from '@/components/orders/OrderDetailsSheet';
-import { useUser } from '@/firebase/provider';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
 interface OrdersStatsData {
   todayOrders: number;
@@ -33,10 +32,7 @@ interface StatusCounts {
   'Cancelado'?: number;
 }
 
-export default function AdminOrdersPage() {
-  const { user, isUserLoading: authLoading } = useUser();
-  const router = useRouter();
-
+function AdminOrdersPage({ user }: WithAuthProps) {
   // State for orders and stats
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<OrdersStatsData | null>(null);
@@ -154,16 +150,11 @@ export default function AdminOrdersPage() {
 
   // Initial load
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/ingresar');
-      return;
-    }
-
     if (user) {
       fetchOrders();
       fetchStats();
     }
-  }, [user, authLoading, router, fetchOrders, fetchStats]);
+  }, [user, fetchOrders, fetchStats]);
 
   // Reload orders when filters change
   useEffect(() => {
@@ -271,14 +262,6 @@ export default function AdminOrdersPage() {
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white text-xl">Cargando...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen">
       <div className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">
@@ -331,3 +314,5 @@ export default function AdminOrdersPage() {
     </div>
   );
 }
+
+export default withAuth(AdminOrdersPage, 'admin');

@@ -11,15 +11,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useState, useEffect } from 'react';
-import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AddEditDepartmentDialog } from '@/components/control/add-edit-department-dialog';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import { useToast } from '@/hooks/use-toast';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
-export default function AdminDepartmentsPage() {
-  const { user } = useUser();
+function AdminDepartmentsPage({ user }: WithAuthProps) {
   const params = useParams();
   const businessUnitId = params.id as string;
 
@@ -279,3 +278,5 @@ export default function AdminDepartmentsPage() {
     </div>
   );
 }
+
+export default withAuth(AdminDepartmentsPage, 'admin');

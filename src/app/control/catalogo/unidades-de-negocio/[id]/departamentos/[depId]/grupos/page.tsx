@@ -5,15 +5,14 @@ import { Button } from '@/components/ui/button';
 import type { Group, BusinessUnit, Department } from '@/lib/data';
 import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { AddEditGroupDialog } from '@/components/control/add-edit-group-dialog';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import { useToast } from '@/hooks/use-toast';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
-export default function AdminGroupsPage() {
-  const { user } = useUser();
+function AdminGroupsPage({ user }: WithAuthProps) {
   const params = useParams();
   const businessUnitId = params.id as string;
   const departmentId = params.depId as string;
@@ -256,3 +255,5 @@ export default function AdminGroupsPage() {
     </div>
   );
 }
+
+export default withAuth(AdminGroupsPage, 'admin');

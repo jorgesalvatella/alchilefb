@@ -6,10 +6,11 @@ import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { AddEditDepartmentDialog } from '@/components/admin/add-edit-department-dialog';
 import Link from 'next/link';
-import { useUser } from '@/firebase/provider';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
+import { useToast } from '@/hooks/use-toast';
 
-export default function AdminDepartmentsPage({ params }: { params: { id: string } }) {
-  const { user } = useUser();
+function AdminDepartmentsPage({ user, params }: WithAuthProps & { params: { id: string } }) {
+  const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
 
@@ -172,3 +173,5 @@ export default function AdminDepartmentsPage({ params }: { params: { id: string 
     </div>
   );
 }
+
+export default withAuth(AdminDepartmentsPage, 'admin');

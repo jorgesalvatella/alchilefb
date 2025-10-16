@@ -1,7 +1,9 @@
+'use client';
 import { SaleProductForm } from '@/components/control/sale-product-form';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
+import { withAuth } from '@/firebase/withAuth';
 
-export default function NewSaleProductPage() {
+function NewSaleProductPage() {
   const breadcrumbItems = [
     { label: 'Control', href: '/control' },
     { label: 'Productos de Venta', href: '/control/productos-venta' },
@@ -25,3 +27,5 @@ export default function NewSaleProductPage() {
     </div>
   );
 }
+
+export default withAuth(NewSaleProductPage, 'admin');

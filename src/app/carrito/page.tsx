@@ -8,8 +8,9 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Separator } from '@/components/ui/separator';
 import { MinusCircle, PlusCircle, Trash2, ShoppingCart } from 'lucide-react';
 import { useCart, CartItem } from '@/context/cart-context';
-import { useUser } from '@/firebase';
 import StorageImage from '@/components/StorageImage';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
+import { useToast } from '@/hooks/use-toast';
 
 type ServerTotals = {
   subtotalGeneral: number;
@@ -17,37 +18,26 @@ type ServerTotals = {
   totalFinal: number;
 };
 
-export default function CartPage() {
-  const { user, isUserLoading } = useUser();
+function CartPage({ user }: WithAuthProps) {
   const { cartItems, updateQuantity, removeFromCart } = useCart();
   const [serverTotals, setServerTotals] = useState<ServerTotals>({ subtotalGeneral: 0, ivaDesglosado: 0, totalFinal: 0 });
   const [isVerifying, setIsVerifying] = useState(true);
   const [cartKey, setCartKey] = useState(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Force re-render when cart items change
     setCartKey(prev => prev + 1);
 
     const verifyTotals = async () => {
-      if (isUserLoading) return;
-
       if (cartItems.length === 0) {
         setIsVerifying(false);
         setServerTotals({ subtotalGeneral: 0, ivaDesglosado: 0, totalFinal: 0 });
         return;
       }
 
-      // No user needed for verification, as prices are public
-      // if (!user) {
-      //   setIsVerifying(false);
-      //   // Optionally calculate a client-side estimate or show a login prompt
-      //   return;
-      // }
-
       setIsVerifying(true);
       try {
-        // No token needed if the endpoint is public for price verification
-        // const token = await user.getIdToken();
         const itemsToVerify = cartItems.map(item => ({
           productId: item.id,
           quantity: item.quantity,
@@ -75,7 +65,6 @@ export default function CartPage() {
         setServerTotals(data.summary);
       } catch (error: any) {
         console.error("Error verifying totals:", error);
-        // Handle error case, e.g., show a toast notification
         toast({ // <-- FEEDBACK AL USUARIO
           title: 'Error de Carrito',
           description: error.message || 'No se pudo conectar con el servidor.',
@@ -87,7 +76,7 @@ export default function CartPage() {
     };
 
     verifyTotals();
-  }, [JSON.stringify(cartItems), user, isUserLoading]);
+  }, [JSON.stringify(cartItems), user, toast]);
 
   const getItemTotal = (item: CartItem): number => {
     let unitPrice = item.price;
@@ -231,3 +220,5 @@ export default function CartPage() {
     </main>
   );
 }
+
+export default withAuth(CartPage, 'user');
