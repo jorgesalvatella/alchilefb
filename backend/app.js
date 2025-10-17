@@ -2023,6 +2023,39 @@ app.get('/api/control/productos-venta', authMiddleware, requireAdmin, async (req
 
 });
 
+// GET publico para los productos destacados (antes "latest")
+app.get('/api/productos-venta/latest', async (req, res) => {
+  try {
+    const snapshot = await db.collection('productosDeVenta')
+      .where('deletedAt', '==', null)
+      .where('isAvailable', '==', true)
+      .where('isFeatured', '==', true)
+      .orderBy('createdAt', 'desc')
+      .limit(8) // Aumentamos el límite a 8 para más flexibilidad
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const products = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        price: data.price,
+        imageUrl: data.imageUrl,
+        description: data.description,
+      };
+    });
+
+    res.status(200).json(products);
+  } catch (error) {
+    console.error("Error fetching featured sale products:", error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
 
 
 // GET (Single by ID)
@@ -2299,6 +2332,28 @@ app.get('/api/categorias-venta', async (req, res) => {
 
   }
 
+});
+
+// PUT (Toggle Featured)
+app.put('/api/control/productos-venta/:id/toggle-featured', authMiddleware, requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { isFeatured } = req.body;
+
+  if (typeof isFeatured !== 'boolean') {
+    return res.status(400).send({ message: 'Missing required field: isFeatured (must be a boolean)' });
+  }
+
+  try {
+    const docRef = db.collection('productosDeVenta').doc(id);
+    await docRef.update({
+      isFeatured: isFeatured,
+      updatedAt: new Date(),
+    });
+    res.status(200).send({ id, message: `Product feature status set to ${isFeatured}` });
+  } catch (error) {
+    console.error("Error toggling product feature status:", error);
+    res.status(500).send('Internal Server Error');
+  }
 });
 
 // DELETE (Borrado Lógico)

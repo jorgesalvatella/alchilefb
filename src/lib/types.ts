@@ -7,6 +7,7 @@ export type SaleProduct = {
   price: number;
   imageUrl?: string;
   isAvailable: boolean;
+  isFeatured?: boolean; // Para marcar productos como destacados en la página de inicio
   
   // Financials
   cost?: number;
