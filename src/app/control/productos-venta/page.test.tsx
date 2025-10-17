@@ -115,4 +115,44 @@ describe('AdminSaleProductsPage', () => {
       });
     });
   });
+
+  it('should call the feature toggle API when the switch is clicked', async () => {
+    const mockProducts = [
+      { id: 'prod1', name: 'Pizza', description: 'Delicious pizza', price: 150.00, isFeatured: false },
+    ];
+    mockFetch.mockResolvedValueOnce({ // Initial load
+      ok: true,
+      json: () => Promise.resolve(mockProducts),
+    });
+
+    const { container } = render(<AdminSaleProductsPage />);
+    const desktopView = container.querySelector('.hidden.md\\:block');
+    const withinDesktop = within(desktopView as HTMLElement);
+
+    const featureSwitch = await withinDesktop.findByRole('switch');
+    expect(featureSwitch).not.toBeChecked();
+
+    // Mock for the PUT call to toggle feature
+    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({}) });
+
+    fireEvent.click(featureSwitch);
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/control/productos-venta/prod1/toggle-featured', {
+        method: 'PUT',
+        headers: {
+          'Authorization': 'Bearer test-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isFeatured: true }),
+      });
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Producto Actualizado',
+        description: 'El producto ahora es destacado.',
+      });
+    });
+
+    // Check if the switch is now checked in the UI (optimistic update)
+    expect(featureSwitch).toBeChecked();
+  });
 });

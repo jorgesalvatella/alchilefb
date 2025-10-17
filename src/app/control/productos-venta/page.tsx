@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import Link from 'next/link';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
+import { Switch } from '@/components/ui/switch';
 
 function AdminSaleProductsPage({ user }: WithAuthProps) {
   const { toast } = useToast();
@@ -46,6 +47,46 @@ function AdminSaleProductsPage({ user }: WithAuthProps) {
       fetchData();
     }
   }, [user]);
+
+  const handleFeatureToggle = async (id: string, isFeatured: boolean) => {
+    if (!user) return;
+
+    // Optimistic UI update
+    setProducts(prevProducts =>
+      prevProducts.map(p => (p.id === id ? { ...p, isFeatured } : p))
+    );
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/control/productos-venta/${id}/toggle-featured`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isFeatured }),
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo actualizar el producto.');
+      }
+
+      toast({
+        title: 'Producto Actualizado',
+        description: `El producto ahora ${isFeatured ? 'es' : 'no es'} destacado.`,
+      });
+      // Optionally re-fetch data to ensure consistency
+      // fetchData();
+    } catch (err: any) {
+      toast({
+        title: 'Error al actualizar',
+        description: err.message,
+        variant: 'destructive',
+      });
+      // Revert optimistic update on failure
+      fetchData();
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (!user || !confirm('¿Estás seguro de que quieres eliminar este producto?')) return;
@@ -105,6 +146,14 @@ function AdminSaleProductsPage({ user }: WithAuthProps) {
               <CardContent className="text-sm break-words">
                 <p>{product.description}</p>
                 <p className="font-bold text-lg mt-2">${product.price.toFixed(2)}</p>
+                <div className="flex items-center space-x-2 mt-4">
+                  <Switch
+                    id={`featured-switch-mobile-${product.id}`}
+                    checked={!!product.isFeatured}
+                    onCheckedChange={(checked) => handleFeatureToggle(product.id, checked)}
+                  />
+                  <label htmlFor={`featured-switch-mobile-${product.id}`}>Destacado</label>
+                </div>
               </CardContent>
               <CardFooter className="flex justify-end space-x-2 flex-wrap">
                 <Button asChild variant="ghost" size="icon" className="text-white/60 hover:text-orange-400">
@@ -127,17 +176,24 @@ function AdminSaleProductsPage({ user }: WithAuthProps) {
               <TableHead className="text-white/80">Nombre</TableHead>
               <TableHead className="text-white/80">Descripción</TableHead>
               <TableHead className="text-white/80">Precio</TableHead>
+              <TableHead className="text-white/80">Destacado</TableHead>
               <TableHead className="text-right text-white/80">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? <TableRow className="border-b-0"><TableCell colSpan={4} className="text-center text-white/60 py-12">Cargando...</TableCell></TableRow> :
-             error ? <TableRow className="border-b-0"><TableCell colSpan={4} className="text-center text-red-500 py-12">Error: {error}</TableCell></TableRow> :
+            {isLoading ? <TableRow className="border-b-0"><TableCell colSpan={5} className="text-center text-white/60 py-12">Cargando...</TableCell></TableRow> :
+             error ? <TableRow className="border-b-0"><TableCell colSpan={5} className="text-center text-red-500 py-12">Error: {error}</TableCell></TableRow> :
              products.map((product) => (
               <TableRow key={product.id} className="border-b border-white/10 hover:bg-white/5">
                 <TableCell className="font-medium text-white">{product.name}</TableCell>
                 <TableCell className="text-white/80">{product.description}</TableCell>
                 <TableCell className="text-white/80">${product.price.toFixed(2)}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={!!product.isFeatured}
+                    onCheckedChange={(checked) => handleFeatureToggle(product.id, checked)}
+                  />
+                </TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="ghost" size="icon" className="text-white/60 hover:text-orange-400">
                     <Link href={`/control/productos-venta/${product.id}/editar`} aria-label="edit icon">
