@@ -80,6 +80,99 @@ app.use('/api-docs', authMiddleware, checkSuperAdminForSwagger, swaggerUi.serve,
 app.use(cors());
 app.use(express.json());
 
+// --- Helper Functions ---
+
+/**
+ * Obtiene o crea la categoría especial para promociones/paquetes
+ * @param {string} type - 'package' o 'promotion'
+ * @returns {Promise<string|null>} - ID de la categoría o null si no se pudo crear
+ */
+async function getOrCreatePromotionCategory(type) {
+  const categoryName = type === 'package' ? 'Paquetes' : 'Promociones';
+
+  try {
+    // Buscar si ya existe la categoría
+    const existingSnapshot = await db.collection('categoriasDeVenta')
+      .where('name', '==', categoryName)
+      .where('deletedAt', '==', null)
+      .limit(1)
+      .get();
+
+    if (!existingSnapshot.empty) {
+      return existingSnapshot.docs[0].id;
+    }
+
+    // Si no existe, necesitamos obtener la primera unidad de negocio y departamento
+    // Buscar businessUnits activas (sin deletedAt o con deletedAt = null)
+    const allBusinessUnits = await db.collection('businessUnits').limit(10).get();
+
+    // Filtrar las que no están eliminadas (deletedAt es null o undefined)
+    const activeBusinessUnits = allBusinessUnits.docs.filter(doc => {
+      const data = doc.data();
+      return !data.deletedAt || data.deletedAt === null;
+    });
+
+    if (activeBusinessUnits.length === 0) {
+      return null;
+    }
+
+    // Intentar encontrar una businessUnit que tenga departamentos
+    let businessUnitId = null;
+    let businessUnitData = null;
+    let activeDepartments = [];
+
+    for (const businessUnit of activeBusinessUnits) {
+      const tempBusinessUnitId = businessUnit.id;
+      const tempBusinessUnitData = businessUnit.data();
+
+      // Obtener departamentos de esta unidad de negocio
+      const allDepartments = await db.collection('departamentos')
+        .where('businessUnitId', '==', tempBusinessUnitId)
+        .limit(10)
+        .get();
+
+      // Filtrar los que no están eliminados
+      const tempActiveDepartments = allDepartments.docs.filter(doc => {
+        const data = doc.data();
+        return !data.deletedAt || data.deletedAt === null;
+      });
+
+      if (tempActiveDepartments.length > 0) {
+        // Encontramos una businessUnit con departamentos!
+        businessUnitId = tempBusinessUnitId;
+        businessUnitData = tempBusinessUnitData;
+        activeDepartments = tempActiveDepartments;
+        break;
+      }
+    }
+
+    if (!businessUnitId || activeDepartments.length === 0) {
+      return null;
+    }
+
+    const departmentId = activeDepartments[0].id;
+    const departmentData = activeDepartments[0].data();
+
+    // Crear la categoría
+    const newCategory = {
+      name: categoryName,
+      description: `Categoría automática para ${categoryName.toLowerCase()}`,
+      businessUnitId,
+      departmentId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+
+    const docRef = await db.collection('categoriasDeVenta').add(newCategory);
+
+    return docRef.id;
+  } catch (error) {
+    console.error(`Error al obtener/crear categoría ${categoryName}:`, error);
+    return null;
+  }
+}
+
 // --- API Routes ---
 
 app.get('/', (req, res) => {
@@ -121,6 +214,82 @@ app.post('/api/control/productos-venta/upload-image', authMiddleware, requireAdm
     res.status(500).send({ message: 'Internal Server Error', error: error.message });
   }
 });
+
+/**
+ * @swagger
+ * /api/control/promociones/upload-image:
+ *   post:
+ *     summary: Sube una imagen para un paquete
+ *     tags: [Promociones]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       '200':
+ *         description: Imagen subida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 url:
+ *                   type: string
+ *                 storagePath:
+ *                   type: string
+ *       '400':
+ *         description: No se subió ningún archivo
+ *       '403':
+ *         description: No autorizado
+ */
+app.post('/api/control/promociones/upload-image', authMiddleware, requireAdmin, upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send({ message: 'No file uploaded.' });
+  }
+
+  try {
+    const bucket = getStorage().bucket();
+    const fileName = `${Date.now()}-${req.file.originalname}`;
+    const storagePath = `paquetes/${fileName}`;
+    const fileRef = bucket.file(storagePath);
+
+    // Upload file
+    await fileRef.save(req.file.buffer, {
+      metadata: {
+        contentType: req.file.mimetype,
+        cacheControl: 'public, max-age=31536000',
+      },
+    });
+
+    // Generate a download token to create a public URL
+    const crypto = require('crypto');
+    const token = crypto.randomUUID();
+    await fileRef.setMetadata({
+      metadata: {
+        firebaseStorageDownloadTokens: token,
+      }
+    });
+
+    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(fileRef.name)}?alt=media&token=${token}`;
+
+    res.status(200).send({
+      url: publicUrl,
+      storagePath: storagePath
+    });
+  } catch (error) {
+    console.error('Error uploading package image:', error);
+    res.status(500).send({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
 /**
  * @swagger
  * /api/control/unidades-de-negocio:
@@ -135,15 +304,11 @@ app.post('/api/control/productos-venta/upload-image', authMiddleware, requireAdm
  */
 app.get('/api/control/unidades-de-negocio', authMiddleware, async (req, res) => {
   try {
-    console.log('[GET /api/control/unidades-de-negocio] Request received from user:', req.user?.uid);
     const db = admin.firestore();
-    console.log('[GET /api/control/unidades-de-negocio] Querying Firestore...');
 
     const snapshot = await db.collection('businessUnits')
       .where('deleted', '==', false)
       .get();
-
-    console.log('[GET /api/control/unidades-de-negocio] Query successful, documents found:', snapshot.size);
 
     if (snapshot.empty) {
       return res.status(200).json([]);
@@ -154,11 +319,9 @@ app.get('/api/control/unidades-de-negocio', authMiddleware, async (req, res) => 
       businessUnits.push({ id: doc.id, ...doc.data() });
     });
 
-    console.log('[GET /api/control/unidades-de-negocio] Sending response with', businessUnits.length, 'units');
     res.status(200).json(businessUnits);
   } catch (error) {
     console.error('[GET /api/control/unidades-de-negocio] ERROR:', error);
-    console.error('[GET /api/control/unidades-de-negocio] Error stack:', error.stack);
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 });
@@ -2098,8 +2261,6 @@ app.get('/api/menu', async (req, res) => {
 
     try {
 
-        console.log('[/api/menu] Fetching products...');
-
         const snapshot = await db.collection('productosDeVenta')
 
             .where('deletedAt', '==', null)
@@ -2109,8 +2270,6 @@ app.get('/api/menu', async (req, res) => {
             .orderBy('createdAt', 'desc')
 
             .get();
-
-        console.log('[/api/menu] Found', snapshot.size, 'products');
 
         const products = snapshot.docs.map(doc => {
             const data = doc.data();
@@ -2137,14 +2296,11 @@ app.get('/api/menu', async (req, res) => {
             };
         });
 
-        console.log('[/api/menu] Sending response with', products.length, 'products');
-
         res.status(200).json(products);
 
     } catch (error) {
 
         console.error("[/api/menu] Error fetching menu:", error);
-        console.error("[/api/menu] Error stack:", error.stack);
 
         res.status(500).json({ message: 'Internal Server Error', error: error.message });
 
@@ -2383,6 +2539,678 @@ app.delete('/api/control/productos-venta/:id', authMiddleware, requireAdmin, asy
                     
 
                     
+
+// --- Promotions Management ---
+
+/**
+ * @swagger
+ * /api/promotions:
+ *   get:
+ *     summary: Obtiene todas las promociones activas (endpoint público)
+ *     tags: [Promociones]
+ *     responses:
+ *       '200':
+ *         description: Lista de promociones activas
+ */
+app.get('/api/promotions', async (req, res) => {
+  try {
+    const snapshot = await db.collection('promotions')
+      .where('isActive', '==', true)
+      .where('deletedAt', '==', null)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const now = new Date();
+    const promotions = [];
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+
+      // Validar vigencia de fechas
+      if (data.startDate && data.startDate.toDate() > now) {
+        return; // Promoción aún no inicia
+      }
+      if (data.endDate && data.endDate.toDate() < now) {
+        return; // Promoción ya expiró
+      }
+
+      promotions.push({
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        type: data.type,
+        isActive: data.isActive,
+        categoryId: data.categoryId,
+        startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : null,
+        endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : null,
+        // Campos específicos de paquetes
+        packagePrice: data.packagePrice,
+        packageItems: data.packageItems,
+        imagePath: data.imagePath,
+        imageUrl: data.imageUrl,
+        // Campos específicos de promociones
+        promoType: data.promoType,
+        promoValue: data.promoValue,
+        appliesTo: data.appliesTo,
+        targetIds: data.targetIds,
+      });
+    });
+
+    res.status(200).json(promotions);
+  } catch (error) {
+    console.error('[GET /api/promotions] ERROR:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/control/promotions:
+ *   get:
+ *     summary: Obtiene todas las promociones (admin)
+ *     tags: [Promociones]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Lista de todas las promociones
+ *       '403':
+ *         description: No autorizado
+ */
+app.get('/api/control/promotions', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const snapshot = await db.collection('promotions')
+      .where('deletedAt', '==', null)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const promotions = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        type: data.type,
+        isActive: data.isActive,
+        categoryId: data.categoryId,
+        startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : null,
+        endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : null,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+        packagePrice: data.packagePrice,
+        packageItems: data.packageItems,
+        imagePath: data.imagePath,
+        imageUrl: data.imageUrl,
+        promoType: data.promoType,
+        promoValue: data.promoValue,
+        appliesTo: data.appliesTo,
+        targetIds: data.targetIds,
+      };
+    });
+
+    res.status(200).json(promotions);
+  } catch (error) {
+    console.error('[GET /api/control/promotions] ERROR:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/control/promotions:
+ *   post:
+ *     summary: Crea una nueva promoción (admin)
+ *     tags: [Promociones]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               type:
+ *                 type: string
+ *                 enum: [package, promotion]
+ *     responses:
+ *       '201':
+ *         description: Promoción creada
+ *       '400':
+ *         description: Datos inválidos
+ *       '403':
+ *         description: No autorizado
+ */
+app.post('/api/control/promotions', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      type,
+      isActive,
+      startDate,
+      endDate,
+      packagePrice,
+      packageItems,
+      imagePath,
+      imageUrl,
+      promoType,
+      promoValue,
+      appliesTo,
+      targetIds
+    } = req.body;
+
+    // Validaciones básicas
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'El campo "name" es requerido' });
+    }
+
+    if (!type || !['package', 'promotion'].includes(type)) {
+      return res.status(400).json({ message: 'El campo "type" debe ser "package" o "promotion"' });
+    }
+
+    // Validaciones de fechas
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (end <= start) {
+        return res.status(400).json({
+          message: 'La fecha de fin debe ser posterior a la fecha de inicio'
+        });
+      }
+    }
+
+    // Validaciones específicas de paquetes
+    if (type === 'package') {
+      if (!packagePrice || packagePrice <= 0) {
+        return res.status(400).json({
+          message: 'El campo "packagePrice" debe ser mayor a 0 para paquetes'
+        });
+      }
+
+      if (!packageItems || !Array.isArray(packageItems) || packageItems.length === 0) {
+        return res.status(400).json({
+          message: 'El campo "packageItems" debe contener al menos un producto'
+        });
+      }
+
+      // Validar que todos los productos existen y no están eliminados
+      for (const item of packageItems) {
+        const productDoc = await db.collection('productosDeVenta').doc(item.productId).get();
+        if (!productDoc.exists) {
+          return res.status(400).json({
+            message: `Producto ${item.productId} no encontrado`
+          });
+        }
+        const productData = productDoc.data();
+        if (productData.deletedAt !== null) {
+          return res.status(400).json({
+            message: `Producto ${item.name} está eliminado y no puede usarse en paquetes`
+          });
+        }
+      }
+    }
+
+    // Validaciones específicas de promociones
+    if (type === 'promotion') {
+      if (!promoType || !['percentage', 'fixed_amount'].includes(promoType)) {
+        return res.status(400).json({
+          message: 'El campo "promoType" debe ser "percentage" o "fixed_amount"'
+        });
+      }
+
+      if (promoType === 'percentage') {
+        if (promoValue < 0 || promoValue > 100) {
+          return res.status(400).json({
+            message: 'El descuento porcentual debe estar entre 0 y 100'
+          });
+        }
+      }
+
+      if (promoType === 'fixed_amount') {
+        if (promoValue < 0) {
+          return res.status(400).json({
+            message: 'El descuento fijo no puede ser negativo'
+          });
+        }
+      }
+
+      if (!appliesTo || !['product', 'category', 'total_order'].includes(appliesTo)) {
+        return res.status(400).json({
+          message: 'El campo "appliesTo" debe ser "product", "category" o "total_order"'
+        });
+      }
+
+      // Validar targetIds para promociones específicas
+      if (appliesTo !== 'total_order') {
+        if (!targetIds || targetIds.length === 0) {
+          return res.status(400).json({
+            message: 'El campo "targetIds" es requerido cuando appliesTo es "product" o "category"'
+          });
+        }
+
+        // Validar que las categorías existan
+        if (appliesTo === 'category') {
+          for (const catId of targetIds) {
+            const catDoc = await db.collection('categoriasDeVenta').doc(catId).get();
+            if (!catDoc.exists || catDoc.data().deletedAt !== null) {
+              return res.status(400).json({
+                message: `Categoría ${catId} no existe o está eliminada`
+              });
+            }
+          }
+        }
+
+        // Validar que los productos existan
+        if (appliesTo === 'product') {
+          for (const prodId of targetIds) {
+            const prodDoc = await db.collection('productosDeVenta').doc(prodId).get();
+            if (!prodDoc.exists || prodDoc.data().deletedAt !== null) {
+              return res.status(400).json({
+                message: `Producto ${prodId} no existe o está eliminado`
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Crear el documento
+    const newPromotion = {
+      name,
+      description: description || '',
+      type,
+      isActive: isActive !== undefined ? isActive : true,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    };
+
+    // Obtener o crear la categoría automáticamente
+    const categoryId = await getOrCreatePromotionCategory(type);
+    if (categoryId) {
+      newPromotion.categoryId = categoryId;
+    }
+
+    // Agregar campos específicos según el tipo
+    if (type === 'package') {
+      newPromotion.packagePrice = packagePrice;
+      newPromotion.packageItems = packageItems;
+      if (imagePath) {
+        newPromotion.imagePath = imagePath;
+      }
+      if (imageUrl) {
+        newPromotion.imageUrl = imageUrl;
+      }
+    } else if (type === 'promotion') {
+      newPromotion.promoType = promoType;
+      newPromotion.promoValue = promoValue;
+      newPromotion.appliesTo = appliesTo;
+      newPromotion.targetIds = targetIds || [];
+    }
+
+    const docRef = await db.collection('promotions').add(newPromotion);
+
+    res.status(201).json({ id: docRef.id, ...newPromotion });
+  } catch (error) {
+    console.error('[POST /api/control/promotions] ERROR:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/control/promotions/{id}:
+ *   get:
+ *     summary: Obtiene una promoción específica por ID (admin)
+ *     tags: [Promociones]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Promoción encontrada
+ *       '404':
+ *         description: Promoción no encontrada
+ *       '403':
+ *         description: No autorizado
+ */
+app.get('/api/control/promotions/:id', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const docRef = db.collection('promotions').doc(id);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return res.status(404).json({ message: 'Promoción no encontrada' });
+    }
+
+    const data = docSnap.data();
+
+    // Verificar que no esté eliminada
+    if (data.deletedAt !== null) {
+      return res.status(404).json({ message: 'Promoción no encontrada' });
+    }
+
+    const promotion = {
+      id: docSnap.id,
+      name: data.name,
+      description: data.description,
+      type: data.type,
+      isActive: data.isActive,
+      categoryId: data.categoryId,
+      startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : null,
+      endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : null,
+      createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+      updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+      packagePrice: data.packagePrice,
+      packageItems: data.packageItems,
+      imagePath: data.imagePath,
+      imageUrl: data.imageUrl,
+      promoType: data.promoType,
+      promoValue: data.promoValue,
+      appliesTo: data.appliesTo,
+      targetIds: data.targetIds,
+    };
+
+    res.status(200).json(promotion);
+  } catch (error) {
+    console.error(`[GET /api/control/promotions/:id] ERROR:`, error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/control/promotions/{id}:
+ *   put:
+ *     summary: Actualiza una promoción (admin)
+ *     tags: [Promociones]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Promoción actualizada
+ *       '400':
+ *         description: Datos inválidos
+ *       '403':
+ *         description: No autorizado
+ *       '404':
+ *         description: Promoción no encontrada
+ */
+app.put('/api/control/promotions/:id', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      description,
+      type,
+      isActive,
+      startDate,
+      endDate,
+      packagePrice,
+      packageItems,
+      imagePath,
+      imageUrl,
+      promoType,
+      promoValue,
+      appliesTo,
+      targetIds
+    } = req.body;
+
+    // Verificar que el documento existe
+    const docRef = db.collection('promotions').doc(id);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return res.status(404).json({ message: 'Promoción no encontrada' });
+    }
+
+    // Validaciones (mismas que en POST)
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'El campo "name" es requerido' });
+    }
+
+    if (!type || !['package', 'promotion'].includes(type)) {
+      return res.status(400).json({ message: 'El campo "type" debe ser "package" o "promotion"' });
+    }
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (end <= start) {
+        return res.status(400).json({
+          message: 'La fecha de fin debe ser posterior a la fecha de inicio'
+        });
+      }
+    }
+
+    if (type === 'package') {
+      if (!packagePrice || packagePrice <= 0) {
+        return res.status(400).json({
+          message: 'El campo "packagePrice" debe ser mayor a 0 para paquetes'
+        });
+      }
+
+      if (!packageItems || !Array.isArray(packageItems) || packageItems.length === 0) {
+        return res.status(400).json({
+          message: 'El campo "packageItems" debe contener al menos un producto'
+        });
+      }
+
+      for (const item of packageItems) {
+        const productDoc = await db.collection('productosDeVenta').doc(item.productId).get();
+        if (!productDoc.exists) {
+          return res.status(400).json({
+            message: `Producto ${item.productId} no encontrado`
+          });
+        }
+        const productData = productDoc.data();
+        if (productData.deletedAt !== null) {
+          return res.status(400).json({
+            message: `Producto ${item.name} está eliminado y no puede usarse en paquetes`
+          });
+        }
+      }
+    }
+
+    if (type === 'promotion') {
+      if (!promoType || !['percentage', 'fixed_amount'].includes(promoType)) {
+        return res.status(400).json({
+          message: 'El campo "promoType" debe ser "percentage" o "fixed_amount"'
+        });
+      }
+
+      if (promoType === 'percentage') {
+        if (promoValue < 0 || promoValue > 100) {
+          return res.status(400).json({
+            message: 'El descuento porcentual debe estar entre 0 y 100'
+          });
+        }
+      }
+
+      if (promoType === 'fixed_amount') {
+        if (promoValue < 0) {
+          return res.status(400).json({
+            message: 'El descuento fijo no puede ser negativo'
+          });
+        }
+      }
+
+      if (!appliesTo || !['product', 'category', 'total_order'].includes(appliesTo)) {
+        return res.status(400).json({
+          message: 'El campo "appliesTo" debe ser "product", "category" o "total_order"'
+        });
+      }
+
+      if (appliesTo !== 'total_order') {
+        if (!targetIds || targetIds.length === 0) {
+          return res.status(400).json({
+            message: 'El campo "targetIds" es requerido cuando appliesTo es "product" o "category"'
+          });
+        }
+
+        if (appliesTo === 'category') {
+          for (const catId of targetIds) {
+            const catDoc = await db.collection('categoriasDeVenta').doc(catId).get();
+            if (!catDoc.exists || catDoc.data().deletedAt !== null) {
+              return res.status(400).json({
+                message: `Categoría ${catId} no existe o está eliminada`
+              });
+            }
+          }
+        }
+
+        if (appliesTo === 'product') {
+          for (const prodId of targetIds) {
+            const prodDoc = await db.collection('productosDeVenta').doc(prodId).get();
+            if (!prodDoc.exists || prodDoc.data().deletedAt !== null) {
+              return res.status(400).json({
+                message: `Producto ${prodId} no existe o está eliminado`
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Actualizar el documento
+    const updatedPromotion = {
+      name,
+      description: description || '',
+      type,
+      isActive: isActive !== undefined ? isActive : true,
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      updatedAt: new Date(),
+    };
+
+    if (type === 'package') {
+      updatedPromotion.packagePrice = packagePrice;
+      updatedPromotion.packageItems = packageItems;
+      if (imagePath) {
+        updatedPromotion.imagePath = imagePath;
+      }
+      if (imageUrl) {
+        updatedPromotion.imageUrl = imageUrl;
+      }
+    } else if (type === 'promotion') {
+      updatedPromotion.promoType = promoType;
+      updatedPromotion.promoValue = promoValue;
+      updatedPromotion.appliesTo = appliesTo;
+      updatedPromotion.targetIds = targetIds || [];
+    }
+
+    await docRef.update(updatedPromotion);
+
+    res.status(200).json({ id, ...updatedPromotion });
+  } catch (error) {
+    console.error('[PUT /api/control/promotions/:id] ERROR:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/control/promotions/{id}:
+ *   delete:
+ *     summary: Elimina una promoción (soft delete)
+ *     tags: [Promociones]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Promoción eliminada
+ *       '403':
+ *         description: No autorizado
+ *       '404':
+ *         description: Promoción no encontrada
+ */
+app.delete('/api/control/promotions/:id', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const docRef = db.collection('promotions').doc(id);
+
+    const docSnap = await docRef.get();
+    if (!docSnap.exists) {
+      return res.status(404).json({ message: 'Promoción no encontrada' });
+    }
+
+    // Soft delete: marcar como eliminado y desactivar
+    await docRef.update({
+      deletedAt: new Date(),
+      isActive: false
+    });
+
+    res.status(200).json({ message: 'Promoción eliminada exitosamente' });
+  } catch (error) {
+    console.error('[DELETE /api/control/promotions/:id] ERROR:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
+// Endpoint temporal de migración para asignar categoryId a paquetes existentes
+app.post('/api/control/promotions/migrate-categories', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const snapshot = await db.collection('promotions')
+      .where('deletedAt', '==', null)
+      .get();
+
+    let updatedCount = 0;
+    const batch = db.batch();
+
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+
+      // Si no tiene categoryId, asignarlo
+      if (!data.categoryId) {
+        const categoryId = await getOrCreatePromotionCategory(data.type);
+        if (categoryId) {
+          batch.update(doc.ref, { categoryId, updatedAt: new Date() });
+          updatedCount++;
+        }
+      }
+    }
+
+    await batch.commit();
+
+    res.status(200).json({
+      message: 'Migración completada',
+      updated: updatedCount
+    });
+  } catch (error) {
+    console.error('[MIGRATION] ERROR:', error);
+    res.status(500).json({ message: 'Error en migración', error: error.message });
+  }
+});
 
                     // --- User Profile and Addresses ---
 

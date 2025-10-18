@@ -9,6 +9,7 @@ import type { SaleProduct } from '@/lib/types';
 import StorageImage from '@/components/StorageImage';
 import { useCart } from '@/context/cart-context';
 import { ProductCustomizationDialog } from '@/components/menu/ProductCustomizationDialog';
+import { PackageCard } from '@/components/menu/PackageCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 function ProductCard({ product, onCustomize }: { product: SaleProduct; onCustomize: (product: SaleProduct) => void; }) {
@@ -78,6 +79,7 @@ function ProductSkeleton() {
 
 export default function MenuPage() {
   const [products, setProducts] = useState<SaleProduct[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,9 +89,10 @@ export default function MenuPage() {
   useEffect(() => {
     const fetchMenuData = async () => {
       try {
-        const [productsRes, categoriesRes] = await Promise.all([
+        const [productsRes, categoriesRes, promotionsRes] = await Promise.all([
           fetch('/api/menu'),
           fetch('/api/categorias-venta'),
+          fetch('/api/promotions'),
         ]);
 
         if (!productsRes.ok || !categoriesRes.ok) {
@@ -98,9 +101,14 @@ export default function MenuPage() {
 
         const productsData = await productsRes.json();
         const categoriesData = await categoriesRes.json();
+        const promotionsData = promotionsRes.ok ? await promotionsRes.json() : [];
+
+        const packagesFiltered = promotionsData.filter((p: any) => p.type === 'package');
 
         setProducts(productsData);
         setCategories(categoriesData);
+        // Filtrar solo paquetes (las promociones se aplican automáticamente)
+        setPackages(packagesFiltered);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -115,12 +123,20 @@ export default function MenuPage() {
     setIsCustomizationOpen(true);
   };
 
-  const groupedProducts = categories
-    .map(category => ({
-      ...category,
-      products: products.filter(p => p.categoriaVentaId === category.id),
-    }))
-    .filter(category => category.products.length > 0);
+  // Agrupar productos regulares y paquetes por categoría
+  const groupedCategories = categories
+    .map(category => {
+      const categoryProducts = products.filter(p => p.categoriaVentaId === category.id);
+      const categoryPackages = packages.filter(p => p.categoryId === category.id);
+
+      return {
+        ...category,
+        products: categoryProducts,
+        packages: categoryPackages,
+        totalItems: categoryProducts.length + categoryPackages.length,
+      };
+    })
+    .filter(category => category.totalItems > 0);
 
   const renderContent = () => {
     if (isLoading) {
@@ -135,26 +151,59 @@ export default function MenuPage() {
       return <p className="text-center text-red-500 mt-8">Error: {error}</p>;
     }
 
-    if (groupedProducts.length === 0) {
+    if (groupedCategories.length === 0) {
       return <p className="text-center text-gray-500 mt-8">No hay productos disponibles en este momento.</p>;
     }
 
     return (
-      <Tabs defaultValue={groupedProducts[0]?.id} className="w-full mt-8">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {groupedProducts.map(category => (
-            <TabsTrigger key={category.id} value={category.id}>
+      <Tabs defaultValue={groupedCategories[0]?.id} className="w-full mt-8">
+        {/* Tabs mejoradas con estilos personalizados */}
+        <TabsList className="inline-flex h-auto w-full flex-wrap items-center justify-center gap-2 rounded-lg bg-gray-900/50 p-2 backdrop-blur-sm border border-white/10">
+          {groupedCategories.map(category => (
+            <TabsTrigger
+              key={category.id}
+              value={category.id}
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-yellow-400 data-[state=active]:via-orange-500 data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-none data-[state=inactive]:text-white/70 data-[state=inactive]:hover:text-white data-[state=inactive]:hover:bg-white/10 rounded-md px-6 py-3 font-bold transition-all duration-300"
+            >
               {category.name}
+              {category.totalItems > 0 && (
+                <span className="ml-2 text-xs opacity-75">({category.totalItems})</span>
+              )}
             </TabsTrigger>
           ))}
         </TabsList>
-        {groupedProducts.map(category => (
-          <TabsContent key={category.id} value={category.id} className="mt-6">
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {category.products.map(product => (
-                <ProductCard key={product.id} product={product} onCustomize={handleCustomizeClick} />
-              ))}
-            </div>
+
+        {groupedCategories.map(category => (
+          <TabsContent key={category.id} value={category.id} className="mt-8">
+            {/* Sección de paquetes si existen */}
+            {category.packages && category.packages.length > 0 && (
+              <div className="mb-12">
+                <h2 className="text-3xl font-black text-transparent bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text mb-6">
+                  Paquetes Especiales
+                </h2>
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {category.packages.map((pkg: any) => (
+                    <PackageCard key={pkg.id} package={pkg} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sección de productos regulares */}
+            {category.products && category.products.length > 0 && (
+              <div>
+                {category.packages && category.packages.length > 0 && (
+                  <h2 className="text-3xl font-black text-white mb-6">
+                    Productos Individuales
+                  </h2>
+                )}
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {category.products.map(product => (
+                    <ProductCard key={product.id} product={product} onCustomize={handleCustomizeClick} />
+                  ))}
+                </div>
+              </div>
+            )}
           </TabsContent>
         ))}
       </Tabs>
