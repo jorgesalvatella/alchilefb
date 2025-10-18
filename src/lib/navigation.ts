@@ -7,6 +7,7 @@ import {
   Building2,
   Settings,
   Bot,
+  Tag,
   LucideIcon
 } from 'lucide-react';
 
@@ -41,6 +42,12 @@ export const adminNavigation: NavItem[] = [
     href: '/control/productos-venta',
     label: 'Productos de Venta',
     icon: Package,
+    roles: ['admin', 'super_admin'],
+  },
+  {
+    href: '/control/promociones',
+    label: 'Paquetes y Promociones',
+    icon: Tag,
     roles: ['admin', 'super_admin'],
   },
   {

@@ -43,6 +43,13 @@ export type CartItem = {
     added: { nombre: string; precio: number }[];
     removed: string[];
   };
+  // Campos para paquetes
+  isPackage?: boolean;
+  packageItems?: Array<{
+    productId: string;
+    name: string;
+    quantity: number;
+  }>;
 };
 
 // Tipos para la dirección de entrega

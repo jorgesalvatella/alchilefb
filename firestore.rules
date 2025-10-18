@@ -299,5 +299,83 @@ service cloud.firestore {
       allow update: if isAdmin() || isSuperAdmin();
       allow delete: if isAdmin() || isSuperAdmin();
     }
+
+    match /promotions/{promotionId} {
+      /**
+       * @description Manages promotions (packages and discounts). Public read access for active promotions, admin-only for writes.
+       * @path /promotions/{promotionId}
+       * @allow (get, list) All users can read active promotions (isActive == true && deletedAt == null).
+       * @deny (create, update, delete) Only admins and super-admins can modify promotions.
+       * @principle Public read access with restricted write access for promotional content management.
+       * @security Prevents price manipulation by restricting write access to admins only.
+       */
+      // Public can read only active and non-deleted promotions
+      allow get: if resource.data.isActive == true && resource.data.deletedAt == null;
+      allow list: if resource.data.isActive == true && resource.data.deletedAt == null;
+
+      // Admins can read all promotions (including inactive/deleted)
+      allow read: if isAdmin() || isSuperAdmin();
+
+      // Only admins can create, update, or delete promotions
+      allow create: if isAdmin() || isSuperAdmin();
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
+    }
+
+    match /productosDeVenta/{productId} {
+      /**
+       * @description Manages sale products. Public read access for available products, admin-only for writes.
+       * @path /productosDeVenta/{productId}
+       * @allow (get, list) All users can read available products (deletedAt == null).
+       * @deny (create, update, delete) Only admins and super-admins can modify products.
+       * @principle Public read access with restricted write access for product catalog management.
+       */
+      allow get: if resource.data.deletedAt == null;
+      allow list: if resource.data.deletedAt == null;
+      allow read: if isAdmin() || isSuperAdmin();
+      allow create: if isAdmin() || isSuperAdmin();
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
+    }
+
+    match /categoriasDeVenta/{categoryId} {
+      /**
+       * @description Manages sale categories. Public read access for active categories, admin-only for writes.
+       * @path /categoriasDeVenta/{categoryId}
+       * @allow (get, list) All users can read active categories (deletedAt == null).
+       * @deny (create, update, delete) Only admins and super-admins can modify categories.
+       * @principle Public read access with restricted write access for category management.
+       */
+      allow get: if resource.data.deletedAt == null;
+      allow list: if resource.data.deletedAt == null;
+      allow read: if isAdmin() || isSuperAdmin();
+      allow create: if isAdmin() || isSuperAdmin();
+      allow update: if isAdmin() || isSuperAdmin();
+      allow delete: if isAdmin() || isSuperAdmin();
+    }
+
+    match /proveedores/{supplierId} {
+      /**
+       * @description Manages supplier information for procurement. Accessible only by admins and super-admins.
+       * @path /proveedores/{supplierId}
+       * @allow (read, write) Only admins and super-admins can access and modify supplier information.
+       * @deny (read, write) Regular users cannot access supplier information.
+       * @principle Restricts supplier management to authorized personnel.
+       */
+      allow read: if isAdmin() || isSuperAdmin();
+      allow write: if isAdmin() || isSuperAdmin();
+    }
+
+    match /drivers/{driverId} {
+      /**
+       * @description Manages delivery driver information. Accessible only by admins and super-admins.
+       * @path /drivers/{driverId}
+       * @allow (read, write) Only admins and super-admins can access and modify driver information.
+       * @deny (read, write) Regular users cannot access driver information.
+       * @principle Restricts driver management to authorized personnel.
+       */
+      allow read: if isAdmin() || isSuperAdmin();
+      allow write: if isAdmin() || isSuperAdmin();
+    }
   }
 }
