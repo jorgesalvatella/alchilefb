@@ -37,12 +37,19 @@ export function PackageCard({ package: pkg }: { package: PackageData }) {
 
   const handleAddToCart = () => {
     if (pkg.type === 'package' && pkg.packagePrice) {
+      const finalImageUrl = pkg.imageUrl || pkg.imagePath;
+      console.log('[PackageCard] Adding package to cart:', {
+        name: pkg.name,
+        imageUrl: pkg.imageUrl,
+        imagePath: pkg.imagePath,
+        finalImageUrl
+      });
       addItem({
         id: pkg.id,
         name: pkg.name,
         price: pkg.packagePrice,
         quantity: 1,
-        imageUrl: pkg.imageUrl || pkg.imagePath,
+        imageUrl: finalImageUrl,
         isPackage: true,
         packageItems: pkg.packageItems,
       });
@@ -75,12 +82,13 @@ export function PackageCard({ package: pkg }: { package: PackageData }) {
       )}
 
       <CardHeader className="p-0">
-        <div className="relative h-56 w-full overflow-hidden">
+        <div className="relative w-full aspect-square overflow-hidden">
           <StorageImage
             filePath={pkg.imageUrl || pkg.imagePath || ''}
             alt={pkg.name}
             fill
-            objectFit="cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            objectFit="contain"
             className="transition-transform duration-500 group-hover:scale-110"
           />
           {/* Overlay gradient */}

@@ -69,11 +69,23 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     // 1. Re-verificar totales (usando la lógica real)
-    const itemsToVerify = items.map(item => ({
-      productId: item.id,
-      quantity: item.quantity,
-      customizations: item.customizations || null,
-    }));
+    const itemsToVerify = items.map(item => {
+      if (item.isPackage) {
+        // Es un paquete
+        return {
+          packageId: item.id,
+          quantity: item.quantity,
+          packageCustomizations: item.customizations || {}
+        };
+      } else {
+        // Es un producto normal
+        return {
+          productId: item.id,
+          quantity: item.quantity,
+          customizations: item.customizations || null,
+        };
+      }
+    });
     const verificationResult = await verifyCartTotals(itemsToVerify);
 
     // 2. Calcular subtotal y tax a partir de los items verificados

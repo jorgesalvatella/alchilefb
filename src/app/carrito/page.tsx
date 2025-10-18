@@ -38,14 +38,26 @@ function CartPage({ user }: WithAuthProps) {
 
       setIsVerifying(true);
       try {
-        const itemsToVerify = cartItems.map(item => ({
-          productId: item.id,
-          quantity: item.quantity,
-          customizations: {
-            added: item.customizations?.added || [],
-            removed: item.customizations?.removed || [],
-          },
-        }));
+        const itemsToVerify = cartItems.map(item => {
+          if (item.isPackage) {
+            // Es un paquete
+            return {
+              packageId: item.id,
+              quantity: item.quantity,
+              packageCustomizations: item.customizations || {}
+            };
+          } else {
+            // Es un producto normal
+            return {
+              productId: item.id,
+              quantity: item.quantity,
+              customizations: {
+                added: item.customizations?.added || [],
+                removed: item.customizations?.removed || [],
+              },
+            };
+          }
+        });
 
         if (itemsToVerify.length === 0 && cartItems.length > 0) {
           throw new Error("Algunos items en tu carrito son inválidos.");
@@ -129,13 +141,16 @@ function CartPage({ user }: WithAuthProps) {
               <CardTitle className="text-orange-400">Resumen de tu Pedido</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6" key={cartKey}>
-              {cartItems.map((item) => (
+              {cartItems.map((item) => {
+                console.log('[CartPage] Item:', item.name, 'imageUrl:', item.imageUrl, 'isPackage:', item.isPackage);
+                return (
                 <div key={item.cartItemId} className="flex items-start space-x-4">
                   <div className="relative h-20 w-20 flex-shrink-0">
                     <StorageImage
                       filePath={item.imageUrl}
                       alt={item.name}
                       fill
+                      sizes="80px"
                       className="rounded-md object-cover"
                     />
                   </div>
@@ -182,7 +197,8 @@ function CartPage({ user }: WithAuthProps) {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         </div>

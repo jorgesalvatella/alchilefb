@@ -96,6 +96,17 @@ export function PromotionForm({ promotion }: PromotionFormProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
+  // Helper function to convert ISO date string to yyyy-MM-dd format
+  const formatDateForInput = (dateString?: string): string => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0];
+    } catch {
+      return '';
+    }
+  };
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: promotion ? {
@@ -103,8 +114,8 @@ export function PromotionForm({ promotion }: PromotionFormProps) {
       description: promotion.description || '',
       type: promotion.type,
       isActive: promotion.isActive,
-      startDate: promotion.startDate || '',
-      endDate: promotion.endDate || '',
+      startDate: formatDateForInput(promotion.startDate),
+      endDate: formatDateForInput(promotion.endDate),
       packagePrice: promotion.packagePrice || 0,
       products: promotion.products || [],
       discountType: promotion.discountType || 'percentage',
