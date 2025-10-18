@@ -11,9 +11,10 @@ interface StorageImageProps {
   fill: boolean;
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
   className?: string;
+  sizes?: string;
 }
 
-const StorageImage = ({ filePath, alt, fill, objectFit = 'cover', className }: StorageImageProps) => {
+const StorageImage = ({ filePath, alt, fill, objectFit = 'cover', className, sizes = '100vw' }: StorageImageProps) => {
   // Si ya es una URL completa de Firebase Storage con token, úsala directamente
   if (filePath && filePath.startsWith('https://firebasestorage.googleapis.com/') && filePath.includes('token=')) {
     return (
@@ -21,7 +22,7 @@ const StorageImage = ({ filePath, alt, fill, objectFit = 'cover', className }: S
         src={filePath}
         alt={alt}
         fill={fill}
-        sizes="100vw"
+        sizes={sizes}
         className={className}
         style={{ objectFit }}
       />
@@ -64,7 +65,7 @@ const StorageImage = ({ filePath, alt, fill, objectFit = 'cover', className }: S
       src={signedUrl}
       alt={alt}
       fill={fill}
-      sizes="100vw"
+      sizes={sizes}
       className={className}
       style={{ objectFit }}
     />

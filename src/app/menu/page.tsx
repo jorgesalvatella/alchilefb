@@ -36,12 +36,13 @@ function ProductCard({ product, onCustomize }: { product: SaleProduct; onCustomi
   return (
     <Card className="flex flex-col overflow-hidden transition-transform duration-300 hover:scale-105 hover:shadow-lg group bg-gray-900/50 border-gray-700 text-white">
       <CardHeader className="p-0">
-        <div className="relative h-48 w-full">
+        <div className="relative w-full aspect-square">
           <StorageImage
             filePath={product.imageUrl || PlaceHolderImages.getRandomImage(product.name).imageUrl}
             alt={product.name}
             fill
-            objectFit="cover"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            objectFit="contain"
             className="transition-transform duration-300 group-hover:scale-110"
           />
         </div>
@@ -66,7 +67,7 @@ function ProductCard({ product, onCustomize }: { product: SaleProduct; onCustomi
 function ProductSkeleton() {
   return (
     <div className="flex flex-col space-y-3">
-      <Skeleton className="h-48 w-full rounded-xl bg-gray-700" />
+      <Skeleton className="w-full aspect-square rounded-xl bg-gray-700" />
       <div className="space-y-2">
         <Skeleton className="h-4 w-3/4 bg-gray-600" />
         <Skeleton className="h-4 w-1/2 bg-gray-600" />
