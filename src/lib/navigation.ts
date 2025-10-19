@@ -8,6 +8,7 @@ import {
   Settings,
   Bot,
   Tag,
+  Truck,
   LucideIcon
 } from 'lucide-react';
 
@@ -54,6 +55,12 @@ export const adminNavigation: NavItem[] = [
     href: '/control/clientes',
     label: 'Clientes',
     icon: Users,
+    roles: ['admin', 'super_admin'],
+  },
+  {
+    href: '/control/repartidores',
+    label: 'Repartidores',
+    icon: Truck,
     roles: ['admin', 'super_admin'],
   },
   {

@@ -6,6 +6,7 @@ import { PlusCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { DriversTable } from '@/components/control/DriversTable';
 import { AddEditDriverDialog } from '@/components/control/AddEditDriverDialog';
+import { DriverTrackingDialog } from '@/components/control/DriverTrackingDialog';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
 // NOTE: This should be a shared type
@@ -22,6 +23,8 @@ function RepartidoresPage({ user }: WithAuthProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+  const [isTrackingDialogOpen, setIsTrackingDialogOpen] = useState(false);
+  const [trackedDriver, setTrackedDriver] = useState<Driver | null>(null);
 
   const fetchDrivers = useCallback(async () => {
     if (!user) return;
@@ -64,6 +67,11 @@ function RepartidoresPage({ user }: WithAuthProps) {
     fetchDrivers(); // Refresh the list after a successful add/edit
   };
 
+  const handleTrackClick = (driver: Driver) => {
+    setTrackedDriver(driver);
+    setIsTrackingDialogOpen(true);
+  };
+
   return (
     <>
       <div className="pt-32">
@@ -91,7 +99,11 @@ function RepartidoresPage({ user }: WithAuthProps) {
               <p className="text-white/60">Cargando repartidores...</p>
             </div>
           ) : (
-            <DriversTable drivers={drivers} onEdit={handleEditClick} />
+            <DriversTable
+              drivers={drivers}
+              onEdit={handleEditClick}
+              onTrack={handleTrackClick}
+            />
           )}
         </div>
       </div>
@@ -100,6 +112,12 @@ function RepartidoresPage({ user }: WithAuthProps) {
         isOpen={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSuccess={handleDialogSuccess}
+      />
+      <DriverTrackingDialog
+        driverId={trackedDriver?.id || null}
+        driverName={trackedDriver?.name || ''}
+        isOpen={isTrackingDialogOpen}
+        onClose={() => setIsTrackingDialogOpen(false)}
       />
     </>
   );

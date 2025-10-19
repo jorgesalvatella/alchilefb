@@ -145,10 +145,27 @@ service cloud.firestore {
        * @deny (get, list, create, update, delete) User tries to access another user's orders.
        * @principle Enforces document ownership and prevents unauthorized access to orders.
        */
+      // Cliente puede ver SU pedido
       allow get: if (resource.data.userId == request.auth.uid && isSignedIn()) || isAdmin() || isSuperAdmin();
+
+      // Repartidor puede ver pedidos asignados a él (para tracking)
+      allow get: if isSignedIn() &&
+                    request.auth.token.repartidor == true &&
+                    resource.data.driverId != null;
+
       allow list: if isSignedIn() || isAdmin() || isSuperAdmin();
       allow create: if isSignedIn() || isAdmin() || isSuperAdmin();
+
+      // Cliente puede actualizar SU pedido
       allow update: if (resource.data.userId == request.auth.uid && isSignedIn() && resource != null) || isAdmin() || isSuperAdmin();
+
+      // Repartidor puede actualizar SOLO driverLocation del pedido asignado a él
+      allow update: if isSignedIn() &&
+                       request.auth.token.repartidor == true &&
+                       resource.data.driverId != null &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['driverLocation']);
+
       allow delete: if (resource.data.userId == request.auth.uid && isSignedIn() && resource != null) || isAdmin() || isSuperAdmin();
     }
 
@@ -376,6 +393,36 @@ service cloud.firestore {
        */
       allow read: if isAdmin() || isSuperAdmin();
       allow write: if isAdmin() || isSuperAdmin();
+    }
+
+    match /repartidores/{repartidorId} {
+      /**
+       * @description Manages delivery driver (repartidor) information and real-time location tracking.
+       * @path /repartidores/{repartidorId}
+       * @allow (read) Authenticated users (admins, repartidores themselves) can read driver info and location.
+       * @allow (write) Only admins can create/update/delete repartidores (except location updates by the driver).
+       * @principle Allows real-time tracking while maintaining security through custom claims.
+       */
+      // Admins can read all repartidores
+      allow read: if isAdmin() || isSuperAdmin();
+
+      // Repartidor can read their own document (for UI display)
+      allow get: if isSignedIn() &&
+                    request.auth.token.repartidor == true &&
+                    resource.data.userId == request.auth.uid;
+
+      // Only admins can create/delete
+      allow create, delete: if isAdmin() || isSuperAdmin();
+
+      // Admins can update everything
+      allow update: if isAdmin() || isSuperAdmin();
+
+      // Repartidor can update ONLY their location fields (currentLocation, lastLocationUpdate, isTrackingActive)
+      allow update: if isSignedIn() &&
+                       request.auth.token.repartidor == true &&
+                       resource.data.userId == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['currentLocation', 'lastLocationUpdate', 'isTrackingActive']);
     }
   }
 }

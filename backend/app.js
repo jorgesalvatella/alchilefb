@@ -2186,36 +2186,49 @@ app.get('/api/control/productos-venta', authMiddleware, requireAdmin, async (req
 
 });
 
-// GET publico para los productos destacados (antes "latest")
+// GET publico para los productos destacados (solo 4 para home page)
 app.get('/api/productos-venta/latest', async (req, res) => {
   try {
+    // Buscar productos marcados como destacados (isFeatured: true)
     const snapshot = await db.collection('productosDeVenta')
       .where('deletedAt', '==', null)
-      .where('isAvailable', '==', true)
       .where('isFeatured', '==', true)
-      .orderBy('createdAt', 'desc')
-      .limit(8) // Aumentamos el límite a 8 para más flexibilidad
+      .limit(10) // Traer algunos extras para filtrar
       .get();
 
     if (snapshot.empty) {
       return res.status(200).json([]);
     }
 
-    const products = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        name: data.name,
-        price: data.price,
-        imageUrl: data.imageUrl,
-        description: data.description,
-      };
-    });
+    // Filtrar y mapear en memoria
+    const products = snapshot.docs
+      .map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.name,
+          price: data.price,
+          imageUrl: data.imageUrl,
+          description: data.description,
+          isAvailable: data.isAvailable !== false, // Default true si no existe
+          createdAt: data.createdAt,
+        };
+      })
+      .filter(product => product.isAvailable) // Filtrar disponibles
+      .sort((a, b) => {
+        // Ordenar por createdAt desc
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return timeB - timeA;
+      })
+      .slice(0, 4) // Solo 4 productos destacados
+      .map(({ createdAt, isAvailable, ...product }) => product); // Limpiar campos
 
     res.status(200).json(products);
   } catch (error) {
     console.error("Error fetching featured sale products:", error);
-    res.status(500).send('Internal Server Error');
+    // Devolver array vacío en lugar de error 500
+    res.status(200).json([]);
   }
 });
 
@@ -2604,6 +2617,72 @@ app.get('/api/promotions', async (req, res) => {
   } catch (error) {
     console.error('[GET /api/promotions] ERROR:', error);
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/promotions/featured:
+ *   get:
+ *     summary: Obtiene promociones/paquetes destacados (solo 4 para home page)
+ *     tags: [Promociones]
+ *     responses:
+ *       '200':
+ *         description: Lista de promociones destacadas
+ */
+app.get('/api/promotions/featured', async (req, res) => {
+  try {
+    const snapshot = await db.collection('promotions')
+      .where('isActive', '==', true)
+      .where('deletedAt', '==', null)
+      .where('isFeatured', '==', true) // Solo las marcadas como destacadas
+      .limit(10) // Traer extras para filtrar
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+
+    const now = new Date();
+    const promotions = [];
+
+    snapshot.forEach(doc => {
+      const data = doc.data();
+
+      // Validar vigencia de fechas
+      if (data.startDate && data.startDate.toDate() > now) {
+        return; // Promoción aún no inicia
+      }
+      if (data.endDate && data.endDate.toDate() < now) {
+        return; // Promoción ya expiró
+      }
+
+      promotions.push({
+        id: doc.id,
+        name: data.name,
+        description: data.description,
+        type: data.type,
+        packagePrice: data.packagePrice,
+        imageUrl: data.imageUrl,
+        createdAt: data.createdAt,
+      });
+    });
+
+    // Ordenar y limitar a 4
+    const featured = promotions
+      .sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return timeB - timeA;
+      })
+      .slice(0, 4)
+      .map(({ createdAt, ...promo }) => promo);
+
+    res.status(200).json(featured);
+  } catch (error) {
+    console.error('[GET /api/promotions/featured] ERROR:', error);
+    // Devolver array vacío en lugar de error
+    res.status(200).json([]);
   }
 });
 
@@ -3416,6 +3495,13 @@ app.use('/api/cart', cartRouter);
 
 const pedidosRouter = require('./pedidos');
 app.use('/api/pedidos', pedidosRouter);
+
+// --- Repartidores Module ---
+const repartidoresRouter = require('./repartidores');
+app.use('/api/repartidores', repartidoresRouter);
+// Los endpoints de pedidos del repartidor también están en el módulo repartidores
+// pero se montan en /api/pedidos para mantener consistencia
+app.use('/api/pedidos', repartidoresRouter);
 
 module.exports = app;
 

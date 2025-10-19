@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { User, Phone, Car, Edit } from 'lucide-react';
+import { User, Phone, Car, Edit, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // NOTE: This is a placeholder. The Driver type should be centralized in @/lib/types.ts
@@ -24,9 +24,10 @@ interface Driver {
 interface DriversTableProps {
   drivers: Driver[];
   onEdit: (driver: Driver) => void;
+  onTrack?: (driver: Driver) => void;
 }
 
-export function DriversTable({ drivers, onEdit }: DriversTableProps) {
+export function DriversTable({ drivers, onEdit, onTrack }: DriversTableProps) {
   const getStatusBadge = (status: Driver['status']) => {
     const statusConfig = {
       available: { className: 'bg-green-600/20 text-green-400 border-green-500/50', label: 'Disponible' },
@@ -78,9 +79,28 @@ export function DriversTable({ drivers, onEdit }: DriversTableProps) {
               <TableCell className="text-white/80">{driver.vehicle || '-'}</TableCell>
               <TableCell>{getStatusBadge(driver.status)}</TableCell>
               <TableCell className="text-right">
-                <Button variant="ghost" size="icon" onClick={() => onEdit(driver)} className="text-white/70 hover:text-orange-400">
-                  <Edit className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center justify-end gap-2">
+                  {onTrack && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onTrack(driver)}
+                      className="text-white/70 hover:text-blue-400"
+                      title="Ver tracking en vivo"
+                    >
+                      <MapPin className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onEdit(driver)}
+                    className="text-white/70 hover:text-orange-400"
+                    title="Editar repartidor"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}
