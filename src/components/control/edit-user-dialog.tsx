@@ -1,0 +1,232 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { useUser } from '@/firebase/provider';
+import type { AppUser, UserRole } from '@/lib/data';
+import { useToast } from '@/hooks/use-toast';
+
+interface EditUserDialogProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  userData: AppUser | null;
+}
+
+export function EditUserDialog({
+    isOpen,
+    onOpenChange,
+    userData,
+}: EditUserDialogProps) {
+  const { user, claims } = useUser();
+  const { toast } = useToast();
+
+  // Form state
+  const [displayName, setDisplayName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [role, setRole] = useState<UserRole>('usuario');
+  const [active, setActive] = useState(true);
+  const [sucursalId, setSucursalId] = useState('');
+  const [departamento, setDepartamento] = useState('');
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Determine if current user is super_admin
+  const isSuperAdmin = !!claims?.super_admin;
+
+  // Initialize form when userData changes
+  useEffect(() => {
+    if (isOpen && userData) {
+      setDisplayName(userData.displayName || '');
+      setPhoneNumber(userData.phoneNumber || '');
+      setRole(userData.role);
+      setActive(userData.active);
+      setSucursalId(userData.sucursalId || '');
+      setDepartamento(userData.departamento || '');
+    }
+  }, [userData, isOpen]);
+
+  const handleSubmit = async () => {
+    if (!userData || !user) {
+      toast({ title: 'Error', description: 'Debes iniciar sesión.', variant: 'destructive' });
+      return;
+    }
+
+    // Validate permissions: admin cannot assign super_admin role
+    if (!isSuperAdmin && role === 'super_admin') {
+      toast({ title: 'Error', description: 'No tienes permisos para asignar el rol de Super Admin.', variant: 'destructive' });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const token = await user.getIdToken();
+      const url = `/api/control/usuarios/${userData.id}`;
+
+      const userUpdateData = {
+        displayName: displayName || null,
+        phoneNumber: phoneNumber || null,
+        role,
+        active,
+        sucursalId: sucursalId || null,
+        departamento: departamento || null,
+      };
+
+      const response = await fetch(url, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(userUpdateData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error al actualizar el usuario.');
+      }
+
+      toast({ title: 'Éxito', description: 'Usuario actualizado correctamente.' });
+      onOpenChange(false);
+      window.location.reload();
+
+    } catch (error) {
+      toast({ title: 'Error', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-black/80 backdrop-blur-lg border-white/10 text-white sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-headline bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+            Editar Usuario
+          </DialogTitle>
+          <DialogDescription className="text-white/60">
+            Actualiza la información del usuario. Los campos vacíos se mantendrán sin cambios.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4 py-4">
+          {/* Email (readonly) */}
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-white/80">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={userData?.email || ''}
+              className="bg-white/5 border-white/20 text-white/40"
+              disabled
+              readOnly
+            />
+            <p className="text-xs text-white/40">El email no se puede modificar</p>
+          </div>
+
+          {/* Display Name */}
+          <div className="space-y-2">
+            <Label htmlFor="displayName" className="text-white/80">Nombre Completo</Label>
+            <Input
+              id="displayName"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              className="bg-white/5 border-white/20"
+              placeholder="Ej: Juan Pérez"
+            />
+          </div>
+
+          {/* Phone Number */}
+          <div className="space-y-2">
+            <Label htmlFor="phoneNumber" className="text-white/80">Teléfono</Label>
+            <Input
+              id="phoneNumber"
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              className="bg-white/5 border-white/20"
+              placeholder="Ej: +52 1234567890"
+            />
+          </div>
+
+          {/* Role */}
+          <div className="space-y-2">
+            <Label htmlFor="role" className="text-white/80">Rol</Label>
+            <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
+              <SelectTrigger className="bg-white/5 border-white/20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-black/80 text-white border-white/20">
+                <SelectItem value="usuario">Usuario</SelectItem>
+                <SelectItem value="repartidor">Repartidor</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                {isSuperAdmin && (
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+            {!isSuperAdmin && (
+              <p className="text-xs text-white/40">Solo Super Admin puede asignar el rol de Super Admin</p>
+            )}
+          </div>
+
+          {/* Active Status */}
+          <div className="flex items-center justify-between space-x-2">
+            <div className="space-y-1">
+              <Label htmlFor="active" className="text-white/80">Estado Activo</Label>
+              <p className="text-xs text-white/40">Los usuarios inactivos no pueden iniciar sesión</p>
+            </div>
+            <Switch
+              id="active"
+              checked={active}
+              onCheckedChange={setActive}
+              className="data-[state=checked]:bg-green-500"
+            />
+          </div>
+
+          {/* Sucursal */}
+          <div className="space-y-2">
+            <Label htmlFor="sucursalId" className="text-white/80">Sucursal ID</Label>
+            <Input
+              id="sucursalId"
+              value={sucursalId}
+              onChange={(e) => setSucursalId(e.target.value)}
+              className="bg-white/5 border-white/20"
+              placeholder="Ej: SUC-001"
+            />
+          </div>
+
+          {/* Departamento */}
+          <div className="space-y-2">
+            <Label htmlFor="departamento" className="text-white/80">Departamento</Label>
+            <Input
+              id="departamento"
+              value={departamento}
+              onChange={(e) => setDepartamento(e.target.value)}
+              className="bg-white/5 border-white/20"
+              placeholder="Ej: Operaciones, Ventas, etc."
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-white/60 hover:text-white" disabled={isLoading}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white font-bold" disabled={isLoading}>
+            {isLoading ? 'Guardando...' : 'Guardar Cambios'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

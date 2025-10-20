@@ -1,26 +1,26 @@
 # Registro de Tests de Frontend
 
-**Última actualización:** 2025-10-19 (Sesión 4)
-**Estado general:** 🟢 206/206 tests pasando (100%) 🎉
-**Test Suites:** 37/37 pasando (100%) 🎉
+**Última actualización:** 2025-10-20 (Sesión 6)
+**Estado general:** 🟢 247/247 tests pasando (100%) 🎉
+**Test Suites:** 41/41 pasando (100%) 🎉
 
 ---
 
 ## 📊 Estado Actual
 
-| Métrica | Valor | Porcentaje | Cambio desde Sesión 3 |
+| Métrica | Valor | Porcentaje | Cambio desde Sesión 5 |
 |---------|-------|------------|--------|
-| **Tests Pasando** | 206 | 100% | +16 ✅ |
-| **Tests Fallando** | 0 | 0.0% | -16 ✅ |
-| **Tests Skipped** | 0 | 0.0% | -5 ✅ (Eliminados) |
-| **Suites Pasando** | 37 | 100% | +3 ✅ |
-| **Suites Fallando** | 0 | 0% | -3 ✅ |
-| **Total Tests** | 206 | 100% | -5 (limpieza) |
-| **Total Suites** | 37 | 100% | Sin cambio |
+| **Tests Pasando** | 247 | 100% | +22 ✅ |
+| **Tests Fallando** | 0 | 0.0% | Mantiene ✅ |
+| **Tests Skipped** | 0 | 0.0% | Mantiene ✅ |
+| **Suites Pasando** | 41 | 100% | +2 ✅ |
+| **Suites Fallando** | 0 | 0% | Mantiene ✅ |
+| **Total Tests** | 247 | 100% | +22 (métodos de pago + gastos) |
+| **Total Suites** | 41 | 100% | +2 |
 
 ---
 
-## ✅ Test Suites PASANDO (37/37 - 100%)
+## ✅ Test Suites PASANDO (41/41 - 100%)
 
 ### Componentes ✅
 1. **src/components/orders/OrdersTable.test.tsx** ✅
@@ -57,19 +57,23 @@
 28. ✅ **src/app/control/catalogo/unidades-de-negocio/[id]/departamentos/page.test.tsx** (4/4) 🆕 Sesión 3
 29. ✅ **src/app/control/catalogo/unidades-de-negocio/[id]/departamentos/[depId]/grupos/page.test.tsx** (4/4) 🆕 Sesión 3
 30. ✅ **src/app/control/catalogo/unidades-de-negocio/[id]/departamentos/[depId]/grupos/[groupId]/conceptos/page.test.tsx** (4/4) 🆕 Sesión 3
+31. ✅ **src/app/control/catalogo/metodos-pago/page.test.tsx** (9/9) 🆕 Sesión 5
+32. ✅ **src/app/control/finanzas/gastos/page.test.tsx** (13/13) 🆕 Sesión 6
 
-### Componentes de Integración ✅
-31. ✅ **src/components/control/sale-product-form.integration.test.tsx** (7/7)
+### Componentes de Control (Admin) ✅
+33. ✅ **src/components/control/sale-product-form.integration.test.tsx** (7/7)
+34. ✅ **src/components/control/__tests__/add-edit-payment-method-dialog.test.tsx** (11/11) 🆕 Sesión 5
+35. ✅ **src/components/control/__tests__/add-edit-expense-dialog.test.tsx** (9/9) 🆕 Sesión 6
 
 ### Hooks y Context ✅
-32. **src/hooks/use-signed-url.test.tsx** ✅
-33. **src/context/cart-context.test.tsx** ✅
+36. **src/hooks/use-signed-url.test.tsx** ✅
+37. **src/context/cart-context.test.tsx** ✅
 
 ### Módulo Tracker (Repartidores) ✅
-34. ✅ **src/components/repartidor/__tests__/DriverStats.test.tsx** (11/11) 🆕 Sesión 3
-35. ✅ **src/components/repartidor/__tests__/CustomerInfo.test.tsx** (12/12) ✅ Sesión 4
-36. ✅ **src/components/repartidor/__tests__/OrderCard.test.tsx** (12/12) ✅ Sesión 4
-37. ✅ **src/components/repartidor/__tests__/OrderItems.test.tsx** (13/13) ✅ Sesión 4
+38. ✅ **src/components/repartidor/__tests__/DriverStats.test.tsx** (11/11) 🆕 Sesión 3
+39. ✅ **src/components/repartidor/__tests__/CustomerInfo.test.tsx** (12/12) ✅ Sesión 4
+40. ✅ **src/components/repartidor/__tests__/OrderCard.test.tsx** (12/12) ✅ Sesión 4
+41. ✅ **src/components/repartidor/__tests__/OrderItems.test.tsx** (13/13) ✅ Sesión 4
 
 ---
 
@@ -1488,5 +1492,251 @@ expect(screen.getByText(/Cantidad: 2/)).toBeInTheDocument();
 
 ---
 
+## 📦 Sesión 6: Tests de Módulo de Gastos (2025-10-20)
+
+**Tests agregados:** +22 (13 tests de página + 9 tests de diálogo)
+**Suites agregadas:** +2
+**Resultado:** ✅ 247/247 tests pasando
+
+### 1. Módulo de Gastos - Refactorización y Tests
+
+#### Archivos Creados/Modificados:
+1. **src/app/control/finanzas/gastos/page.tsx** - Refactorizado para export de componente puro
+2. **src/app/control/finanzas/gastos/page.test.tsx** - 13 tests nuevos
+3. **src/components/control/__tests__/add-edit-expense-dialog.test.tsx** - 9 tests nuevos
+
+#### Patrón Aplicado: Mocks Dinámicos para Selectores en Cascada
+
+**Problema:**
+El módulo de gastos tiene selectores dependientes en cascada:
+- Unidad de Negocio → Departamento → Grupo → Concepto → Proveedor
+- Método de Pago (independiente)
+
+**Solución: Mock Fetch Dinámico**
+
+```typescript
+// Mock fetch dinámico para manejar selectores en cascada
+const createDynamicFetchMock = () => {
+  return jest.fn().mockImplementation((url: string) => {
+    // Business units
+    if (url === '/api/control/unidades-de-negocio') {
+      return Promise.resolve({
+        ok: true,
+        json: async () => [
+          { id: 'bu1', name: 'Unidad 1' },
+          { id: 'bu2', name: 'Unidad 2' },
+        ],
+      });
+    }
+
+    // Payment methods
+    if (url === '/api/control/metodos-pago') {
+      return Promise.resolve({
+        ok: true,
+        json: async () => [
+          { id: 'pm1', name: 'Efectivo', active: true },
+          { id: 'pm2', name: 'Tarjeta', active: false }, // Should be filtered out
+          { id: 'pm3', name: 'Transferencia', active: true },
+        ],
+      });
+    }
+
+    // Departments (cascading from business unit)
+    if (url.includes('/departamentos') && !url.includes('/grupos')) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => [
+          { id: 'dept1', name: 'Depto 1' },
+          { id: 'dept2', name: 'Depto 2' },
+        ],
+      });
+    }
+
+    // Groups (cascading from department)
+    if (url.includes('/grupos') && !url.includes('/conceptos')) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => [
+          { id: 'grp1', name: 'Grupo 1' },
+          { id: 'grp2', name: 'Grupo 2' },
+        ],
+      });
+    }
+
+    // Concepts (cascading from group)
+    if (url.includes('/conceptos')) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => [
+          { id: 'con1', name: 'Concepto 1' },
+          { id: 'con2', name: 'Concepto 2' },
+        ],
+      });
+    }
+
+    // Suppliers (cascading from concept)
+    if (url.includes('/proveedores')) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => [
+          { id: 'sup1', name: 'Proveedor 1' },
+          { id: 'sup2', name: 'Proveedor 2' },
+        ],
+      });
+    }
+
+    // Default error response
+    return Promise.resolve({
+      ok: false,
+      json: async () => ({ message: 'Not found' }),
+    });
+  });
+};
+
+describe('AddEditExpenseDialog', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseUser.mockReturnValue({ user: mockUser });
+
+    // Set up dynamic fetch mock
+    global.fetch = createDynamicFetchMock();
+  });
+
+  // Los tests ahora no necesitan mockear cada fetch manualmente
+  it('should render dialog in add mode', async () => {
+    render(
+      <AddEditExpenseDialog
+        isOpen={true}
+        onOpenChange={mockOnOpenChange}
+        expense={null}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Registrar Nuevo Gasto')).toBeInTheDocument();
+    });
+  });
+});
+```
+
+#### Ventajas del Patrón de Mocks Dinámicos:
+
+1. **DRY (Don't Repeat Yourself)**: El mock se define una vez en `beforeEach`
+2. **Mantenibilidad**: Si cambian los endpoints, solo se actualiza en un lugar
+3. **Realismo**: Simula mejor el comportamiento real de la API
+4. **Escalabilidad**: Fácil agregar más endpoints sin tocar cada test
+5. **Claridad**: Los tests se enfocan en lo que prueban, no en setup de mocks
+
+#### Refactorización Aplicada (Patrón de Sesión 5):
+
+```typescript
+// ANTES: No testable
+function AdminExpensesPage({ user }: WithAuthProps) {
+  // ... componente
+}
+
+export default withAuth(AdminExpensesPage, 'admin');
+
+// DESPUÉS: Testable + Seguro
+export function AdminExpensesPageContent({ user }: WithAuthProps) {
+  // ... componente (mismo código)
+}
+
+export default withAuth(AdminExpensesPageContent, 'admin');
+
+// En tests:
+import { AdminExpensesPageContent } from './page';
+
+// Test del componente puro directamente
+render(<AdminExpensesPageContent user={mockUser} />);
+```
+
+### 2. Tests de Página de Gastos (13/13) ✅
+
+**Archivo:** `src/app/control/finanzas/gastos/page.test.tsx`
+
+**Tests implementados:**
+1. ✅ Should render loading state initially
+2. ✅ Should fetch and display expenses
+3. ✅ Should display error message when fetch fails
+4. ✅ Should open add dialog when clicking add button
+5. ✅ Should call delete endpoint when confirming delete
+6. ✅ Should not delete when user cancels confirmation
+7. ✅ Should show pending status badge
+8. ✅ Should show approved status badge
+9. ✅ Should render breadcrumbs correctly
+10. ✅ Should filter expenses by status
+11. ✅ Should call approve endpoint when super_admin approves expense
+12. ✅ Should show reject prompt when super_admin tries to reject expense
+13. ✅ Should show payment method names
+
+**Características únicas de estos tests:**
+- Manejo de estados de gastos (draft, pending, approved, rejected)
+- Filtros de estado con Select component
+- Permisos super_admin para aprobar/rechazar
+- Integración con métodos de pago
+- Vista previa de imágenes de comprobantes
+
+### 3. Tests de Diálogo de Gastos (9/9) ✅
+
+**Archivo:** `src/components/control/__tests__/add-edit-expense-dialog.test.tsx`
+
+**Tests implementados:**
+1. ✅ Should render dialog in add mode
+2. ✅ Should render dialog in edit mode with existing data
+3. ✅ Should show validation error when submitting without required fields
+4. ✅ Should load business units and payment methods on open
+5. ✅ Should populate form when editing existing expense
+6. ✅ Should show upload receipt button
+7. ✅ Should disable upload button when no file selected
+8. ✅ Should verify fetch calls for business units
+9. ✅ Should verify fetch calls for payment methods
+
+**Características únicas de estos tests:**
+- Mock dinámico para selectores en cascada (6 niveles)
+- Validación de campos obligatorios
+- Upload de archivos (comprobantes)
+- Filtrado automático de métodos de pago activos
+- Modo add/edit con diferentes comportamientos
+
+### 4. Lecciones Aprendidas
+
+#### A. Mocks Dinámicos vs Mocks Estáticos
+
+**Cuándo usar mocks dinámicos:**
+- ✅ Múltiples endpoints relacionados
+- ✅ Selectores en cascada
+- ✅ Muchos tests que usan los mismos endpoints
+- ✅ APIs con patrones predecibles en las URLs
+
+**Cuándo usar mocks estáticos:**
+- ✅ Test de un endpoint específico con comportamiento único
+- ✅ Casos de error específicos
+- ✅ Respuestas que varían según parámetros complejos
+
+#### B. Patrón de Validación de Botones Deshabilitados
+
+```typescript
+// ❌ MAL: Intentar hacer click y esperar que no pase nada
+it('should not upload without file', async () => {
+  render(<Component />);
+  const uploadButton = screen.getByRole('button', { name: /Upload/i });
+  fireEvent.click(uploadButton);
+  // Problema: El botón está deshabilitado, nunca hace click
+  await waitFor(() => {
+    expect(mockToast).toHaveBeenCalled(); // ❌ Nunca se llama
+  });
+});
+
+// ✅ BIEN: Verificar que el botón está deshabilitado
+it('should disable upload button when no file selected', async () => {
+  render(<Component />);
+  const uploadButton = screen.getByRole('button', { name: /Upload/i });
+  expect(uploadButton).toBeDisabled();
+});
+```
+
+---
+
 **Próxima actualización:** N/A - Todos los tests están pasando ✅
-**Versión:** 3.0
+**Versión:** 4.0

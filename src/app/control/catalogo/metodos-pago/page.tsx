@@ -9,7 +9,7 @@ import { AddEditPaymentMethodDialog } from '@/components/control/add-edit-paymen
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
-function AdminPaymentMethodsPage({ user }: WithAuthProps) {
+export function AdminPaymentMethodsPageContent({ user }: WithAuthProps) {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -177,4 +177,4 @@ function AdminPaymentMethodsPage({ user }: WithAuthProps) {
   );
 }
 
-export default withAuth(AdminPaymentMethodsPage, 'admin');
+export default withAuth(AdminPaymentMethodsPageContent, 'admin');

@@ -130,4 +130,24 @@ export type PaymentMethod = {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
+
+// Roles del sistema
+export type UserRole = 'usuario' | 'repartidor' | 'admin' | 'super_admin';
+
+// Usuario del sistema (para gestión de usuarios)
+export type AppUser = {
+  id: string; // UID de Firebase Auth
+  email: string;
+  displayName?: string;
+  phoneNumber?: string;
+  photoURL?: string;
+  role: UserRole;
+  active: boolean; // Estado activo/inactivo
+  sucursalId?: string; // Sucursal asignada
+  departamento?: string; // Departamento organizacional
+  createdAt: Timestamp;
+  lastLogin?: Timestamp;
+  deleted: boolean;
+  deletedAt?: Timestamp;
+};
     

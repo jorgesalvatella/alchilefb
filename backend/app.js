@@ -4332,5 +4332,344 @@ app.use('/api/repartidores', repartidoresRouter);
 // pero se montan en /api/pedidos para mantener consistencia
 app.use('/api/pedidos', repartidoresRouter);
 
+// ==========================================
+// MÓDULO DE GESTIÓN DE USUARIOS
+// ==========================================
+
+/**
+ * @swagger
+ * /api/control/usuarios:
+ *   get:
+ *     summary: Listar todos los usuarios del sistema
+ *     tags: [Control - Usuarios]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: role
+ *         schema:
+ *           type: string
+ *           enum: [usuario, repartidor, admin, super_admin]
+ *         description: Filtrar por rol
+ *       - in: query
+ *         name: active
+ *         schema:
+ *           type: boolean
+ *         description: Filtrar por estado activo/inactivo
+ *       - in: query
+ *         name: sucursalId
+ *         schema:
+ *           type: string
+ *         description: Filtrar por sucursal
+ *     responses:
+ *       200:
+ *         description: Lista de usuarios
+ *       403:
+ *         description: No autorizado (requiere admin o super_admin)
+ *       500:
+ *         description: Error del servidor
+ */
+app.get('/api/control/usuarios', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { role, active, sucursalId } = req.query;
+
+    // Obtener todos los usuarios de Firebase Auth
+    let listUsersResult = await admin.auth().listUsers();
+    let allUsers = listUsersResult.users;
+
+    // Continuar paginando si hay más usuarios
+    while (listUsersResult.pageToken) {
+      listUsersResult = await admin.auth().listUsers(1000, listUsersResult.pageToken);
+      allUsers = allUsers.concat(listUsersResult.users);
+    }
+
+    // Obtener información adicional de Firestore si existe
+    const usersCollection = db.collection('users');
+    const firestoreUsersSnapshot = await usersCollection.where('deleted', '==', false).get();
+    const firestoreUsersMap = new Map();
+
+    firestoreUsersSnapshot.forEach(doc => {
+      firestoreUsersMap.set(doc.id, doc.data());
+    });
+
+    // Combinar información de Auth y Firestore
+    let users = allUsers.map(userRecord => {
+      const firestoreData = firestoreUsersMap.get(userRecord.uid) || {};
+      const customClaims = userRecord.customClaims || {};
+
+      // Determinar rol del usuario
+      let userRole = 'usuario'; // Rol por defecto
+      if (customClaims.super_admin) userRole = 'super_admin';
+      else if (customClaims.admin) userRole = 'admin';
+      else if (customClaims.repartidor) userRole = 'repartidor';
+
+      return {
+        id: userRecord.uid,
+        email: userRecord.email || '',
+        displayName: userRecord.displayName || firestoreData.displayName || '',
+        phoneNumber: userRecord.phoneNumber || firestoreData.phoneNumber || '',
+        photoURL: userRecord.photoURL || firestoreData.photoURL || '',
+        role: userRole,
+        active: !userRecord.disabled,
+        sucursalId: firestoreData.sucursalId || '',
+        departamento: firestoreData.departamento || '',
+        createdAt: userRecord.metadata.creationTime,
+        lastLogin: userRecord.metadata.lastSignInTime || null,
+        deleted: false,
+      };
+    });
+
+    // Aplicar filtros
+    if (role) {
+      users = users.filter(u => u.role === role);
+    }
+    if (active !== undefined) {
+      const isActive = active === 'true' || active === true;
+      users = users.filter(u => u.active === isActive);
+    }
+    if (sucursalId) {
+      users = users.filter(u => u.sucursalId === sucursalId);
+    }
+
+    // Ordenar por fecha de creación descendente
+    users.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/control/usuarios/{userId}:
+ *   patch:
+ *     summary: Actualizar información de un usuario (rol, estado, etc.)
+ *     tags: [Control - Usuarios]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: UID del usuario
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [usuario, repartidor, admin, super_admin]
+ *               active:
+ *                 type: boolean
+ *               sucursalId:
+ *                 type: string
+ *               departamento:
+ *                 type: string
+ *               displayName:
+ *                 type: string
+ *               phoneNumber:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Usuario actualizado exitosamente
+ *       403:
+ *         description: No autorizado
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role, active, sucursalId, departamento, displayName, phoneNumber } = req.body;
+
+    // Verificar que el usuario existe
+    let targetUser;
+    try {
+      targetUser = await admin.auth().getUser(userId);
+    } catch (error) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Obtener custom claims del usuario objetivo
+    const targetClaims = targetUser.customClaims || {};
+    const isTargetSuperAdmin = targetClaims.super_admin === true;
+
+    // Verificar permisos según jerarquía
+    const isSuperAdmin = req.user.super_admin === true;
+    const isAdmin = req.user.admin === true;
+
+    // Admin no puede modificar super_admins
+    if (isAdmin && !isSuperAdmin && isTargetSuperAdmin) {
+      return res.status(403).json({
+        message: 'Forbidden: Admin cannot modify Super Admin users'
+      });
+    }
+
+    // Admin no puede asignar rol de super_admin
+    if (isAdmin && !isSuperAdmin && role === 'super_admin') {
+      return res.status(403).json({
+        message: 'Forbidden: Admin cannot assign Super Admin role'
+      });
+    }
+
+    // Actualizar custom claims si se cambió el rol
+    if (role) {
+      const newClaims = {};
+
+      switch (role) {
+        case 'super_admin':
+          newClaims.super_admin = true;
+          newClaims.admin = true; // Super admin también es admin
+          newClaims.repartidor = false;
+          break;
+        case 'admin':
+          newClaims.super_admin = false;
+          newClaims.admin = true;
+          newClaims.repartidor = false;
+          break;
+        case 'repartidor':
+          newClaims.super_admin = false;
+          newClaims.admin = false;
+          newClaims.repartidor = true;
+          break;
+        case 'usuario':
+        default:
+          newClaims.super_admin = false;
+          newClaims.admin = false;
+          newClaims.repartidor = false;
+          break;
+      }
+
+      await admin.auth().setCustomUserClaims(userId, newClaims);
+    }
+
+    // Actualizar estado activo/inactivo en Firebase Auth
+    if (active !== undefined) {
+      await admin.auth().updateUser(userId, {
+        disabled: !active,
+      });
+    }
+
+    // Actualizar información en Firestore
+    const userRef = db.collection('users').doc(userId);
+    const updateData = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (sucursalId !== undefined) updateData.sucursalId = sucursalId;
+    if (departamento !== undefined) updateData.departamento = departamento;
+    if (displayName !== undefined) updateData.displayName = displayName;
+    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+
+    // Verificar si el documento existe, si no, crearlo
+    const userDoc = await userRef.get();
+    if (!userDoc.exists) {
+      updateData.createdAt = new Date().toISOString();
+      updateData.deleted = false;
+      await userRef.set(updateData);
+    } else {
+      await userRef.update(updateData);
+    }
+
+    res.status(200).json({
+      message: 'User updated successfully',
+      userId,
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/control/usuarios/{userId}:
+ *   delete:
+ *     summary: Eliminar (deshabilitar) un usuario del sistema
+ *     tags: [Control - Usuarios]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: UID del usuario
+ *     responses:
+ *       200:
+ *         description: Usuario eliminado exitosamente
+ *       403:
+ *         description: No autorizado (solo super_admin)
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+app.delete('/api/control/usuarios/:userId', authMiddleware, async (req, res) => {
+  try {
+    // Solo super_admin puede eliminar usuarios
+    if (!req.user || !req.user.super_admin) {
+      return res.status(403).json({
+        message: 'Forbidden: Only super_admin can delete users'
+      });
+    }
+
+    const { userId } = req.params;
+
+    // Verificar que el usuario existe
+    let targetUser;
+    try {
+      targetUser = await admin.auth().getUser(userId);
+    } catch (error) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // No permitir eliminar al propio usuario
+    if (userId === req.user.uid) {
+      return res.status(400).json({
+        message: 'Cannot delete your own user account'
+      });
+    }
+
+    // Deshabilitar usuario en Firebase Auth (soft delete)
+    await admin.auth().updateUser(userId, {
+      disabled: true,
+    });
+
+    // Marcar como eliminado en Firestore
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+
+    if (userDoc.exists) {
+      await userRef.update({
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+      });
+    } else {
+      // Si no existe en Firestore, crearlo como eliminado
+      await userRef.set({
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
 module.exports = app;
 

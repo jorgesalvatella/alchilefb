@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import Image from 'next/image';
 
-function AdminExpensesPage({ user }: WithAuthProps) {
+export function AdminExpensesPageContent({ user }: WithAuthProps) {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -375,4 +375,4 @@ function AdminExpensesPage({ user }: WithAuthProps) {
   );
 }
 
-export default withAuth(AdminExpensesPage, 'admin');
+export default withAuth(AdminExpensesPageContent, 'admin');

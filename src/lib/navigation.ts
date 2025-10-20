@@ -9,6 +9,7 @@ import {
   Bot,
   Tag,
   Truck,
+  UserCog,
   LucideIcon
 } from 'lucide-react';
 
@@ -86,6 +87,12 @@ export const adminNavigation: NavItem[] = [
     label: 'Configuración Avanzada',
     href: '#config',
     roles: ['super_admin'],
+  },
+  {
+    href: '/control/usuarios',
+    label: 'Gestión de Usuarios',
+    icon: UserCog,
+    roles: ['admin', 'super_admin'],
   },
   {
     href: '/control/catalogo',
