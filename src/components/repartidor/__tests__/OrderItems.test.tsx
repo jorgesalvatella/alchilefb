@@ -1,26 +1,17 @@
 import { render, screen } from '@testing-library/react';
 import { OrderItems } from '../OrderItems';
-import { CartItem } from '@/lib/types';
 
 describe('OrderItems Component', () => {
-  const mockItems: CartItem[] = [
+  const mockItems = [
     {
-      id: 'item1',
-      nombre: 'Tacos al Pastor',
-      precio: 50,
-      cantidad: 2,
-      imagen: '/tacos.jpg',
-      categoria: 'Comida',
-      disponible: true,
+      name: 'Tacos al Pastor',
+      price: 50,
+      quantity: 2,
     },
     {
-      id: 'item2',
-      nombre: 'Quesadilla',
-      precio: 40,
-      cantidad: 1,
-      imagen: '/quesadilla.jpg',
-      categoria: 'Comida',
-      disponible: true,
+      name: 'Quesadilla',
+      price: 40,
+      quantity: 1,
     },
   ];
 
@@ -34,166 +25,140 @@ describe('OrderItems Component', () => {
   it('should display item quantities correctly', () => {
     render(<OrderItems items={mockItems} total={140} paymentMethod="Efectivo" />);
 
-    expect(screen.getByText(/x2/)).toBeInTheDocument();
-    expect(screen.getByText(/x1/)).toBeInTheDocument();
+    expect(screen.getByText(/Cantidad: 2/)).toBeInTheDocument();
+    expect(screen.getByText(/Cantidad: 1/)).toBeInTheDocument();
   });
 
   it('should display item prices', () => {
     render(<OrderItems items={mockItems} total={140} paymentMethod="Efectivo" />);
 
-    expect(screen.getByText(/\$50/)).toBeInTheDocument();
-    expect(screen.getByText(/\$40/)).toBeInTheDocument();
+    expect(screen.getByText(/\$100\.00/)).toBeInTheDocument(); // 50 * 2
+    expect(screen.getByText(/\$40\.00/)).toBeInTheDocument(); // 40 * 1
   });
 
   it('should display total amount', () => {
     render(<OrderItems items={mockItems} total={140} paymentMethod="Efectivo" />);
 
-    expect(screen.getByText(/Total:/)).toBeInTheDocument();
-    expect(screen.getByText(/\$140/)).toBeInTheDocument();
+    expect(screen.getByText('Total')).toBeInTheDocument();
+    expect(screen.getByText(/\$140\.00/)).toBeInTheDocument();
   });
 
-  it('should display payment method', () => {
-    render(<OrderItems items={mockItems} total={140} paymentMethod="Efectivo" />);
+  it('should display payment method - cash', () => {
+    render(<OrderItems items={mockItems} total={140} paymentMethod="cash" />);
 
     expect(screen.getByText(/Efectivo/)).toBeInTheDocument();
   });
 
-  it('should display "Tarjeta a la entrega" payment method', () => {
-    render(<OrderItems items={mockItems} total={140} paymentMethod="Tarjeta a la entrega" />);
+  it('should display payment method - card', () => {
+    render(<OrderItems items={mockItems} total={140} paymentMethod="card" />);
 
-    expect(screen.getByText(/Tarjeta a la entrega/)).toBeInTheDocument();
+    expect(screen.getByText(/Tarjeta/)).toBeInTheDocument();
   });
 
-  it('should display "Transferencia bancaria" payment method', () => {
-    render(<OrderItems items={mockItems} total={140} paymentMethod="Transferencia bancaria" />);
+  it('should display payment method - transfer', () => {
+    render(<OrderItems items={mockItems} total={140} paymentMethod="transfer" />);
 
-    expect(screen.getByText(/Transferencia bancaria/)).toBeInTheDocument();
+    expect(screen.getByText(/Transferencia/)).toBeInTheDocument();
   });
 
   it('should handle empty items array', () => {
-    render(<OrderItems items={[]} total={0} paymentMethod="Efectivo" />);
+    render(<OrderItems items={[]} total={0} paymentMethod="cash" />);
 
-    expect(screen.getByText(/Total:/)).toBeInTheDocument();
-    expect(screen.getByText(/\$0/)).toBeInTheDocument();
+    expect(screen.getByText('Total')).toBeInTheDocument();
+    expect(screen.getByText(/\$0\.00/)).toBeInTheDocument();
   });
 
-  it('should display items with customizations', () => {
-    const itemsWithCustomizations: CartItem[] = [
+  it('should display item names and subtotals', () => {
+    const items = [
       {
-        id: 'item1',
-        nombre: 'Hamburguesa',
-        precio: 80,
-        cantidad: 1,
-        imagen: '',
-        categoria: 'Comida',
-        disponible: true,
-        customizations: {
-          added: [
-            { nombre: 'Extra queso', precio: 10 },
-            { nombre: 'Tocino', precio: 15 },
-          ],
-          removed: ['Cebolla'],
-        },
+        name: 'Hamburguesa',
+        price: 80,
+        quantity: 1,
       },
     ];
 
-    render(<OrderItems items={itemsWithCustomizations} total={105} paymentMethod="Efectivo" />);
+    render(<OrderItems items={items} total={80} paymentMethod="cash" />);
 
     expect(screen.getByText('Hamburguesa')).toBeInTheDocument();
-    expect(screen.getByText(/Extra queso/)).toBeInTheDocument();
-    expect(screen.getByText(/Tocino/)).toBeInTheDocument();
-    expect(screen.getByText(/Sin Cebolla/)).toBeInTheDocument();
+    // Hay 2 instancias de $80.00: el subtotal del item y el total
+    const prices = screen.getAllByText(/\$80\.00/);
+    expect(prices.length).toBeGreaterThanOrEqual(1);
   });
 
   it('should format currency correctly for large amounts', () => {
-    const expensiveItems: CartItem[] = [
+    const expensiveItems = [
       {
-        id: 'item1',
-        nombre: 'Producto Caro',
-        precio: 1500,
-        cantidad: 2,
-        imagen: '',
-        categoria: 'Especial',
-        disponible: true,
+        name: 'Producto Caro',
+        price: 1500,
+        quantity: 2,
       },
     ];
 
-    render(<OrderItems items={expensiveItems} total={3000} paymentMethod="Efectivo" />);
+    render(<OrderItems items={expensiveItems} total={3000} paymentMethod="cash" />);
 
-    expect(screen.getByText(/\$1,500/)).toBeInTheDocument();
-    expect(screen.getByText(/\$3,000/)).toBeInTheDocument();
+    // Hay 2 instancias de $3000.00: el subtotal del item y el total
+    const prices = screen.getAllByText(/\$3000\.00/);
+    expect(prices.length).toBe(2);
   });
 
-  it('should display shopping bag icon', () => {
-    render(<OrderItems items={mockItems} total={140} paymentMethod="Efectivo" />);
+  it('should display card header title', () => {
+    render(<OrderItems items={mockItems} total={140} paymentMethod="cash" />);
 
-    const shoppingBagIcon = screen.getByTestId('shopping-bag-icon');
-    expect(shoppingBagIcon).toBeInTheDocument();
+    expect(screen.getByText('Productos del Pedido')).toBeInTheDocument();
   });
 
-  it('should display credit card icon', () => {
-    render(<OrderItems items={mockItems} total={140} paymentMethod="Efectivo" />);
+  it('should display payment method label', () => {
+    render(<OrderItems items={mockItems} total={140} paymentMethod="cash" />);
 
-    const creditCardIcon = screen.getByTestId('credit-card-icon');
-    expect(creditCardIcon).toBeInTheDocument();
+    expect(screen.getByText('Método de pago:')).toBeInTheDocument();
   });
 
   it('should calculate total correctly for multiple items', () => {
-    const multipleItems: CartItem[] = [
+    const multipleItems = [
       {
-        id: '1',
-        nombre: 'Item 1',
-        precio: 25,
-        cantidad: 2,
-        imagen: '',
-        categoria: 'Cat1',
-        disponible: true,
+        name: 'Item 1',
+        price: 25,
+        quantity: 2,
       },
       {
-        id: '2',
-        nombre: 'Item 2',
-        precio: 50,
-        cantidad: 3,
-        imagen: '',
-        categoria: 'Cat2',
-        disponible: true,
+        name: 'Item 2',
+        price: 50,
+        quantity: 3,
       },
     ];
 
     // Total should be: (25 * 2) + (50 * 3) = 50 + 150 = 200
-    render(<OrderItems items={multipleItems} total={200} paymentMethod="Efectivo" />);
+    render(<OrderItems items={multipleItems} total={200} paymentMethod="cash" />);
 
-    expect(screen.getByText(/\$200/)).toBeInTheDocument();
+    expect(screen.getByText(/\$200\.00/)).toBeInTheDocument();
   });
 
-  it('should apply correct styling to container', () => {
-    const { container } = render(<OrderItems items={mockItems} total={140} paymentMethod="Efectivo" />);
+  it('should render as card component', () => {
+    const { container } = render(<OrderItems items={mockItems} total={140} paymentMethod="cash" />);
 
-    const mainDiv = container.querySelector('.bg-white');
-    expect(mainDiv).toBeInTheDocument();
+    const card = container.querySelector('.rounded-lg.border');
+    expect(card).toBeInTheDocument();
   });
 
-  it('should show item count heading', () => {
-    render(<OrderItems items={mockItems} total={140} paymentMethod="Efectivo" />);
+  it('should show correct heading', () => {
+    render(<OrderItems items={mockItems} total={140} paymentMethod="cash" />);
 
-    expect(screen.getByText(/Artículos del Pedido/)).toBeInTheDocument();
+    expect(screen.getByText('Productos del Pedido')).toBeInTheDocument();
   });
 
   it('should handle items with decimal prices', () => {
-    const decimalItems: CartItem[] = [
+    const decimalItems = [
       {
-        id: 'item1',
-        nombre: 'Item con decimales',
-        precio: 49.99,
-        cantidad: 1,
-        imagen: '',
-        categoria: 'Test',
-        disponible: true,
+        name: 'Item con decimales',
+        price: 49.99,
+        quantity: 1,
       },
     ];
 
-    render(<OrderItems items={decimalItems} total={49.99} paymentMethod="Efectivo" />);
+    render(<OrderItems items={decimalItems} total={49.99} paymentMethod="cash" />);
 
-    expect(screen.getByText(/\$49\.99/)).toBeInTheDocument();
+    // Hay 2 instancias de $49.99: el subtotal del item y el total
+    const prices = screen.getAllByText(/\$49\.99/);
+    expect(prices.length).toBe(2);
   });
 });

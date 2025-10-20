@@ -1,12 +1,21 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Order } from '@/lib/types';
+import { useUser } from '@/firebase/provider';
 
 // Mock de next/navigation
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({
+  useRouter: jest.fn(() => ({
     push: jest.fn(),
     replace: jest.fn(),
-  }),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    prefetch: jest.fn(),
+  })),
+  usePathname: jest.fn(() => '/control/pedidos'),
+  useSearchParams: jest.fn(() => ({
+    get: jest.fn(),
+  })),
 }));
 
 // Mock de withAuth

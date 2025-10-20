@@ -51,11 +51,6 @@ describe('OrderTrackingPage', () => {
     mockFetch.mockClear();
   });
 
-  // This test is not applicable anymore because withAuth handles loading
-  it.skip('should render loading skeletons initially', () => {
-    // withAuth handles loading state
-  });
-
   it('should call notFound() if order is not found (404)', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,

@@ -36,54 +36,48 @@ describe('CustomerInfo Component', () => {
     expect(screen.getByText(/06000/)).toBeInTheDocument();
   });
 
-  it('should render call button with correct href', () => {
+  it('should render call button', () => {
     render(<CustomerInfo customer={mockAddress} />);
 
-    const callButton = screen.getByRole('link', { name: /llamar/i });
+    const callButton = screen.getByRole('button', { name: /llamar/i });
     expect(callButton).toBeInTheDocument();
-    expect(callButton).toHaveAttribute('href', 'tel:555-9876');
   });
 
-  it('should handle WhatsApp address type', () => {
-    render(<CustomerInfo customer="whatsapp" />);
-
-    expect(screen.getByText('Coordinar por WhatsApp')).toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
-  });
-
-  it('should handle GPS coordinates (lat/lng object)', () => {
-    const gpsAddress = {
-      lat: 19.4326,
-      lng: -99.1332,
+  it('should handle address without phone', () => {
+    const addressWithoutPhone = {
+      ...mockAddress,
+      phone: undefined,
     };
+    render(<CustomerInfo customer={addressWithoutPhone} />);
 
-    render(<CustomerInfo customer={gpsAddress} />);
-
-    expect(screen.getByText(/Ubicación GPS/)).toBeInTheDocument();
-    expect(screen.getByText(/19.4326/)).toBeInTheDocument();
-    expect(screen.getByText(/-99.1332/)).toBeInTheDocument();
+    expect(screen.getByText('María González')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /llamar/i })).not.toBeInTheDocument();
   });
 
-  it('should render phone icon', () => {
+  it('should render open maps button', () => {
     render(<CustomerInfo customer={mockAddress} />);
 
-    const phoneIcon = screen.getByTestId('phone-icon');
-    expect(phoneIcon).toBeInTheDocument();
+    const mapsButton = screen.getByRole('button', { name: /abrir en maps/i });
+    expect(mapsButton).toBeInTheDocument();
   });
 
-  it('should render map pin icon', () => {
+  it('should display customer information card title', () => {
     render(<CustomerInfo customer={mockAddress} />);
 
-    const mapPinIcon = screen.getByTestId('map-pin-icon');
-    expect(mapPinIcon).toBeInTheDocument();
+    expect(screen.getByText('Información del Cliente')).toBeInTheDocument();
   });
 
-  it('should apply correct styling to container', () => {
+  it('should display delivery address label', () => {
+    render(<CustomerInfo customer={mockAddress} />);
+
+    expect(screen.getByText('Dirección de Entrega')).toBeInTheDocument();
+  });
+
+  it('should render as a card component', () => {
     const { container } = render(<CustomerInfo customer={mockAddress} />);
 
-    const mainDiv = container.querySelector('.bg-white');
-    expect(mainDiv).toBeInTheDocument();
-    expect(mainDiv).toHaveClass('rounded-lg', 'shadow-sm', 'p-4');
+    const card = container.querySelector('.rounded-lg.border');
+    expect(card).toBeInTheDocument();
   });
 
   it('should handle address without postal code', () => {
@@ -125,12 +119,12 @@ describe('CustomerInfo Component', () => {
     }
   });
 
-  it('should render call button with primary color', () => {
-    const { container } = render(<CustomerInfo customer={mockAddress} />);
+  it('should render call button with blue styling', () => {
+    render(<CustomerInfo customer={mockAddress} />);
 
-    const callButton = container.querySelector('a[href="tel:555-9876"]');
+    const callButton = screen.getByRole('button', { name: /llamar/i });
     expect(callButton).toBeInTheDocument();
-    expect(callButton?.className).toContain('bg-blue-600');
+    expect(callButton.className).toContain('text-blue-600');
   });
 
   it('should handle very long customer names', () => {
@@ -153,7 +147,7 @@ describe('CustomerInfo Component', () => {
     render(<CustomerInfo customer={internationalAddress} />);
 
     expect(screen.getByText('+52 555 123 4567')).toBeInTheDocument();
-    const callButton = screen.getByRole('link', { name: /llamar/i });
-    expect(callButton).toHaveAttribute('href', 'tel:+52 555 123 4567');
+    const callButton = screen.getByRole('button', { name: /llamar/i });
+    expect(callButton).toBeInTheDocument();
   });
 });

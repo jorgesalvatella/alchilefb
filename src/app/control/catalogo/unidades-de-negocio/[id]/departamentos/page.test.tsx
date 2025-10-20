@@ -1,14 +1,42 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import AdminDepartmentsPage from './page';
 import { useUser } from '@/firebase/provider';
 import { useParams } from 'next/navigation';
 
-// Mock de los hooks de Next.js y Firebase
+// Mock de next/navigation
 jest.mock('next/navigation', () => ({
   useParams: jest.fn(),
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    prefetch: jest.fn(),
+  })),
+  usePathname: jest.fn(() => '/control/catalogo/unidades-de-negocio/[id]/departamentos'),
+  useSearchParams: jest.fn(() => ({
+    get: jest.fn(),
+  })),
 }));
+
+// Mock de withAuth
+jest.mock('@/firebase/withAuth', () => ({
+  withAuth: (Component: any) => {
+    return function MockedComponent(props: any) {
+      const mockUser = {
+        uid: 'test-admin-123',
+        email: 'admin@test.com',
+        getIdToken: jest.fn(() => Promise.resolve('test-token')),
+      };
+      const mockClaims = { admin: true };
+      return <Component {...props} user={mockUser} claims={mockClaims} />;
+    };
+  },
+}));
+
+// Mock de Firebase
 jest.mock('@/firebase/provider', () => ({
   useUser: jest.fn(),
   useFirestore: jest.fn(() => null),
@@ -23,9 +51,14 @@ jest.mock('@/hooks/use-toast', () => ({
 global.fetch = jest.fn();
 
 const mockUseUser = useUser as jest.Mock;
+
+let AdminDepartmentsPage: any;
 const mockUseParams = useParams as jest.Mock;
 
 describe('AdminDepartmentsPage', () => {
+  beforeAll(() => {
+    AdminDepartmentsPage = require('./page').default;
+  });
   beforeEach(() => {
     jest.clearAllMocks();
     // Simulamos un usuario y un ID de unidad de negocio por defecto

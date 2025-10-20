@@ -1,7 +1,37 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import AdminSaleProductsPage from './page';
 import { useUser } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
+
+// Mock de next/navigation
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    prefetch: jest.fn(),
+  })),
+  usePathname: jest.fn(() => '/control/productos-venta'),
+  useSearchParams: jest.fn(() => ({
+    get: jest.fn(),
+  })),
+}));
+
+// Mock de withAuth
+jest.mock('@/firebase/withAuth', () => ({
+  withAuth: (Component: any) => {
+    return function MockedComponent(props: any) {
+      const mockUser = {
+        uid: 'test-admin-123',
+        email: 'admin@test.com',
+        getIdToken: jest.fn(() => Promise.resolve('test-token')),
+      };
+      const mockClaims = { admin: true };
+      return <Component {...props} user={mockUser} claims={mockClaims} />;
+    };
+  },
+}));
 
 // Mocks
 jest.mock('@/firebase/provider', () => ({
@@ -17,7 +47,12 @@ const mockUseToast = useToast as jest.Mock;
 const mockFetch = global.fetch as jest.Mock;
 const mockToast = jest.fn();
 
+let AdminSaleProductsPage: any;
+
 describe('AdminSaleProductsPage', () => {
+  beforeAll(() => {
+    AdminSaleProductsPage = require('./page').default;
+  });
   beforeEach(() => {
     mockUseUser.mockReturnValue({ user: { getIdToken: () => Promise.resolve('test-token') } });
     mockUseToast.mockReturnValue({ toast: mockToast });

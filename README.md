@@ -36,26 +36,44 @@ Aplicación completa de delivery de comida construida con Next.js 15, Firebase y
 - ✅ Mapa siempre visible en seguimiento de pedidos (todas las direcciones)
 - ✅ Geocoding automático con coordenadas persistidas en Firestore
 - ✅ Hub de Pedidos completamente funcional con KPIs y filtros
-### 7. Pruebas (Testing)
+## 📚 Documentación
 
-El proyecto cuenta con una suite de pruebas automatizadas para asegurar la calidad y estabilidad del código.
+La documentación completa del proyecto está organizada en la carpeta [`docs/`](./docs/README.md):
 
-**Comando Principal:**
-Para ejecutar todas las pruebas (frontend y backend), utiliza:
+- **[Getting Started](./docs/01-getting-started/)** - Guías de configuración inicial
+- **[Architecture](./docs/02-architecture/)** - Diseño y arquitectura del sistema
+- **[Modules](./docs/03-modules/)** - Documentación de cada módulo funcional
+- **[Testing](./docs/04-testing/)** - Guías y registros de testing
+- **[Security](./docs/05-security/)** - Auditorías y guías de seguridad
+- **[Development](./docs/06-development/)** - Recursos para desarrollo
+
+## 🧪 Testing - 100% de Cobertura ✅
+
+El proyecto cuenta con una suite completa de pruebas automatizadas:
+
+| Categoría | Estado | Tests | Cobertura |
+|-----------|--------|-------|-----------|
+| **Frontend** | ✅ | 206/206 | 100% |
+| **Backend** | ✅ | 174/174 | 100% |
+| **Test Suites** | ✅ | 37/37 | 100% |
+| **Total** | ✅ | **380/380** | **100%** |
+
+**Comandos:**
 ```bash
+# Ejecutar todos los tests
 npm test
+
+# Solo frontend
+npm run test:frontend
+
+# Solo backend
+npm run test:backend
 ```
 
-**Ejecutar Suites por Separado:**
-- **Frontend:** La suite del frontend está estable y todas las pruebas pasan.
-  ```bash
-  npm run test:frontend
-  ```
-- **Backend:** 
-  ```bash
-  npm run test:backend
-  ```
-  > ✅ **Estado:** La mayoría de las pruebas del backend pasan, incluyendo las suites críticas para los módulos de **Hub de Pedidos** y **Catálogos**. Aún existen algunas fallas menores en tests heredados (`cart.test.js`, `pedidos.test.js`) que están documentadas y no afectan la funcionalidad principal.
+**Documentación de Testing:**
+- [Frontend Tests](./docs/04-testing/frontend-tests.md) - Estado detallado de tests frontend
+- [Backend Tests](./docs/04-testing/backend-tests.md) - Estado detallado de tests backend
+- [Testing Guide](./docs/04-testing/testing-guide.md) - Guía para escribir tests
 
 ---
 

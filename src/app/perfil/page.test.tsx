@@ -49,16 +49,6 @@ describe('ProfilePage', () => {
     window.alert = jest.fn(); // Mock alert
   });
 
-  // These tests are not applicable anymore because withAuth handles authentication
-  // The component always receives a user prop from withAuth
-  it.skip('should redirect to login if user is not authenticated', () => {
-    // withAuth handles this at a higher level
-  });
-
-  it.skip('should render loading skeletons when user is loading', () => {
-    // withAuth handles loading state
-  });
-
   it('should fetch and display user profile data', async () => {
     const mockProfile = {
       firstName: 'John',

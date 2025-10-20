@@ -1,6 +1,36 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import AdminProductsPage from './page';
 import { useCollection } from '@/firebase/firestore/use-collection';
+
+// Mock de next/navigation
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+    prefetch: jest.fn(),
+  })),
+  usePathname: jest.fn(() => '/control/productos'),
+  useSearchParams: jest.fn(() => ({
+    get: jest.fn(),
+  })),
+}));
+
+// Mock de withAuth
+jest.mock('@/firebase/withAuth', () => ({
+  withAuth: (Component: any) => {
+    return function MockedComponent(props: any) {
+      const mockUser = {
+        uid: 'test-admin-123',
+        email: 'admin@test.com',
+        getIdToken: jest.fn(() => Promise.resolve('test-token')),
+      };
+      const mockClaims = { admin: true };
+      return <Component {...props} user={mockUser} claims={mockClaims} />;
+    };
+  },
+}));
 
 // Mock de componentes hijos y hooks
 jest.mock('@/firebase/firestore/use-collection');
@@ -22,7 +52,13 @@ jest.mock('@/components/control/add-edit-product-dialog', () => ({
 
 const mockUseCollection = useCollection as jest.Mock;
 
+let AdminProductsPage: any;
+
 describe('AdminProductsPage', () => {
+  beforeAll(() => {
+    AdminProductsPage = require('./page').default;
+  });
+
   beforeEach(() => {
     mockUseCollection.mockClear();
   });

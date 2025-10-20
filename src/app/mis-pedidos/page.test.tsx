@@ -44,15 +44,6 @@ describe('OrdersPage', () => {
     mockFetch.mockClear();
   });
 
-  // These tests are not applicable anymore because withAuth handles authentication/loading
-  it.skip('should render loading skeletons when user is loading', () => {
-    // withAuth handles loading state
-  });
-
-  it.skip('should prompt to login if user is not authenticated', async () => {
-    // withAuth handles authentication redirect
-  });
-
   it('should display empty state if user has no orders', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,

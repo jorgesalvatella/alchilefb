@@ -24,6 +24,15 @@ describe('OrderCard Component', () => {
         categoria: 'Comida',
         disponible: true,
       },
+      {
+        id: 'item2',
+        nombre: 'Quesadillas',
+        precio: 50,
+        cantidad: 1,
+        imagen: '',
+        categoria: 'Comida',
+        disponible: true,
+      },
     ],
     totalVerified: 100,
     total: 100,
@@ -60,7 +69,7 @@ describe('OrderCard Component', () => {
     expect(screen.getByText(/\$100/)).toBeInTheDocument();
 
     // Check payment method
-    expect(screen.getByText('Efectivo')).toBeInTheDocument();
+    expect(screen.getByText(/Efectivo/)).toBeInTheDocument();
 
     // Check items count
     expect(screen.getByText(/2 productos/)).toBeInTheDocument();
