@@ -470,9 +470,9 @@ Cuando un agente complete una tarea mayor, debe incluir:
 
 | Categoría | Estado | Tests | Cobertura |
 |-----------|--------|-------|-----------|
-| **Frontend** | ✅ | 206/206 | 100% |
-| **Backend** | ✅ | 174/174 | 100% |
-| **Total** | ✅ | **380/380** | **100%** |
+| **Frontend** | ✅ | 221/221 | 100% |
+| **Backend** | ✅ | 209/209 | 100% |
+| **Total** | ✅ | **430/430** | **100%** |
 
 **Documentación de Testing**: [`docs/04-testing/`](./docs/04-testing/)
 
@@ -498,5 +498,5 @@ Cuando un agente complete una tarea mayor, debe incluir:
 ---
 
 **Mantenido por**: Equipo de Desarrollo Al Chile FB
-**Última actualización**: 2025-10-19
-**Versión**: 4.0
+**Última actualización**: 2025-10-20
+**Versión**: 4.1

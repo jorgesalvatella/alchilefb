@@ -356,19 +356,22 @@ describe('API Endpoints', () => {
           req.user = { uid: 'test-uid-admin', admin: true };
           next();
         });
-        // Mock concept and supplier validation
-        admin.firestore().get.mockResolvedValueOnce({
-          empty: false,
-          docs: [{ data: () => ({ proveedoresIds: ['supplier-1'] }) }],
+        // Mock concept and supplier validation - doc().get()
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({
+            exists: true,
+            data: () => ({ proveedoresIds: ['supplier-1'] }),
+          }),
         });
         // Mock expense ID generation query
         admin.firestore().get.mockResolvedValueOnce({ empty: true });
-        // Mock expense creation
-        admin.firestore().set.mockResolvedValue();
+        // Mock expense creation - add()
+        admin.firestore().add = jest.fn().mockResolvedValue({ id: 'new-expense-id' });
 
         const response = await request(app).post('/api/control/gastos').send(mockExpenseData);
-        expect(response.statusCode).toBe(200);
-        expect(response.body.message).toContain('created successfully');
+        expect(response.statusCode).toBe(201);
+        expect(response.body.id).toBeDefined();
+        expect(response.body.expenseId).toBeDefined();
       });
     });
 
@@ -404,7 +407,7 @@ describe('API Endpoints', () => {
         admin.firestore().doc = jest.fn().mockReturnValue({
           get: jest.fn().mockResolvedValue({
             exists: true,
-            data: () => ({ status: 'pending', createdBy: 'other-user' }),
+            data: () => ({ status: 'pending', createdBy: 'other-user', expenseId: 'EXP-001' }),
           }),
           update: jest.fn().mockResolvedValue(),
         });
@@ -416,7 +419,8 @@ describe('API Endpoints', () => {
 
         const response = await request(app).put(`/api/control/gastos/${gastoId}`).send(mockExpenseData);
         expect(response.statusCode).toBe(200);
-        expect(response.body.message).toContain('updated');
+        expect(response.body.id).toBe(gastoId);
+        expect(response.body.expenseId).toBeDefined();
       });
     });
 

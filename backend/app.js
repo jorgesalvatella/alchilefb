@@ -2456,6 +2456,11 @@ app.delete('/api/control/gastos/:expenseId', authMiddleware, async (req, res) =>
         const { expenseId } = req.params;
         const db = admin.firestore();
         const expenseRef = db.collection('expenses').doc(expenseId);
+        const expenseDoc = await expenseRef.get();
+
+        if (!expenseDoc.exists) {
+            return res.status(404).json({ message: 'Expense not found' });
+        }
 
         await expenseRef.update({
             deleted: true,

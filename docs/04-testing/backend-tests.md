@@ -1,7 +1,7 @@
 # Registro de Tests de Backend
 
-**Última actualización:** 2025-10-19
-**Estado general:** ✅ 167/167 tests pasando (100%)
+**Última actualización:** 2025-10-20
+**Estado general:** ✅ 209/209 tests pasando (100%)
 **Test Suites:** 11 totales, 11 pasando
 
 ---
@@ -133,9 +133,9 @@
 ---
 
 ## 5. index.test.js
-**Archivo testeado:** `app.js` (endpoints generales)
-**Propósito:** Tests generales de endpoints de usuario
-**Estado:** ✅ PASANDO (4 tests)
+**Archivo testeado:** `app.js` (endpoints generales + gastos)
+**Propósito:** Tests generales de endpoints de usuario y módulo de gastos
+**Estado:** ✅ PASANDO (46 tests)
 
 ### Tests incluidos:
 
@@ -148,7 +148,56 @@
 4. ✅ Should return 404 if order belongs to another user
 5. ✅ Should return 200 and order data if user is owner
 
-**Cobertura:** Autenticación, autorización de recursos por usuario
+**Módulo de Gastos (Expenses):**
+
+**GET /api/control/gastos:**
+6. ✅ Should return 401 for unauthenticated users
+7. ✅ Should return 403 for non-admin users
+8. ✅ Should return expenses for admin users
+9. ✅ Should filter expenses by status
+10. ✅ Should filter expenses by businessUnitId
+11. ✅ Should filter expenses by departmentId
+12. ✅ Should filter expenses by supplierId
+
+**POST /api/control/gastos:**
+13. ✅ Should return 403 for non-admin users
+14. ✅ Should return 400 if required fields are missing
+15. ✅ Should return 400 if concept not found
+16. ✅ Should return 400 if supplier not associated with concept
+17. ✅ Should return 201 OK for valid expense creation
+
+**PUT /api/control/gastos/:id:**
+18. ✅ Should return 403 for non-admin users
+19. ✅ Should return 404 for non-existent expense
+20. ✅ Should return 403 if non-super_admin tries to edit approved expense
+21. ✅ Should return 200 OK for valid expense update by super_admin
+
+**DELETE /api/control/gastos/:id:**
+22. ✅ Should return 403 for non-admin users
+23. ✅ Should return 404 for non-existent expense
+24. ✅ Should return 200 OK for valid expense soft deletion
+
+**POST /api/control/gastos/:id/submit:**
+25. ✅ Should return 403 for non-admin users
+26. ✅ Should return 404 for non-existent expense
+27. ✅ Should return 400 if expense not in draft/rejected status
+28. ✅ Should return 400 if receipt image missing
+29. ✅ Should submit expense successfully (draft -> pending)
+
+**POST /api/control/gastos/:id/approve:**
+30. ✅ Should return 403 for non-super_admin users
+31. ✅ Should return 404 for non-existent expense
+32. ✅ Should return 400 if expense not in pending status
+33. ✅ Should approve expense successfully
+
+**POST /api/control/gastos/:id/reject:**
+34. ✅ Should return 403 for non-super_admin users
+35. ✅ Should return 404 for non-existent expense
+36. ✅ Should return 400 if rejection reason missing
+37. ✅ Should return 400 if expense not in pending status
+38. ✅ Should reject expense successfully (pending -> draft)
+
+**Cobertura:** Autenticación, autorización de recursos por usuario, CRUD completo de gastos, flujo de aprobación (draft → pending → approved/rejected)
 
 ---
 
@@ -345,7 +394,7 @@
 | Carrito (básico) | cart.test.js | 8 | ✅ | CRÍTICO |
 | Carrito (promociones) | cart-promotions.test.js | 24 | ✅ | CRÍTICO |
 | Categorías Venta | categorias-venta.test.js | 13 | ✅ | ALTO |
-| Endpoints Generales | index.test.js | 4 | ✅ | MEDIO |
+| Endpoints Generales + Gastos | index.test.js | 46 | ✅ | CRÍTICO |
 | Pedidos (Usuario) | pedidos.test.js | 3 | ✅ | CRÍTICO |
 | Pedidos (Control) | pedidos-control.test.js | 17 | ✅ | CRÍTICO |
 | Productos Venta | productos-venta.test.js | 7 | ✅ | ALTO |
@@ -353,7 +402,7 @@
 | Promociones/Paquetes | promotions.test.js | 28 | ✅ | CRÍTICO |
 | Repartidores | repartidores.test.js | 60 | ✅ | CRÍTICO |
 
-**Total: 167 tests** ✅
+**Total: 209 tests** ✅
 
 ---
 
@@ -393,6 +442,13 @@
 - ✅ GET `/api/pedidos/control/:orderId`
 - ✅ DELETE `/api/pedidos/control/:orderId/cancel`
 - ✅ PUT `/api/pedidos/control/:orderId/asignar-repartidor`
+- ✅ GET `/api/control/gastos`
+- ✅ POST `/api/control/gastos`
+- ✅ PUT `/api/control/gastos/:id`
+- ✅ DELETE `/api/control/gastos/:id`
+- ✅ POST `/api/control/gastos/:id/submit`
+- ✅ POST `/api/control/gastos/:id/approve`
+- ✅ POST `/api/control/gastos/:id/reject`
 
 ### Repartidores:
 - ✅ GET `/api/repartidores/me`
@@ -469,7 +525,19 @@
 
 ## Notas de Implementación
 
-### Cambios Realizados en Esta Sesión:
+### Cambios Realizados el 2025-10-20:
+
+1. **index.test.js** - Corregidos 3 tests de gastos (42 tests añadidos previamente)
+   - Corregido mock de creación de gastos (POST): cambio a `admin.firestore().add()` y expectativa de status 201
+   - Corregido test de actualización (PUT): expectativa de objeto completo en lugar de mensaje
+   - Total: 46 tests pasando (5 de orders + 41 de gastos)
+
+2. **app.js** - Corregido endpoint DELETE de gastos (líneas 2450-2475)
+   - Agregada validación de existencia del documento antes del update
+   - Ahora retorna 404 correctamente cuando el gasto no existe
+   - Previene error 500 al intentar actualizar documento inexistente
+
+### Cambios Realizados el 2025-10-19:
 
 1. **authMiddleware.test.js** - Creado desde cero (15 tests)
    - Tests de seguridad críticos para autenticación
@@ -497,14 +565,18 @@
 
 ### Cambios en Código de Producción:
 
-1. **cart.js (líneas 261-267)**
+1. **app.js (DELETE /api/control/gastos/:expenseId)** - 2025-10-20
+   - Agregada validación de existencia antes de soft delete
+   - Previene errores 500, retorna 404 correctamente
+
+2. **cart.js (líneas 261-267)** - 2025-10-19
    - Modificado para retornar descuento total (descuento unitario × quantity)
    - Mejora para facilitar uso en frontend
 
-2. **cart.js (líneas 321-325)**
+3. **cart.js (líneas 321-325)** - 2025-10-19
    - Mejorado manejo de errores (400 vs 500)
 
-3. **repartidores.js (línea 389)**
+4. **repartidores.js (línea 389)** - 2025-10-19
    - Corregido typo: `repartidoresSnapshot` → `repartidorSnapshot`
 
 ---
