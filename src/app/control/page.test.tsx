@@ -1,6 +1,23 @@
 import { render, screen } from '@testing-library/react';
-import AdminDashboardPage from './page';
 import { useCollection } from '@/firebase/firestore/use-collection';
+
+// Mock withAuth to return the component directly with a mock user
+jest.mock('@/firebase/withAuth', () => ({
+  withAuth: (Component: any) => {
+    return function MockedComponent(props: any) {
+      const mockUser = {
+        uid: 'test-admin-123',
+        email: 'admin@test.com',
+        getIdToken: jest.fn(() => Promise.resolve('test-token')),
+      };
+      const mockClaims = { admin: true };
+      return <Component {...props} user={mockUser} claims={mockClaims} />;
+    };
+  },
+}));
+
+// Import AdminDashboardPage AFTER mocking withAuth
+let AdminDashboardPage: any;
 
 // Mock del hook useCollection
 jest.mock('@/firebase/firestore/use-collection');
@@ -14,6 +31,11 @@ jest.mock('@/firebase/provider', () => ({
 const mockUseCollection = useCollection as jest.Mock;
 
 describe('AdminDashboardPage', () => {
+  beforeAll(() => {
+    // Import AdminDashboardPage after all mocks are set up
+    AdminDashboardPage = require('./page').default;
+  });
+
   beforeEach(() => {
     // Limpiar mocks antes de cada prueba
     mockUseCollection.mockClear();

@@ -12,7 +12,7 @@ export interface WithAuthProps {
   claims: { [key: string]: any };
 }
 
-type Role = 'user' | 'admin' | 'super_admin';
+type Role = 'user' | 'admin' | 'super_admin' | 'repartidor';
 
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -32,6 +32,7 @@ export function withAuth<P extends object>(WrappedComponent: ComponentType<P & W
       if (requiredRole === 'user') return true;
       if (requiredRole === 'admin') return !!(claims?.admin || claims?.super_admin);
       if (requiredRole === 'super_admin') return !!claims?.super_admin;
+      if (requiredRole === 'repartidor') return !!claims?.repartidor;
       return false;
     };
 

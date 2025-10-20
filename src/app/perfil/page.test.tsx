@@ -1,13 +1,26 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import ProfilePage from './page';
-import { useUser } from '@/firebase/provider';
 import { useRouter } from 'next/navigation';
 import { getAuth, signOut } from 'firebase/auth';
 
-// Mocks
-jest.mock('@/firebase/provider', () => ({
-  useUser: jest.fn(),
+// Mock withAuth to return the component directly with a mock user
+jest.mock('@/firebase/withAuth', () => ({
+  withAuth: (Component: any) => {
+    return function MockedComponent(props: any) {
+      const mockUser = {
+        uid: 'test-user-123',
+        email: 'test@test.com',
+        getIdToken: jest.fn(() => Promise.resolve('test-token')),
+      };
+      const mockClaims = {};
+      return <Component {...props} user={mockUser} claims={mockClaims} />;
+    };
+  },
 }));
+
+// Import ProfilePage AFTER mocking withAuth
+let ProfilePage: any;
+
+// Mocks
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
@@ -17,15 +30,18 @@ jest.mock('firebase/auth', () => ({
 }));
 
 global.fetch = jest.fn();
-const mockUseUser = useUser as jest.Mock;
 const mockUseRouter = useRouter as jest.Mock;
 const mockFetch = global.fetch as jest.Mock;
 const mockSignOut = signOut as jest.Mock;
 const mockRouterPush = jest.fn();
 
 describe('ProfilePage', () => {
+  beforeAll(() => {
+    // Import ProfilePage after all mocks are set up
+    ProfilePage = require('./page').default;
+  });
+
   beforeEach(() => {
-    mockUseUser.mockReturnValue({ user: null, isUserLoading: true });
     mockUseRouter.mockReturnValue({ push: mockRouterPush });
     mockFetch.mockClear();
     mockRouterPush.mockClear();
@@ -33,15 +49,14 @@ describe('ProfilePage', () => {
     window.alert = jest.fn(); // Mock alert
   });
 
-  it('should redirect to login if user is not authenticated', () => {
-    mockUseUser.mockReturnValue({ user: null, isUserLoading: false });
-    render(<ProfilePage />);
-    expect(mockRouterPush).toHaveBeenCalledWith('/ingresar');
+  // These tests are not applicable anymore because withAuth handles authentication
+  // The component always receives a user prop from withAuth
+  it.skip('should redirect to login if user is not authenticated', () => {
+    // withAuth handles this at a higher level
   });
 
-  it('should render loading skeletons when user is loading', () => {
-    render(<ProfilePage />);
-    expect(screen.getAllByTestId('loading-skeleton').length).toBeGreaterThan(0);
+  it.skip('should render loading skeletons when user is loading', () => {
+    // withAuth handles loading state
   });
 
   it('should fetch and display user profile data', async () => {
@@ -51,7 +66,6 @@ describe('ProfilePage', () => {
       email: 'john@test.com',
       phoneNumber: '123456789',
     };
-    mockUseUser.mockReturnValue({ user: { getIdToken: () => Promise.resolve('test-token') }, isUserLoading: false });
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockProfile),
@@ -66,7 +80,6 @@ describe('ProfilePage', () => {
 
   it('should enter edit mode, update profile, and exit edit mode', async () => {
     const mockProfile = { firstName: 'John', lastName: 'Doe', phoneNumber: '123456789' };
-    mockUseUser.mockReturnValue({ user: { getIdToken: () => Promise.resolve('test-token') }, isUserLoading: false });
     mockFetch.mockResolvedValue({ // Mock for both initial fetch and update
       ok: true,
       json: () => Promise.resolve(mockProfile),
@@ -105,7 +118,6 @@ describe('ProfilePage', () => {
   });
 
   it('should call signOut when "Cerrar Sesión" is clicked', async () => {
-    mockUseUser.mockReturnValue({ user: { getIdToken: () => Promise.resolve('test-token') }, isUserLoading: false });
     mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
     render(<ProfilePage />);
 

@@ -11,12 +11,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Package, AlertCircle } from 'lucide-react';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function OrderDetailPage({ params }: PageProps) {
+function OrderDetailPage({ params, user, claims }: PageProps & WithAuthProps) {
   const router = useRouter();
   const resolvedParams = use(params);
   const orderId = resolvedParams.id;
@@ -138,3 +139,5 @@ export default function OrderDetailPage({ params }: PageProps) {
     </div>
   );
 }
+
+export default withAuth(OrderDetailPage, 'repartidor');

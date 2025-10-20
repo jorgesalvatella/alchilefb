@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import type { Concept, Group, Department, BusinessUnit } from '@/lib/data';
 import { PlusCircle, Pen, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { AddEditConceptDialog } from '@/components/admin/add-edit-concept-dialog';
+import { AddEditConceptDialog } from '@/components/control/add-edit-concept-dialog';
 import { useUser } from '@/firebase/provider';
 
 export default function AdminConceptsPage({ params }: { params: { id: string, depId: string, groupId: string } }) {

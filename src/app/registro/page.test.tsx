@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import SignupPage from './page';
-import { useAuth, useFirestore, useUser } from '@/firebase/provider';
+import { useAuth, useFirestore } from '@/firebase/provider';
+import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
@@ -9,6 +10,9 @@ import { initiateEmailSignUp } from '@/firebase/non-blocking-login';
 jest.mock('@/firebase/provider', () => ({
   useAuth: jest.fn(),
   useFirestore: jest.fn(),
+  useUser: jest.fn(),
+}));
+jest.mock('@/firebase', () => ({
   useUser: jest.fn(),
 }));
 jest.mock('@/hooks/use-toast', () => ({
@@ -105,9 +109,11 @@ describe('SignupPage', () => {
     });
   });
 
-  it('should redirect if user is already logged in', () => {
+  it('should redirect if user is already logged in', async () => {
     mockUseUser.mockReturnValue({ user: { uid: 'test-user' }, isUserLoading: false });
     render(<SignupPage />);
-    expect(mockRouterPush).toHaveBeenCalledWith('/');
+    await waitFor(() => {
+      expect(mockRouterPush).toHaveBeenCalledWith('/');
+    }, { timeout: 3000 });
   });
 });

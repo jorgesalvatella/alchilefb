@@ -37,19 +37,70 @@ function CheckoutPage({ user }: WithAuthProps) {
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryLocation, setDeliveryLocation] = useState<AddressComponents | null>(null);
   const [verifiedTotal, setVerifiedTotal] = useState<number | null>(null);
+  const [isVerifyingTotal, setIsVerifyingTotal] = useState(false);
 
   // Verificar el total del carrito con el backend
   useEffect(() => {
     const verifyTotals = async () => {
-      if (itemCount > 0) {
-        // En una implementación real, llamaríamos a /api/cart/verify-totals
-        // Por ahora, calculamos en cliente como placeholder
-        const total = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        setVerifiedTotal(total);
+      if (itemCount === 0) {
+        setVerifiedTotal(0);
+        return;
+      }
+
+      setIsVerifyingTotal(true);
+
+      try {
+        // Transformar cartItems al formato esperado por el backend
+        const itemsToVerify = cartItems.map(item => {
+          if (item.isPackage) {
+            // Es un paquete
+            return {
+              packageId: item.id,
+              quantity: item.quantity,
+              packageCustomizations: item.customizations || {}
+            };
+          } else {
+            // Es un producto normal
+            return {
+              productId: item.id,
+              quantity: item.quantity,
+              customizations: {
+                added: item.customizations?.added || [],
+                removed: item.customizations?.removed || [],
+              },
+            };
+          }
+        });
+
+        const response = await fetch('/api/cart/verify-totals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: itemsToVerify }),
+        });
+
+        if (!response.ok) {
+          throw new Error('No se pudieron verificar los totales con el servidor.');
+        }
+
+        const data = await response.json();
+        setVerifiedTotal(data.summary.totalFinal);
+      } catch (error: any) {
+        console.error("Error verifying totals:", error);
+        toast({
+          title: 'Error al verificar totales',
+          description: 'No se pudo conectar con el servidor. Por favor, intenta de nuevo.',
+          variant: 'destructive',
+        });
+        // Fallback: calcular en cliente si falla la verificación
+        const fallbackTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        setVerifiedTotal(fallbackTotal);
+      } finally {
+        setIsVerifyingTotal(false);
       }
     };
+
     verifyTotals();
-  }, [cartItems, itemCount]);
+  }, [cartItems, itemCount, toast]);
 
   const handleAddressSelect = (address: AddressComponents) => {
     setDeliveryLocation(address);
@@ -180,16 +231,22 @@ function CheckoutPage({ user }: WithAuthProps) {
               <div className="flex justify-between font-bold text-xl">
                 <span className="text-white">Total</span>
                 <span className="text-orange-400">
-                  {verifiedTotal !== null ? `$${verifiedTotal.toFixed(2)}` : 'Calculando...'}
+                  {isVerifyingTotal ? (
+                    <span className="animate-pulse">Calculando...</span>
+                  ) : verifiedTotal !== null ? (
+                    `$${verifiedTotal.toFixed(2)}`
+                  ) : (
+                    'Calculando...'
+                  )}
                 </span>
               </div>
               <Button
                 onClick={handlePlaceOrder}
-                disabled={isSubmitting || !paymentMethod || !deliveryLocation || verifiedTotal === null}
-                className="w-full mt-6 bg-orange-500 text-white hover:bg-orange-600 font-bold text-lg py-6"
+                disabled={isSubmitting || !paymentMethod || !deliveryLocation || verifiedTotal === null || isVerifyingTotal}
+                className="w-full mt-6 bg-orange-500 text-white hover:bg-orange-600 font-bold text-lg py-6 disabled:opacity-50 disabled:cursor-not-allowed"
                 size="lg"
               >
-                {isSubmitting ? 'Confirmando...' : 'Confirmar Pedido'}
+                {isSubmitting ? 'Confirmando...' : isVerifyingTotal ? 'Verificando totales...' : 'Confirmar Pedido'}
               </Button>
               {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
             </CardContent>

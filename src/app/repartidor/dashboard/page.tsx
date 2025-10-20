@@ -7,8 +7,9 @@ import { DriverStats } from '@/components/repartidor/DriverStats';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Package, RefreshCw, AlertCircle } from 'lucide-react';
+import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 
-export default function DriverDashboard() {
+function DriverDashboard({ user, claims }: WithAuthProps) {
   const { orders, loading, error, refetch } = useDriverOrders();
   const [filter, setFilter] = useState<'all' | 'pending' | 'in-progress'>('pending');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -174,3 +175,5 @@ export default function DriverDashboard() {
     </div>
   );
 }
+
+export default withAuth(DriverDashboard, 'repartidor');

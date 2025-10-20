@@ -1,33 +1,26 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import CheckoutPage from './page';
 import { CartProvider, useCart } from '@/context/cart-context';
-import { FirebaseProvider } from '@/firebase/provider'; // Import the actual provider
 import { useRouter } from 'next/navigation';
-import { initializeApp, getApp, deleteApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
-// Mock config
-const firebaseConfig = {
-  apiKey: 'mock-api-key',
-  authDomain: 'mock-auth-domain',
-  projectId: 'mock-project-id',
-  storageBucket: 'mock-storage-bucket',
-  messagingSenderId: 'mock-messaging-sender-id',
-  appId: 'mock-app-id',
-};
+// Mock withAuth to return the component directly with a mock user
+jest.mock('@/firebase/withAuth', () => ({
+  withAuth: (Component: any) => {
+    return function MockedComponent(props: any) {
+      const mockUser = {
+        uid: 'test-user-123',
+        email: 'test@test.com',
+        getIdToken: jest.fn(() => Promise.resolve('fake-token')),
+      };
+      const mockClaims = {};
+      return <Component {...props} user={mockUser} claims={mockClaims} />;
+    };
+  },
+}));
 
-// Helper to initialize a mock Firebase app for tests
-const initializeTestApp = () => {
-  try {
-    return getApp();
-  } catch (e) {
-    return initializeApp(firebaseConfig);
-  }
-};
+// Import CheckoutPage AFTER mocking withAuth
+let CheckoutPage: any;
 
 // Mock de los hooks y componentes externos
 jest.mock('@/context/cart-context', () => ({
@@ -40,23 +33,29 @@ jest.mock('next/navigation', () => ({
 }));
 
 jest.mock('@/hooks/use-toast', () => ({
-  toast: jest.fn(),
+  useToast: () => ({
+    toast: jest.fn(),
+  }),
 }));
 
 // Mock GooglePlacesAutocompleteWithMap to prevent API errors in JSDOM
 jest.mock('@/components/GooglePlacesAutocompleteWithMap', () => {
   return jest.fn(({ onAddressSelect }) => (
     <div data-testid="mock-google-maps">
-      <button onClick={() => onAddressSelect({
-        street: '123 Mock St',
-        city: 'Testville',
-        state: 'TS',
-        postalCode: '12345',
-        country: 'Mockland',
-        lat: 0,
-        lng: 0,
-        formattedAddress: '123 Mock St, Testville',
-      })}>
+      <button
+        onClick={() =>
+          onAddressSelect({
+            street: '123 Mock St',
+            city: 'Testville',
+            state: 'TS',
+            postalCode: '12345',
+            country: 'Mockland',
+            lat: 0,
+            lng: 0,
+            formattedAddress: '123 Mock St, Testville',
+          })
+        }
+      >
         Select Mock Address
       </button>
     </div>
@@ -69,119 +68,361 @@ const mockUseRouter = useRouter as jest.Mock;
 const mockPush = jest.fn();
 const mockClearCart = jest.fn();
 
-const renderWithProviders = (ui: React.ReactElement) => {
-  const app = initializeTestApp();
-  const auth = getAuth(app);
-  const firestore = getFirestore(app);
-  const storage = getStorage(app);
-
-  // Mock the currentUser and getIdToken with a more robust object
-  Object.defineProperty(auth, 'currentUser', {
-    value: { 
-      getIdToken: () => Promise.resolve('fake-token'),
-      _stopProactiveRefresh: () => {}, // Mock la función interna
-    },
-    writable: true,
+describe('CheckoutPage', () => {
+  beforeAll(() => {
+    // Import CheckoutPage after all mocks are set up
+    CheckoutPage = require('./page').default;
   });
 
-  return render(
-    <FirebaseProvider firebaseApp={app} auth={auth} firestore={firestore} storage={storage}>
-      <CartProvider>{ui}</CartProvider>
-    </FirebaseProvider>
-  );
-};
-
-describe('CheckoutPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseRouter.mockReturnValue({ push: mockPush });
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
+
+    // Mock global fetch with dynamic responses based on URL
+    global.fetch = jest.fn((url: string, options?: any) => {
+      // Mock for verify-totals endpoint
+      if (url === '/api/cart/verify-totals') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ summary: { totalFinal: 10 } }),
+        });
+      }
+
+      // Mock for create order endpoint
+      if (url === '/api/pedidos') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ id: 'order-123' }),
+        });
+      }
+
+      // Default fallback
+      return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ id: 'order-123' }),
-      })
-    ) as jest.Mock;
+        json: () => Promise.resolve({}),
+      });
+    }) as jest.Mock;
   });
 
-  afterAll(() => {
-    // Clean up the mock app
-    try {
-      deleteApp(getApp());
-    } catch (e) {
-      // ignore
-    }
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
-  it('should display empty cart message if cart is empty', () => {
+  it('should display empty cart message if cart is empty', async () => {
     mockUseCart.mockReturnValue({
       cartItems: [],
       itemCount: 0,
       clearCart: mockClearCart,
     });
-    renderWithProviders(<CheckoutPage />);
-    expect(screen.getByText(/Tu carrito está vacío/i)).toBeInTheDocument(); // Selector flexible
+
+    // Mock verify-totals to return 0
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ summary: { totalFinal: 0 } }),
+    });
+
+    render(
+      <CartProvider>
+        <CheckoutPage />
+      </CartProvider>
+    );
+
+    // Wait for the verify-totals call to complete
+    await waitFor(() => {
+      expect(screen.getByText(/Tu carrito está vacío/i)).toBeInTheDocument();
+    });
+
     expect(screen.getByRole('button', { name: /Ir al Menú/i })).toBeInTheDocument();
   });
 
-  it('should render checkout form when cart has items', () => {
+  it('should render checkout form when cart has items', async () => {
     mockUseCart.mockReturnValue({
-      cartItems: [{ cartItemId: '1', name: 'Taco', price: 10, quantity: 1 }],
+      cartItems: [
+        {
+          cartItemId: '1',
+          id: 'prod-1',
+          name: 'Taco',
+          price: 10,
+          quantity: 1,
+          isPackage: false,
+        }
+      ],
       itemCount: 1,
       clearCart: mockClearCart,
     });
-    renderWithProviders(<CheckoutPage />);
-    expect(screen.getByText('Finalizar Compra')).toBeInTheDocument();
-    // El CardTitle se renderiza como un div, no un heading. Buscamos por texto.
+
+    // Mock verify-totals API call
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ summary: { totalFinal: 10 } }),
+    });
+
+    render(
+      <CartProvider>
+        <CheckoutPage />
+      </CartProvider>
+    );
+
+    // Wait for verify-totals to complete
+    await waitFor(() => {
+      expect(screen.getByText('Finalizar Compra')).toBeInTheDocument();
+    });
+
     expect(screen.getByText(/1. Ubicación de Entrega/i)).toBeInTheDocument();
-    expect(screen.getByText(/Método de Pago/i)).toBeInTheDocument(); // Selector flexible
-    expect(screen.getByText(/Resumen del Pedido/i)).toBeInTheDocument(); // Selector flexible
+    expect(screen.getByText(/Método de Pago/i)).toBeInTheDocument();
+    expect(screen.getByText(/Resumen del Pedido/i)).toBeInTheDocument();
   });
 
-  it('should enable confirm button only when address and payment are selected', () => {
+  it('should enable confirm button only when address, payment are selected and total is verified', async () => {
     mockUseCart.mockReturnValue({
-      cartItems: [{ cartItemId: '1', name: 'Taco', price: 10, quantity: 1 }],
+      cartItems: [
+        {
+          cartItemId: '1',
+          id: 'prod-1',
+          name: 'Taco',
+          price: 10,
+          quantity: 1,
+          isPackage: false,
+        }
+      ],
       itemCount: 1,
       clearCart: mockClearCart,
     });
-    renderWithProviders(<CheckoutPage />);
-    
-    const confirmButton = screen.getByRole('button', { name: /Confirmar Pedido/i });
+
+    render(
+      <CartProvider>
+        <CheckoutPage />
+      </CartProvider>
+    );
+
+    // Wait for the total to be displayed (means verify-totals completed)
+    await waitFor(() => {
+      expect(screen.getByText('$10.00')).toBeInTheDocument();
+    }, { timeout: 5000 });
+
+    // Find the submit button
+    const buttons = screen.getAllByRole('button');
+    const confirmButton = buttons.find(btn =>
+      btn.textContent?.includes('Confirmar') || btn.textContent?.includes('Verificando')
+    );
+    expect(confirmButton).toBeDefined();
+
+    // Initially disabled (no payment, no address)
     expect(confirmButton).toBeDisabled();
 
     // Select payment method
     fireEvent.click(screen.getByLabelText('Efectivo'));
-    
+
     // Address is still missing, so it should be disabled
     expect(confirmButton).toBeDisabled();
 
     // Select address via the mock component's button
     fireEvent.click(screen.getByText('Select Mock Address'));
 
-    // Now it should be enabled
-    expect(confirmButton).toBeEnabled();
+    // Now it should be enabled (wait for state updates)
+    await waitFor(() => {
+      expect(confirmButton).toBeEnabled();
+    }, { timeout: 5000 });
   });
 
   it('should place order, clear cart, and redirect on successful submission', async () => {
     mockUseCart.mockReturnValue({
-      cartItems: [{ cartItemId: '1', name: 'Taco', price: 10, quantity: 1 }],
+      cartItems: [
+        {
+          cartItemId: '1',
+          id: 'prod-1',
+          name: 'Taco',
+          price: 10,
+          quantity: 1,
+          isPackage: false,
+        }
+      ],
       itemCount: 1,
       clearCart: mockClearCart,
     });
-    renderWithProviders(<CheckoutPage />);
+
+    // No need to override fetch, the dynamic mock in beforeEach handles everything
+
+    render(
+      <CartProvider>
+        <CheckoutPage />
+      </CartProvider>
+    );
+
+    // Wait for the total to be displayed (means verify-totals completed)
+    await waitFor(() => {
+      expect(screen.getByText('$10.00')).toBeInTheDocument();
+    }, { timeout: 5000 });
 
     // Select payment method
     fireEvent.click(screen.getByLabelText('Efectivo'));
 
     // Select address via the mock component's button
     fireEvent.click(screen.getByText('Select Mock Address'));
-    
-    const confirmButton = screen.getByRole('button', { name: /Confirmar Pedido/i });
-    fireEvent.click(confirmButton);
+
+    // Find the submit button
+    const buttons = screen.getAllByRole('button');
+    const confirmButton = buttons.find(btn =>
+      btn.textContent?.includes('Confirmar') || btn.textContent?.includes('Verificando')
+    );
+    expect(confirmButton).toBeDefined();
+
+    // Wait for button to be enabled
+    await waitFor(() => {
+      expect(confirmButton).toBeEnabled();
+    }, { timeout: 5000 });
+
+    fireEvent.click(confirmButton!);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/pedidos', expect.any(Object));
+      // Verify order creation was called
+      expect(global.fetch).toHaveBeenCalledWith('/api/pedidos', expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer fake-token',
+        }),
+      }));
+
       expect(mockClearCart).toHaveBeenCalled();
       expect(mockPush).toHaveBeenCalledWith('/mis-pedidos?order=order-123');
+    }, { timeout: 5000 });
+  });
+
+  it('should call verify-totals API with correct payload for regular products', async () => {
+    mockUseCart.mockReturnValue({
+      cartItems: [
+        {
+          cartItemId: '1',
+          id: 'prod-1',
+          name: 'Taco',
+          price: 10,
+          quantity: 2,
+          isPackage: false,
+          customizations: {
+            added: ['Extra Cheese'],
+            removed: ['Onions'],
+          },
+        },
+      ],
+      itemCount: 1,
+      clearCart: mockClearCart,
+    });
+
+    // Mock verify-totals API call
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ summary: { totalFinal: 20 } }),
+    });
+
+    render(
+      <CartProvider>
+        <CheckoutPage />
+      </CartProvider>
+    );
+
+    // Wait for verify-totals to be called
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/cart/verify-totals',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: [
+              {
+                productId: 'prod-1',
+                quantity: 2,
+                customizations: {
+                  added: ['Extra Cheese'],
+                  removed: ['Onions'],
+                },
+              },
+            ],
+          }),
+        })
+      );
+    });
+  });
+
+  it('should call verify-totals API with correct payload for packages', async () => {
+    mockUseCart.mockReturnValue({
+      cartItems: [
+        {
+          cartItemId: '1',
+          id: 'package-1',
+          name: 'Combo Taco',
+          price: 25,
+          quantity: 1,
+          isPackage: true,
+          customizations: { size: 'large' },
+        },
+      ],
+      itemCount: 1,
+      clearCart: mockClearCart,
+    });
+
+    // Mock verify-totals API call
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ summary: { totalFinal: 25 } }),
+    });
+
+    render(
+      <CartProvider>
+        <CheckoutPage />
+      </CartProvider>
+    );
+
+    // Wait for verify-totals to be called
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/cart/verify-totals',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: [
+              {
+                packageId: 'package-1',
+                quantity: 1,
+                packageCustomizations: { size: 'large' },
+              },
+            ],
+          }),
+        })
+      );
+    });
+  });
+
+  it('should use fallback total calculation if verify-totals API fails', async () => {
+    mockUseCart.mockReturnValue({
+      cartItems: [
+        {
+          cartItemId: '1',
+          id: 'prod-1',
+          name: 'Taco',
+          price: 10,
+          quantity: 2,
+          isPackage: false,
+        },
+      ],
+      itemCount: 1,
+      clearCart: mockClearCart,
+    });
+
+    // Mock verify-totals API to fail
+    (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+    render(
+      <CartProvider>
+        <CheckoutPage />
+      </CartProvider>
+    );
+
+    // Wait for fallback calculation (price * quantity = 10 * 2 = 20)
+    await waitFor(() => {
+      expect(screen.getByText('$20.00')).toBeInTheDocument();
     });
   });
 });

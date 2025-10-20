@@ -258,7 +258,12 @@ async function verifyCartTotals(items) {
         subtotalItem: finalItemSubtotal,
         totalItem: finalItemTotal,
         removed: (item.customizations && item.customizations.removed) || [],
-        appliedPromotion: appliedPromotion
+        // Multiplicar el descuento por la cantidad para retornar el descuento total
+        // (no solo el descuento unitario). Esto es más útil para el frontend.
+        appliedPromotion: appliedPromotion ? {
+          ...appliedPromotion,
+          discount: appliedPromotion.discount * item.quantity
+        } : null
       });
 
     } else {
@@ -313,7 +318,10 @@ router.post('/verify-totals', async (req, res) => {
     res.status(200).json(result);
   } catch (error) {
     // Si el error es por validación, es un error del cliente (400)
-    if (error.message.includes('Request body must contain') || error.message.includes('Invalid item in cart') || error.message.includes('no encontrado')) {
+    if (error.message.includes('Request body must contain') ||
+        error.message.includes('Invalid item in cart') ||
+        error.message.includes('no encontrado') ||
+        error.message.includes('no corresponde')) {
       return res.status(400).json({ message: error.message });
     }
     // Otros errores son del servidor (500)

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import type { Group, Department, BusinessUnit } from '@/lib/data';
 import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { AddEditGroupDialog } from '@/components/admin/add-edit-group-dialog';
+import { AddEditGroupDialog } from '@/components/control/add-edit-group-dialog';
 import Link from 'next/link';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 import { useToast } from '@/hooks/use-toast';

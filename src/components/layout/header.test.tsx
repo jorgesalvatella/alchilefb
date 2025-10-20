@@ -137,10 +137,14 @@ describe('Header', () => {
     });
 
     it('debería mostrar las opciones de super_admin en el menú de Control', async () => {
+        // Simular modo móvil para que el Sheet muestre todo el menú
+        mockUseIsMobile.mockReturnValue(true);
         render(<Header />);
-        await screen.findByText('Catálogo');
-        
-        expect(screen.getAllByText('Catálogo')[0]).toBeInTheDocument();
+
+        // El menú móvil renderiza todo directamente (no necesita dropdown)
+        await screen.findAllByText('Configuración Avanzada'); // Label específico de super_admin
+
+        expect(screen.getAllByText('Catálogo de Gastos')[0]).toBeInTheDocument();
         expect(screen.getAllByText('Productos de Venta')[0]).toBeInTheDocument();
         expect(screen.getAllByText('Pedidos')[0]).toBeInTheDocument();
     });

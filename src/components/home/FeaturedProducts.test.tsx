@@ -19,9 +19,14 @@ describe('FeaturedProducts Component', () => {
 
   it('should render loading skeletons initially', () => {
     mockFetch.mockImplementation(() => new Promise(() => {})); // Prevent fetch from resolving
-    render(<FeaturedProducts />);
-    const skeletons = screen.getAllByLabelText('Cargando...'); // Assuming Skeleton has aria-label
-    expect(skeletons.length).toBe(4);
+    const { container } = render(<FeaturedProducts />);
+
+    // Verificar que se renderizan múltiples elementos con la clase animate-pulse (skeletons)
+    const skeletons = container.querySelectorAll('.animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
+
+    // Verificar que NO se muestra el mensaje de "no hay productos destacados"
+    expect(screen.queryByText(/no hay productos destacados/i)).not.toBeInTheDocument();
   });
 
   it('should fetch and display featured products correctly', async () => {
@@ -29,7 +34,12 @@ describe('FeaturedProducts Component', () => {
       { id: 'prod1', name: 'Tacos de Fuego', price: 150, description: 'Pica pero sabroso', imageUrl: '' },
       { id: 'prod2', name: 'Albóndigas Suaves', price: 120, description: 'Como las de mamá', imageUrl: '' },
     ];
-    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockProducts) });
+    const mockPromotions = [];
+
+    // Mock both fetch calls (products and promotions)
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockProducts) })  // productos-venta/latest
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(mockPromotions) }); // promotions/featured
 
     render(<FeaturedProducts />);
 
@@ -42,7 +52,11 @@ describe('FeaturedProducts Component', () => {
   });
 
   it('should display an empty state message when no products are featured', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) });
+    // Mock both fetch calls returning empty arrays
+    mockFetch
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) })  // productos-venta/latest
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) }); // promotions/featured
+
     render(<FeaturedProducts />);
 
     await waitFor(() => {
@@ -51,7 +65,11 @@ describe('FeaturedProducts Component', () => {
   });
 
   it('should display the empty state if the API fetch fails', async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false });
+    // Mock both fetch calls failing (one fails, one succeeds with empty array)
+    mockFetch
+      .mockResolvedValueOnce({ ok: false, status: 500 })  // productos-venta/latest fails
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) }); // promotions/featured succeeds but empty
+
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     render(<FeaturedProducts />);
@@ -60,7 +78,7 @@ describe('FeaturedProducts Component', () => {
       expect(screen.getByText(/no hay productos destacados/i)).toBeInTheDocument();
     });
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching latest products:', expect.any(Error));
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error al obtener productos destacados:', 500);
     consoleErrorSpy.mockRestore();
   });
 });

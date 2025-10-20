@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import LoginPage from './page';
-import { useAuth, useUser } from '@/firebase/provider';
+import { useAuth } from '@/firebase/provider';
+import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
@@ -8,6 +9,8 @@ import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 // Mocks
 jest.mock('@/firebase/provider', () => ({
   useAuth: jest.fn(),
+}));
+jest.mock('@/firebase', () => ({
   useUser: jest.fn(),
 }));
 jest.mock('@/hooks/use-toast', () => ({

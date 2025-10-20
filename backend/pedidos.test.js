@@ -19,6 +19,21 @@ jest.mock('firebase-admin', () => {
 
   const mockAdd = jest.fn();
 
+  // Mock de query builder para soportar .where().orderBy().get()
+  const createQueryMock = (collectionName) => {
+    const queryMock = {
+      where: jest.fn(() => queryMock),
+      orderBy: jest.fn(() => queryMock),
+      limit: jest.fn(() => queryMock),
+      get: jest.fn(() => Promise.resolve({
+        empty: true,
+        docs: [],
+        forEach: (callback) => {}
+      }))
+    };
+    return queryMock;
+  };
+
   const firestore = jest.fn(() => ({
     collection: jest.fn((collectionName) => {
       if (collectionName === 'productosDeVenta') {
@@ -28,9 +43,14 @@ jest.mock('firebase-admin', () => {
           }),
         };
       }
+      // Para otras colecciones, retornar query mock + add/doc
       return {
+        ...createQueryMock(collectionName),
         add: mockAdd,
-        doc: () => ({ get: () => Promise.resolve({ exists: false }) }), // Comportamiento por defecto
+        doc: (docId) => ({
+          get: () => Promise.resolve({ exists: false }),
+          update: jest.fn()
+        }),
       };
     }),
   }));

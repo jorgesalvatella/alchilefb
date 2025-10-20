@@ -104,7 +104,10 @@ jest.mock('firebase-admin', () => {
               empty: false,
               docs: [{
                 id: repartidor[0],
-                data: () => repartidor[1]
+                data: () => repartidor[1],
+                ref: {
+                  update: mockUpdate
+                }
               }]
             };
           }

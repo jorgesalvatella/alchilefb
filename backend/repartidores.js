@@ -386,7 +386,7 @@ router.put('/:orderId/marcar-en-camino', authMiddleware, requireRepartidor, asyn
     await orderRef.update(updateData);
 
     // 5. Activar tracking en el repartidor
-    const repartidorRef = repartidoresSnapshot.docs[0].ref;
+    const repartidorRef = repartidorSnapshot.docs[0].ref;
     await repartidorRef.update({
       isTrackingActive: true,
     });

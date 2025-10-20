@@ -154,7 +154,9 @@ jest.mock('firebase-admin', () => {
 
     return Promise.resolve({
       empty: docs.length === 0,
-      docs
+      docs,
+      // Agregar método forEach para compatibilidad con código que usa snapshot.forEach
+      forEach: (callback) => docs.forEach(callback)
     });
   });
 
@@ -884,5 +886,107 @@ describe('Promotions API - DELETE /api/control/promotions/:id (admin)', () => {
         isActive: false
       })
     );
+  });
+});
+
+describe('Promotions API - PUT /api/control/promotions/:id/toggle-featured (admin)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should return 403 if user is not admin', async () => {
+    const response = await request(app)
+      .put('/api/control/promotions/promo-active-1/toggle-featured')
+      .set('Authorization', 'Bearer user-token')
+      .send({ isFeatured: true });
+
+    expect(response.statusCode).toBe(403);
+  });
+
+  it('should return 400 if isFeatured is not a boolean', async () => {
+    const response = await request(app)
+      .put('/api/control/promotions/promo-active-1/toggle-featured')
+      .set('Authorization', 'Bearer admin-token')
+      .send({ isFeatured: 'true' }); // String instead of boolean
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body.message).toContain('must be a boolean');
+  });
+
+  it('should return 400 if isFeatured is missing', async () => {
+    const response = await request(app)
+      .put('/api/control/promotions/promo-active-1/toggle-featured')
+      .set('Authorization', 'Bearer admin-token')
+      .send({});
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body.message).toContain('must be a boolean');
+  });
+
+  it('should return 404 if promotion does not exist', async () => {
+    const response = await request(app)
+      .put('/api/control/promotions/non-existent/toggle-featured')
+      .set('Authorization', 'Bearer admin-token')
+      .send({ isFeatured: true });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.body.message).toContain('no encontrada');
+  });
+
+  it('should toggle featured to true successfully', async () => {
+    const response = await request(app)
+      .put('/api/control/promotions/promo-active-1/toggle-featured')
+      .set('Authorization', 'Bearer admin-token')
+      .send({ isFeatured: true });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.message).toContain('true');
+
+    // Verificar que se llamó update con isFeatured: true
+    expect(admin.__mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isFeatured: true,
+        updatedAt: expect.any(Date)
+      })
+    );
+  });
+
+  it('should toggle featured to false successfully', async () => {
+    const response = await request(app)
+      .put('/api/control/promotions/promo-active-1/toggle-featured')
+      .set('Authorization', 'Bearer admin-token')
+      .send({ isFeatured: false });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.message).toContain('false');
+
+    // Verificar que se llamó update con isFeatured: false
+    expect(admin.__mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isFeatured: false,
+        updatedAt: expect.any(Date)
+      })
+    );
+  });
+
+  it('should update the updatedAt timestamp', async () => {
+    const beforeTime = new Date();
+
+    const response = await request(app)
+      .put('/api/control/promotions/promo-active-2/toggle-featured')
+      .set('Authorization', 'Bearer admin-token')
+      .send({ isFeatured: true });
+
+    expect(response.statusCode).toBe(200);
+
+    // Verificar que updatedAt fue actualizado
+    expect(admin.__mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        updatedAt: expect.any(Date)
+      })
+    );
+
+    const updateCall = admin.__mockUpdate.mock.calls[0][0];
+    expect(updateCall.updatedAt.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime());
   });
 });

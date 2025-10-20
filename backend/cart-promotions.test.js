@@ -5,6 +5,7 @@ const admin = require('firebase-admin');
 // Mock completo de firebase-admin con productos, promociones y paquetes
 jest.mock('firebase-admin', () => {
   // Base de datos mock con productos, promociones y paquetes
+  // IMPORTANTE: Este mockDb es mutable y puede ser modificado en tests individuales
   const mockDb = {
     products: {
       'prod-hamburguesa': {
@@ -105,11 +106,15 @@ jest.mock('firebase-admin', () => {
         deletedAt: null
       },
       // Promoción: 10% descuento en total del pedido
+      // NOTA: Esta promoción está INACTIVA en el mock base para no interferir con tests básicos.
+      // Los tests específicos de promociones total_order deben activarla manualmente.
+      // Comportamiento en producción: Las promociones total_order se aplican automáticamente
+      // cuando están activas (ver cart.js líneas 274-292).
       'promo-total': {
         name: '10% OFF en tu pedido',
         description: 'Descuento en el total',
         type: 'promotion',
-        isActive: true,
+        isActive: false, // Inactiva por defecto para tests básicos
         startDate: { toDate: () => new Date('2024-01-01') },
         endDate: { toDate: () => new Date('2026-12-31') },
         promoType: 'percentage',
@@ -215,9 +220,10 @@ jest.mock('firebase-admin', () => {
       verifyIdToken: jest.fn().mockResolvedValue({ uid: 'test-uid' })
     }),
     app: () => ({ delete: jest.fn() }),
-    // Exportar mocks para assertions
+    // Exportar mocks para assertions y manipulación en tests
     __mockDocGet: mockDocGet,
-    __mockCollectionGet: mockCollectionGet
+    __mockCollectionGet: mockCollectionGet,
+    __mockDb: mockDb // Exportar mockDb para que tests puedan modificarlo
   };
 });
 
@@ -506,6 +512,16 @@ describe('Cart with Promotions - POST /api/cart/verify-totals', () => {
 
   // TEST 4: Carrito con promoción de orden total
   describe('Total order promotions', () => {
+    beforeEach(() => {
+      // Activar promo-total para estos tests
+      admin.__mockDb.promotions['promo-total'].isActive = true;
+    });
+
+    afterEach(() => {
+      // Desactivar promo-total después de estos tests
+      admin.__mockDb.promotions['promo-total'].isActive = false;
+    });
+
     it('should apply total order discount (10% on entire cart)', async () => {
       const items = [
         {
@@ -576,6 +592,16 @@ describe('Cart with Promotions - POST /api/cart/verify-totals', () => {
 
   // TEST 5: Carrito mixto (productos + paquetes + promociones)
   describe('Mixed cart (products + packages + promotions)', () => {
+    beforeEach(() => {
+      // Activar promo-total para estos tests mixtos
+      admin.__mockDb.promotions['promo-total'].isActive = true;
+    });
+
+    afterEach(() => {
+      // Desactivar promo-total después de estos tests
+      admin.__mockDb.promotions['promo-total'].isActive = false;
+    });
+
     it('should calculate correctly with packages and regular products', async () => {
       const items = [
         {
@@ -752,6 +778,16 @@ describe('Cart with Promotions - POST /api/cart/verify-totals', () => {
 
   // TEST 7: Performance y casos edge
   describe('Edge cases', () => {
+    beforeEach(() => {
+      // Activar promo-total para los edge cases que esperan descuento
+      admin.__mockDb.promotions['promo-total'].isActive = true;
+    });
+
+    afterEach(() => {
+      // Desactivar promo-total después de estos tests
+      admin.__mockDb.promotions['promo-total'].isActive = false;
+    });
+
     it('should handle empty cart (empty items array)', async () => {
       const items = [];
 

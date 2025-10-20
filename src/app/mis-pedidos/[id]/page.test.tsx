@@ -1,13 +1,24 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import OrderTrackingPage from './page';
-import { useUser } from '@/firebase/provider';
 import { getAuth } from 'firebase/auth';
 import { notFound } from 'next/navigation';
 
-// Mocks
-jest.mock('@/firebase/provider', () => ({
-  useUser: jest.fn(),
+// Mock withAuth to return the component directly with a mock user
+jest.mock('@/firebase/withAuth', () => ({
+  withAuth: (Component: any) => {
+    return function MockedComponent(props: any) {
+      const mockUser = {
+        uid: 'test-user-123',
+        email: 'test@test.com',
+        getIdToken: jest.fn(() => Promise.resolve('test-token')),
+      };
+      const mockClaims = {};
+      return <Component {...props} user={mockUser} claims={mockClaims} />;
+    };
+  },
 }));
+
+// Import OrderTrackingPage AFTER mocking withAuth
+let OrderTrackingPage: any;
 
 jest.mock('firebase/auth', () => ({
   getAuth: jest.fn(() => ({
@@ -17,53 +28,41 @@ jest.mock('firebase/auth', () => ({
   })),
 }));
 
+const { notFound: mockNotFound, useParams: mockUseParams } = jest.requireMock('next/navigation');
+
 jest.mock('next/navigation', () => ({
   notFound: jest.fn(),
+  useParams: jest.fn(() => ({ id: 'order-123' })),
 }));
 
 global.fetch = jest.fn();
 
-const mockUseUser = useUser as jest.Mock;
 const mockFetch = global.fetch as jest.Mock;
-const mockNotFound = notFound as jest.Mock;
-
-// Mock del hook 'use' de React para que funcione con Jest
-jest.mock('react', () => {
-  const originalReact = jest.requireActual('react');
-  return {
-    ...originalReact,
-    use: (promise: Promise<any>) => {
-      // Para este test, sabemos que la promesa se resuelve a { id: 'order-123' }
-      // Devolvemos ese valor directamente para simular el comportamiento del hook.
-      return { id: 'order-123' };
-    },
-  };
-});
 
 describe('OrderTrackingPage', () => {
-  const mockParams = Promise.resolve({ id: 'order-123' });
+
+  beforeAll(() => {
+    // Import OrderTrackingPage after all mocks are set up
+    OrderTrackingPage = require('./page').default;
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetch.mockClear();
   });
 
-  it('should render loading skeletons initially', () => {
-    mockUseUser.mockReturnValue({ user: { uid: 'test-user' }, isUserLoading: true });
-    render(<OrderTrackingPage params={mockParams} />);
-    // Check for the presence of skeleton elements via data-testid
-    const skeletons = screen.getAllByTestId('loading-skeleton');
-    expect(skeletons.length).toBeGreaterThan(0);
+  // This test is not applicable anymore because withAuth handles loading
+  it.skip('should render loading skeletons initially', () => {
+    // withAuth handles loading state
   });
 
   it('should call notFound() if order is not found (404)', async () => {
-    mockUseUser.mockReturnValue({ user: { uid: 'test-user' }, isUserLoading: false });
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 404,
     });
 
-    render(<OrderTrackingPage params={mockParams} />);
+    render(<OrderTrackingPage />);
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/me/orders/order-123', expect.any(Object));
@@ -87,13 +86,12 @@ describe('OrderTrackingPage', () => {
         formattedAddress: '123 Main St, Anytown, USA'
       }
     };
-    mockUseUser.mockReturnValue({ user: { uid: 'test-user' }, isUserLoading: false });
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockOrder),
     });
 
-    render(<OrderTrackingPage params={mockParams} />);
+    render(<OrderTrackingPage />);
 
     // Usar findBy* que ya viene con waitFor incorporado
     expect(await screen.findByText(/Rastrea Tu Pedido/i)).toBeInTheDocument();

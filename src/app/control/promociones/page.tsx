@@ -22,6 +22,7 @@ interface Promotion {
   description: string;
   type: 'package' | 'promotion';
   isActive: boolean;
+  isFeatured?: boolean;
   startDate?: string;
   endDate?: string;
   packagePrice?: number;
@@ -98,6 +99,43 @@ function AdminPromotionsPage({ user }: WithAuthProps) {
       toast({
         title: 'Promoción Actualizada',
         description: `La promoción ahora está ${isActive ? 'activa' : 'inactiva'}.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Error al actualizar',
+        description: err.message,
+        variant: 'destructive',
+      });
+      fetchPromotions();
+    }
+  };
+
+  const handleFeatureToggle = async (id: string, isFeatured: boolean) => {
+    if (!user) return;
+
+    // Optimistic UI update
+    setPromotions(prevPromotions =>
+      prevPromotions.map(p => (p.id === id ? { ...p, isFeatured } : p))
+    );
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/control/promotions/${id}/toggle-featured`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isFeatured }),
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo actualizar la promoción.');
+      }
+
+      toast({
+        title: 'Promoción Actualizada',
+        description: `La promoción ahora ${isFeatured ? 'es' : 'no es'} destacada.`,
       });
     } catch (err: any) {
       toast({
@@ -221,6 +259,14 @@ function AdminPromotionsPage({ user }: WithAuthProps) {
                       {promotion.isActive ? 'Activo' : 'Inactivo'}
                     </label>
                   </div>
+                  <div className="flex items-center space-x-2 mt-2">
+                    <Switch
+                      id={`featured-switch-mobile-${promotion.id}`}
+                      checked={!!promotion.isFeatured}
+                      onCheckedChange={(checked) => handleFeatureToggle(promotion.id, checked)}
+                    />
+                    <label htmlFor={`featured-switch-mobile-${promotion.id}`}>Destacado</label>
+                  </div>
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end space-x-2 flex-wrap">
@@ -256,6 +302,7 @@ function AdminPromotionsPage({ user }: WithAuthProps) {
               <TableHead className="text-white/80">Nombre</TableHead>
               <TableHead className="text-white/80">Tipo</TableHead>
               <TableHead className="text-white/80">Estado</TableHead>
+              <TableHead className="text-white/80">Destacado</TableHead>
               <TableHead className="text-white/80">Vigencia</TableHead>
               <TableHead className="text-right text-white/80">Acciones</TableHead>
             </TableRow>
@@ -263,13 +310,13 @@ function AdminPromotionsPage({ user }: WithAuthProps) {
           <TableBody>
             {isLoading ? (
               <TableRow className="border-b-0">
-                <TableCell colSpan={5} className="text-center text-white/60 py-12">
+                <TableCell colSpan={6} className="text-center text-white/60 py-12">
                   Cargando...
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow className="border-b-0">
-                <TableCell colSpan={5} className="text-center text-red-500 py-12">
+                <TableCell colSpan={6} className="text-center text-red-500 py-12">
                   Error: {error}
                 </TableCell>
               </TableRow>
@@ -299,6 +346,12 @@ function AdminPromotionsPage({ user }: WithAuthProps) {
                         {promotion.isActive ? 'Activo' : 'Inactivo'}
                       </span>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={!!promotion.isFeatured}
+                      onCheckedChange={(checked) => handleFeatureToggle(promotion.id, checked)}
+                    />
                   </TableCell>
                   <TableCell className="text-white/80">
                     {getVigencia(promotion)}

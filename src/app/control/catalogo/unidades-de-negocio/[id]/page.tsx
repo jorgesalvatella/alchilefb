@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import type { Department, BusinessUnit } from '@/lib/data';
 import { PlusCircle, Pen, Trash2, FolderKanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { AddEditDepartmentDialog } from '@/components/admin/add-edit-department-dialog';
+import { AddEditDepartmentDialog } from '@/components/control/add-edit-department-dialog';
 import Link from 'next/link';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 import { useToast } from '@/hooks/use-toast';

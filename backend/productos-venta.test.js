@@ -158,10 +158,10 @@ describe('Sale Products API', () => {
       await request(app).get('/api/productos-venta/latest');
       expect(admin.firestore().collection).toHaveBeenCalledWith('productosDeVenta');
       expect(admin.__queryMock.where).toHaveBeenCalledWith('deletedAt', '==', null);
-      expect(admin.__queryMock.where).toHaveBeenCalledWith('isAvailable', '==', true);
       expect(admin.__queryMock.where).toHaveBeenCalledWith('isFeatured', '==', true);
+      expect(admin.__queryMock.where).toHaveBeenCalledWith('isAvailable', '==', true);
       expect(admin.__queryMock.orderBy).toHaveBeenCalledWith('createdAt', 'desc');
-      expect(admin.__queryMock.limit).toHaveBeenCalledWith(8);
+      expect(admin.__queryMock.limit).toHaveBeenCalledWith(4);
       expect(admin.__mockCollectionGet).toHaveBeenCalled();
     });
   });

@@ -1,13 +1,27 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import AdminOrdersPage from './page';
-import { useUser } from '@/firebase/provider';
 import { Order } from '@/lib/types';
 
 // Mock de next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
     push: jest.fn(),
+    replace: jest.fn(),
   }),
+}));
+
+// Mock de withAuth
+jest.mock('@/firebase/withAuth', () => ({
+  withAuth: (Component: any) => {
+    return function MockedComponent(props: any) {
+      const mockUser = {
+        uid: 'test-admin-123',
+        email: 'admin@test.com',
+        getIdToken: jest.fn(() => Promise.resolve('test-token')),
+      };
+      const mockClaims = { admin: true };
+      return <Component {...props} user={mockUser} claims={mockClaims} />;
+    };
+  },
 }));
 
 // Mock del hook useUser
@@ -55,7 +69,13 @@ const mockStats = {
 
 global.fetch = jest.fn();
 
+let AdminOrdersPage: any;
+
 describe('AdminOrdersPage Integration', () => {
+  beforeAll(() => {
+    AdminOrdersPage = require('./page').default;
+  });
+
   beforeEach(() => {
     (useUser as jest.Mock).mockReturnValue({ user: mockUser, isUserLoading: false });
     (fetch as jest.Mock).mockClear();

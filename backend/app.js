@@ -2189,40 +2189,30 @@ app.get('/api/control/productos-venta', authMiddleware, requireAdmin, async (req
 // GET publico para los productos destacados (solo 4 para home page)
 app.get('/api/productos-venta/latest', async (req, res) => {
   try {
-    // Buscar productos marcados como destacados (isFeatured: true)
+    // Buscar productos marcados como destacados (isFeatured: true) y disponibles
     const snapshot = await db.collection('productosDeVenta')
       .where('deletedAt', '==', null)
       .where('isFeatured', '==', true)
-      .limit(10) // Traer algunos extras para filtrar
+      .where('isAvailable', '==', true)
+      .orderBy('createdAt', 'desc')
+      .limit(4)
       .get();
 
     if (snapshot.empty) {
       return res.status(200).json([]);
     }
 
-    // Filtrar y mapear en memoria
-    const products = snapshot.docs
-      .map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data.name,
-          price: data.price,
-          imageUrl: data.imageUrl,
-          description: data.description,
-          isAvailable: data.isAvailable !== false, // Default true si no existe
-          createdAt: data.createdAt,
-        };
-      })
-      .filter(product => product.isAvailable) // Filtrar disponibles
-      .sort((a, b) => {
-        // Ordenar por createdAt desc
-        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-        return timeB - timeA;
-      })
-      .slice(0, 4) // Solo 4 productos destacados
-      .map(({ createdAt, isAvailable, ...product }) => product); // Limpiar campos
+    // Mapear productos
+    const products = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name,
+        price: data.price,
+        imageUrl: data.imageUrl,
+        description: data.description,
+      };
+    });
 
     res.status(200).json(products);
   } catch (error) {
@@ -2662,6 +2652,7 @@ app.get('/api/promotions/featured', async (req, res) => {
         name: data.name,
         description: data.description,
         type: data.type,
+        price: data.packagePrice || 0,
         packagePrice: data.packagePrice,
         imageUrl: data.imageUrl,
         createdAt: data.createdAt,
@@ -3252,6 +3243,69 @@ app.delete('/api/control/promotions/:id', authMiddleware, requireAdmin, async (r
     res.status(200).json({ message: 'Promoción eliminada exitosamente' });
   } catch (error) {
     console.error('[DELETE /api/control/promotions/:id] ERROR:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/control/promotions/{id}/toggle-featured:
+ *   put:
+ *     summary: Toggle featured status for a promotion
+ *     tags: [Control - Promociones]
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isFeatured
+ *             properties:
+ *               isFeatured:
+ *                 type: boolean
+ *     responses:
+ *       '200':
+ *         description: Featured status actualizado
+ *       '400':
+ *         description: Parámetro inválido
+ *       '403':
+ *         description: No autorizado
+ *       '404':
+ *         description: Promoción no encontrada
+ */
+app.put('/api/control/promotions/:id/toggle-featured', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isFeatured } = req.body;
+
+    if (typeof isFeatured !== 'boolean') {
+      return res.status(400).json({ message: 'Missing required field: isFeatured (must be a boolean)' });
+    }
+
+    const docRef = db.collection('promotions').doc(id);
+    const docSnap = await docRef.get();
+
+    if (!docSnap.exists) {
+      return res.status(404).json({ message: 'Promoción no encontrada' });
+    }
+
+    await docRef.update({
+      isFeatured: isFeatured,
+      updatedAt: new Date(),
+    });
+
+    res.status(200).json({ id, message: `Promotion feature status set to ${isFeatured}` });
+  } catch (error) {
+    console.error('[PUT /api/control/promotions/:id/toggle-featured] ERROR:', error);
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
   }
 });

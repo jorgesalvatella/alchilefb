@@ -105,3 +105,60 @@ jest.mock('lucide-react', () => {
     }
   );
 });
+
+// Mock global para next/navigation (useRouter, usePathname, useSearchParams)
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+    forward: jest.fn(),
+    refresh: jest.fn(),
+  })),
+  usePathname: jest.fn(() => '/'),
+  useSearchParams: jest.fn(() => ({
+    get: jest.fn(),
+    getAll: jest.fn(),
+    has: jest.fn(),
+    keys: jest.fn(),
+    values: jest.fn(),
+    entries: jest.fn(),
+    forEach: jest.fn(),
+    toString: jest.fn(),
+  })),
+  useParams: jest.fn(() => ({})),
+}));
+
+// Mock global para el Firebase provider (useUser, useAuth, etc)
+jest.mock('@/firebase/provider', () => ({
+  useUser: jest.fn(() => ({
+    user: null,
+    isUserLoading: false,
+  })),
+  useAuth: jest.fn(() => ({
+    user: null,
+    loading: false,
+    signInWithEmail: jest.fn(),
+    signUpWithEmail: jest.fn(),
+    signOut: jest.fn(),
+  })),
+  useFirestore: jest.fn(() => ({
+    db: {},
+  })),
+}));
+
+// Mock también para @/firebase por si se importa directamente
+jest.mock('@/firebase', () => ({
+  useUser: jest.fn(() => ({
+    user: null,
+    isUserLoading: false,
+  })),
+  useAuth: jest.fn(() => ({
+    user: null,
+    loading: false,
+    signInWithEmail: jest.fn(),
+    signUpWithEmail: jest.fn(),
+    signOut: jest.fn(),
+  })),
+}));
