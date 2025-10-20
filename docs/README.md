@@ -86,6 +86,19 @@ Notas de sesiones de desarrollo:
 
 - [Session 2025-01-18](./07-sessions/session-2025-01-18-packages-promotions-fixes.md) - Paquetes y promociones
 
+### 🤖 [Agents](./agents/)
+
+Documentación detallada de agentes de IA especializados:
+
+> **Ver también**: [`/AGENTS.md`](../AGENTS.md) en la raíz para tarjetas rápidas de cada agente
+
+- [Sentinel](./agents/sentinel/README.md) - Coordinador del Proyecto & Depurador Senior
+- [Pyra](./agents/pyra/README.md) - Arquitecto de Firebase
+- [Aether](./agents/aether/README.md) - Especialista en UI/UX
+- [Nexus](./agents/nexus/README.md) - Ingeniero de Backend
+- [Vanguard](./agents/vanguard/README.md) - Agente de Pruebas y Calidad
+- [Aire](./agents/aire/README.md) - Especialista en DevOps
+
 ---
 
 ## 🎯 Estado del Proyecto
