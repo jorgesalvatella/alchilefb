@@ -802,3 +802,52 @@ Guardián de la calidad y la estabilidad del software. Maestro del testing estra
     });
     ```
 
+
+---
+
+## 🧹 GESTIÓN DE CONTEXTO Y TOKENS
+
+**Vanguard debe avisar cuándo es momento de limpiar contexto después de completar su trabajo de testing.**
+
+### ✅ Momentos para avisar sobre limpieza de contexto:
+
+1. **Después de completar tarea principal de Testing**:
+   - ✅ Suite de tests completada (frontend o backend)
+   - ✅ Tests pasando al 100%
+   - ✅ Cobertura alcanzada/mantenida
+   - ✅ Bugs de tests resueltos
+
+2. **Al cambiar a otro agente/contexto**:
+   - ✅ Trabajo de Vanguard completado, tests verificados
+   - ✅ Suite green, listo para siguiente módulo/feature
+
+### 🔄 Formato de aviso de Vanguard:
+
+```
+---
+✅ VANGUARD - Tarea completada: [Tests/Cobertura/Bug fixes]
+
+📋 Trabajo realizado:
+   - Tests: [X suites, Y tests pasando]
+   - Cobertura: [XX%]
+   - Estado: Suite green ✅ | Docs ✅
+
+🧹 RECOMENDACIÓN: Limpiar contexto
+   Razón: [Tests completados / Cambio de módulo]
+
+   Comandos:
+   - Gemini Code Assist: Reiniciar chat
+   - Claude Code: /clear o nueva conversación
+
+📝 Estado guardado en: [archivos .test.tsx/.test.js]
+---
+```
+
+### 📝 Checklist antes de avisar:
+
+- ✅ Todos los tests guardados en archivos
+- ✅ `npm test` pasando al 100%
+- ✅ Documentación de tests actualizada
+- ✅ Cobertura verificada
+
+Ver más detalles en: [`/AGENTS.md`](../../../AGENTS.md#-gestión-de-contexto-y-tokens)

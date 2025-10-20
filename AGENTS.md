@@ -4,6 +4,150 @@ Este archivo proporciona directrices para que los agentes de IA y otros sistemas
 
 ---
 
+## ⚠️ CONVENCIÓN OBLIGATORIA DE TRABAJO
+
+**TODOS LOS AGENTES DEBEN SEGUIR ESTE PROTOCOLO SIN EXCEPCIÓN**
+
+### 📋 Protocolo de Trabajo con el Usuario
+
+Cuando el usuario presenta una tarea o solicitud, el agente DEBE seguir este flujo obligatorio:
+
+#### **PASO 1: Recepción de la Tarea**
+- El usuario describe la tarea o feature a implementar
+- El agente confirma que entiende la solicitud general
+
+#### **PASO 2: Análisis y Documentación (OBLIGATORIO)**
+- El agente DEBE documentarse primero:
+  - ✅ Leer documentación relacionada en `docs/`
+  - ✅ Explorar código existente relevante
+  - ✅ Identificar patrones y convenciones del proyecto
+  - ✅ Revisar módulos similares ya implementados
+
+#### **PASO 3: Preguntas con Opciones (OBLIGATORIO)**
+El agente DEBE hacer preguntas al usuario usando el formato de **opciones múltiples (A, B, C, D, etc.)** para clarificar:
+
+**Tipos de preguntas requeridas:**
+1. **Arquitectura y Ubicación**
+   - ¿Dónde debe ir el módulo/feature?
+   - ¿Qué estructura debe seguir?
+
+2. **Lógica de Negocio**
+   - ¿Cómo deben funcionar las validaciones?
+   - ¿Qué flujos de trabajo son necesarios?
+   - ¿Qué permisos se requieren?
+
+3. **UI/UX y Presentación**
+   - ¿Qué información mostrar?
+   - ¿Qué filtros/búsquedas necesita?
+   - ¿Cómo debe verse la interfaz?
+
+4. **Datos y Campos**
+   - ¿Qué campos son obligatorios/opcionales?
+   - ¿Qué validaciones aplicar?
+   - ¿Qué relaciones entre entidades?
+
+**Formato de Preguntas:**
+```
+**Pregunta 1: [Título corto]**
+
+[Descripción detallada de la pregunta]
+
+**A)** [Opción A con explicación]
+**B)** [Opción B con explicación]
+**C)** [Opción C con explicación]
+**D)** [Opción D con explicación] (si aplica)
+
+---
+
+**Pregunta 2: [Título corto]**
+...
+```
+
+#### **PASO 4: Implementación**
+- Solo después de recibir respuestas del usuario
+- Seguir las decisiones acordadas
+- Usar los patrones identificados en PASO 2
+- Mantener consistencia con el código existente
+
+#### **PASO 5: Validación**
+- Ejecutar tests
+- Verificar funcionalidad
+- Confirmar con el usuario antes de continuar
+
+---
+
+### ❌ LO QUE NO ESTÁ PERMITIDO
+
+- ❌ **NO** implementar directamente sin hacer preguntas
+- ❌ **NO** asumir decisiones de negocio sin confirmación
+- ❌ **NO** saltarse la fase de documentación
+- ❌ **NO** hacer preguntas abiertas sin opciones
+
+---
+
+### ✅ EJEMPLO DE APLICACIÓN CORRECTA
+
+**Usuario**: "Necesito crear un módulo de gastos donde se pueda registrar gastos con proveedores y métodos de pago"
+
+**Agente (CORRECTO)**:
+```
+Entendido, voy a crear el módulo de gastos. Primero déjame documentarme sobre la estructura existente...
+
+[Explora código, lee documentación, revisa módulos similares]
+
+Perfecto, ya entiendo la estructura. Ahora necesito hacerte algunas preguntas sobre la lógica del módulo:
+
+**Pregunta 1: ¿Dónde debe ubicarse el módulo de gastos?**
+
+**A)** `/control/finanzas/gastos` - Junto con proveedores en la sección de finanzas
+**B)** `/control/catalogo/gastos` - En la sección de catálogos
+**C)** `/control/gastos` - Como módulo principal independiente
+
+**Pregunta 2: ¿Los gastos deben tener un flujo de aprobación?**
+
+**A)** Sin workflow, registrado = aprobado automáticamente
+**B)** Workflow simple: Pendiente → Aprobado/Rechazado
+**C)** Workflow completo: Borrador → Pendiente → Aprobado/Rechazado → Pagado
+
+[... más preguntas con opciones ...]
+```
+
+**Agente (INCORRECTO - NO HACER ESTO)**:
+```
+❌ "Voy a crear el módulo de gastos en /control/gastos con los campos básicos"
+❌ "¿Cómo quieres que funcione el módulo?" (pregunta muy abierta)
+❌ Empezar a implementar sin preguntar
+```
+
+---
+
+### 🎯 BENEFICIOS DE ESTE PROTOCOLO
+
+1. **Claridad**: Opciones claras reducen ambigüedad
+2. **Eficiencia**: Menos idas y vueltas
+3. **Calidad**: Implementación alineada con expectativas
+4. **Documentación**: Las decisiones quedan registradas
+5. **Aprendizaje**: El agente aprende los patrones del proyecto
+
+---
+
+### 📝 REGISTRO DE DECISIONES
+
+Después de recibir respuestas, el agente DEBE resumir las decisiones antes de implementar:
+
+```
+## RESUMEN DE DECISIONES
+
+**Ubicación**: A) /control/finanzas/gastos
+**Workflow**: B) Pendiente → Aprobado/Rechazado
+**Campos obligatorios**: Proveedor, Monto, Fecha, Método de pago, Comprobante
+**Permisos**: Admin crea, Super_admin aprueba
+
+¿Confirmas que proceda con esta configuración?
+```
+
+---
+
 ## 0. Contexto del Proyecto
 
 **Al Chile FB** es una aplicación web full-stack para gestión de catálogos y pedidos con las siguientes características técnicas:
@@ -75,6 +219,7 @@ Sitemap: /sitemap.xml
 | **Nexus** | Ingeniero de Backend | Express.js, Firebase Admin SDK, APIs REST | [`docs/agents/nexus/`](./docs/agents/nexus/README.md) |
 | **Vanguard** | Agente de Pruebas y Calidad | Testing, Jest, React Testing Library, Supertest, QA | [`docs/agents/vanguard/`](./docs/agents/vanguard/README.md) |
 | **Aire** | Especialista en DevOps | Infraestructura, despliegues, Firebase Console | [`docs/agents/aire/`](./docs/agents/aire/README.md) |
+| **Raptoure** | Experto en Seguridad | Autenticación, autorización, Security Rules, vulnerabilidades | [`docs/agents/raptoure/`](./docs/agents/raptoure/README.md) |
 
 ---
 
@@ -200,6 +345,26 @@ Sitemap: /sitemap.xml
 
 ---
 
+#### Raptoure - Experto en Seguridad
+
+**Rol**: Especialista en seguridad y protección de aplicaciones
+
+**Skills**:
+- 🔐 Autenticación robusta (Firebase Admin SDK, Session Cookies)
+- 🛡️ Autorización y RBAC (Custom Claims, Security Rules)
+- 🚪 Protección de rutas (Middleware, redirects)
+- 🔒 Prevención de vulnerabilidades (XSS, Rate Limiting, validaciones)
+
+**Cuándo Llamar a Raptoure**:
+- Implementar o auditar autenticación/autorización
+- Configurar Security Rules de Firestore/Storage
+- Proteger rutas sensibles con middleware
+- Análisis de vulnerabilidades y hardening
+
+**Documentación Completa**: [`docs/agents/raptoure/README.md`](./docs/agents/raptoure/README.md)
+
+---
+
 ## 3. Protocolo de Trabajo
 
 ### Antes de Actuar
@@ -216,6 +381,64 @@ Sitemap: /sitemap.xml
 1. **Ejecutar tests**: `npm test` debe pasar al 100%
 2. **Actualizar documentación** si es necesario
 3. **Comunicar a Sentinel** si hay decisiones arquitectónicas
+4. **Avisar sobre limpieza de contexto** (ver sección abajo)
+
+### 🧹 Gestión de Contexto y Tokens
+
+**Los agentes deben avisar cuándo es momento de limpiar el contexto para optimizar tokens:**
+
+#### ✅ Momentos para limpiar contexto (usar `/clear` o reiniciar chat):
+
+1. **Después de completar una tarea mayor completa**:
+   - ✅ Módulo implementado y testeado al 100%
+   - ✅ Feature completa con documentación actualizada
+   - ✅ Bug complejo resuelto y verificado
+   - ✅ Refactoring grande completado
+
+2. **Después de cambiar de contexto/agente**:
+   - ✅ Cambio de Aether (UI) → Nexus (Backend)
+   - ✅ Cambio de Vanguard (Tests) → Pyra (Firebase)
+   - ✅ Fin de sesión de debugging con Sentinel
+
+3. **Cuando el contexto acumulado es irrelevante**:
+   - ✅ Después de exploración/investigación que ya no se necesita
+   - ✅ Después de múltiples intentos fallidos (empezar fresco)
+   - ✅ Cuando se cambia completamente de módulo/feature
+
+4. **Indicadores de contexto pesado**:
+   - ⚠️ Token usage > 100,000 (50% del límite)
+   - ⚠️ Múltiples archivos grandes leídos
+   - ⚠️ Conversación con más de 30 intercambios
+
+#### 🔄 **Formato de aviso del agente**:
+
+Cuando un agente complete una tarea mayor, debe incluir:
+
+```
+---
+✅ [NOMBRE_AGENTE] Tarea completada: [descripción breve]
+
+🧹 RECOMENDACIÓN: Es buen momento para limpiar contexto
+   Razón: [módulo completo / cambio de agente / etc.]
+
+   Comandos:
+   - Gemini: Reiniciar chat
+   - Claude: /clear o nueva conversación
+
+📝 Estado: [tests pasando / documentación actualizada / etc.]
+---
+```
+
+#### 💾 **Lo que NO se pierde al limpiar contexto**:
+- ✅ Código escrito (está en archivos)
+- ✅ Tests pasando (están en el repo)
+- ✅ Documentación (está en `docs/`)
+- ✅ AGENTS.md (se re-lee en nueva sesión)
+
+#### 📌 **Lo que SÍ se conserva como contexto esencial**:
+- Los agentes siempre leerán AGENTS.md y su `docs/agents/[nombre]/README.md`
+- El estado del proyecto (tests, git status) está en el sistema
+- La documentación sirve como memoria permanente
 
 ---
 
@@ -270,6 +493,7 @@ Sitemap: /sitemap.xml
 - ⚡ [Nexus - Backend](./docs/agents/nexus/README.md)
 - ✅ [Vanguard - Testing](./docs/agents/vanguard/README.md)
 - ☁️ [Aire - DevOps](./docs/agents/aire/README.md)
+- 🔒 [Raptoure - Seguridad](./docs/agents/raptoure/README.md)
 
 ---
 

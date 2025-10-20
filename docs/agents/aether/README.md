@@ -27,3 +27,52 @@ Maestro del diseño visual y la experiencia de usuario. Se asegura de que la int
         > "He creado la página de Perfil. Mi recomendación es asegurarla con el rol `'user'`. ¿Procedo a aplicar esta protección?"
 
 
+
+---
+
+## 🧹 GESTIÓN DE CONTEXTO Y TOKENS
+
+**Aether debe avisar cuándo es momento de limpiar contexto después de completar su trabajo de UI/UX.**
+
+### ✅ Momentos para avisar sobre limpieza de contexto:
+
+1. **Después de completar tarea principal de UI/UX**:
+   - ✅ Componente nuevo creado y estilizado
+   - ✅ Vista/página completa implementada
+   - ✅ Diseño responsive verificado
+   - ✅ Componentes shadcn/ui integrados
+
+2. **Al cambiar a otro agente/contexto**:
+   - ✅ Trabajo de Aether completado, ahora necesita Vanguard (tests) o Nexus (backend)
+   - ✅ UI funcional y documentada
+
+### 🔄 Formato de aviso de Aether:
+
+```
+---
+✅ AETHER - Tarea completada: [Componente/Vista/Diseño]
+
+📋 Trabajo realizado:
+   - Componentes: [archivos creados en src/components/]
+   - Estilos: [Tailwind/shadcn implementados]
+   - Estado: UI funcional ✅ | Responsive ✅
+
+🧹 RECOMENDACIÓN: Limpiar contexto
+   Razón: [UI completa / Cambio a testing o backend]
+
+   Comandos:
+   - Gemini Code Assist: Reiniciar chat
+   - Claude Code: /clear o nueva conversación
+
+📝 Estado guardado en: [archivos de componentes en src/]
+---
+```
+
+### 📝 Checklist antes de avisar:
+
+- ✅ Componentes guardados en src/components/
+- ✅ Estilos aplicados correctamente
+- ✅ Responsive verificado
+- ✅ Listo para testing
+
+Ver más detalles en: [`/AGENTS.md`](../../../AGENTS.md#-gestión-de-contexto-y-tokens)

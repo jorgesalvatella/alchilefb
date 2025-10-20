@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Building, Briefcase, Users, Lightbulb, Truck, PlusCircle, Package } from 'lucide-react';
+import { Building, Briefcase, Users, Lightbulb, Truck, PlusCircle, Package, CreditCard, Receipt } from 'lucide-react';
 import { AddEditBusinessUnitDialog } from '@/components/control/add-edit-business-unit-dialog';
 import { withAuth } from '@/firebase/withAuth';
 
@@ -27,6 +27,18 @@ const catalogs = [
     description: 'Gestiona la lista global de todos los proveedores.',
     icon: Truck,
     href: '/control/finanzas/proveedores'
+  },
+  {
+    name: 'Métodos de Pago',
+    description: 'Gestiona los métodos de pago disponibles para gastos.',
+    icon: CreditCard,
+    href: '/control/catalogo/metodos-pago'
+  },
+  {
+    name: 'Gastos',
+    description: 'Registra y gestiona los gastos operacionales de la empresa.',
+    icon: Receipt,
+    href: '/control/finanzas/gastos'
   },
   {
     name: 'Repartidores',

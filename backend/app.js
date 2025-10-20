@@ -1699,6 +1699,776 @@ app.delete('/api/control/conceptos/:conceptoId/proveedores/:proveedorId', authMi
     }
 });
 
+// --- Payment Methods Management ---
+
+/**
+ * @swagger
+ * /api/control/metodos-pago:
+ *   get:
+ *     summary: Obtiene todos los métodos de pago
+ *     tags: [Metodos de Pago]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Lista de métodos de pago
+ *       '403':
+ *         description: No autorizado
+ */
+app.get('/api/control/metodos-pago', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const db = admin.firestore();
+        const snapshot = await db.collection('paymentMethods')
+            .where('deleted', '==', false)
+            .orderBy('name', 'asc')
+            .get();
+
+        const paymentMethods = [];
+        snapshot.forEach(doc => {
+            paymentMethods.push({ id: doc.id, ...doc.data() });
+        });
+
+        res.status(200).json(paymentMethods);
+    } catch (error) {
+        console.error('Error fetching payment methods:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/metodos-pago:
+ *   post:
+ *     summary: Crea un nuevo método de pago
+ *     tags: [Metodos de Pago]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               active:
+ *                 type: boolean
+ *     responses:
+ *       '201':
+ *         description: Método de pago creado
+ *       '400':
+ *         description: Datos inválidos
+ *       '403':
+ *         description: No autorizado
+ */
+app.post('/api/control/metodos-pago', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { name, description, active } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ message: 'Missing required field: name' });
+        }
+
+        const db = admin.firestore();
+        const newPaymentMethod = {
+            name,
+            description: description || '',
+            active: active !== undefined ? active : true,
+            deleted: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        const docRef = await db.collection('paymentMethods').add(newPaymentMethod);
+        res.status(201).json({ id: docRef.id, ...newPaymentMethod });
+    } catch (error) {
+        console.error('Error creating payment method:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/metodos-pago/{metodoPagoId}:
+ *   put:
+ *     summary: Actualiza un método de pago
+ *     tags: [Metodos de Pago]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: metodoPagoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               active:
+ *                 type: boolean
+ *     responses:
+ *       '200':
+ *         description: Método de pago actualizado
+ *       '403':
+ *         description: No autorizado
+ */
+app.put('/api/control/metodos-pago/:metodoPagoId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { metodoPagoId } = req.params;
+        const { name, description, active } = req.body;
+
+        if (!name) {
+            return res.status(400).json({ message: 'Missing required field: name' });
+        }
+
+        const db = admin.firestore();
+        const paymentMethodRef = db.collection('paymentMethods').doc(metodoPagoId);
+        const updatedData = {
+            name,
+            description: description || '',
+            active: active !== undefined ? active : true,
+            updatedAt: new Date().toISOString(),
+        };
+
+        await paymentMethodRef.update(updatedData);
+        res.status(200).json({ id: metodoPagoId, ...updatedData });
+    } catch (error) {
+        console.error('Error updating payment method:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/metodos-pago/{metodoPagoId}:
+ *   delete:
+ *     summary: Elimina un método de pago (soft delete)
+ *     tags: [Metodos de Pago]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: metodoPagoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Método de pago eliminado
+ *       '403':
+ *         description: No autorizado
+ */
+app.delete('/api/control/metodos-pago/:metodoPagoId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+        const { metodoPagoId } = req.params;
+        const db = admin.firestore();
+        const paymentMethodRef = db.collection('paymentMethods').doc(metodoPagoId);
+
+        await paymentMethodRef.update({
+            deleted: true,
+            deletedAt: new Date().toISOString(),
+        });
+
+        res.status(200).json({ message: 'Payment method deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting payment method:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+// --- Expenses Management ---
+
+/**
+ * Helper function: Generate incremental expense ID
+ * Format: YYYYMM-NNN (e.g., 202501-001, 202501-002, 202502-001)
+ */
+async function generateExpenseId(db) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const prefix = `${year}${month}`;
+
+    // Get all expenses for this month
+    const snapshot = await db.collection('expenses')
+        .where('expenseId', '>=', `${prefix}-000`)
+        .where('expenseId', '<=', `${prefix}-999`)
+        .orderBy('expenseId', 'desc')
+        .limit(1)
+        .get();
+
+    let nextNumber = 1;
+    if (!snapshot.empty) {
+        const lastExpenseId = snapshot.docs[0].data().expenseId;
+        const lastNumber = parseInt(lastExpenseId.split('-')[1]);
+        nextNumber = lastNumber + 1;
+    }
+
+    const numberStr = String(nextNumber).padStart(3, '0');
+    return `${prefix}-${numberStr}`;
+}
+
+/**
+ * @swagger
+ * /api/control/gastos/upload-receipt:
+ *   post:
+ *     summary: Sube una imagen de comprobante para un gasto
+ *     tags: [Gastos]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       '200':
+ *         description: Imagen subida exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 url:
+ *                   type: string
+ *       '400':
+ *         description: No se proporcionó archivo
+ *       '401':
+ *         description: No autorizado
+ *       '500':
+ *         description: Error del servidor
+ */
+app.post('/api/control/gastos/upload-receipt', authMiddleware, requireAdmin, upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send({ message: 'No file uploaded.' });
+  }
+
+  try {
+    const bucket = getStorage().bucket();
+    const fileName = `${Date.now()}-${req.file.originalname}`;
+    const storagePath = `gastos/comprobantes/${fileName}`;
+    const fileRef = bucket.file(storagePath);
+
+    // Upload file
+    await fileRef.save(req.file.buffer, {
+      metadata: {
+        contentType: req.file.mimetype,
+        cacheControl: 'public, max-age=31536000',
+      },
+    });
+
+    // Generate download token
+    const crypto = require('crypto');
+    const token = crypto.randomUUID();
+    await fileRef.setMetadata({
+      metadata: {
+        firebaseStorageDownloadTokens: token,
+      },
+    });
+
+    // Create public URL with token
+    const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media&token=${token}`;
+
+    res.status(200).send({ url: publicUrl });
+  } catch (error) {
+    console.error('Error uploading receipt image:', error);
+    res.status(500).send({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
+/**
+ * @swagger
+ * /api/control/gastos:
+ *   get:
+ *     summary: Obtiene todos los gastos con filtros opcionales
+ *     tags: [Gastos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [draft, pending, approved, rejected]
+ *       - in: query
+ *         name: businessUnitId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: departmentId
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: supplierId
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Lista de gastos
+ *       '403':
+ *         description: No autorizado
+ */
+app.get('/api/control/gastos', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+
+        const { status, businessUnitId, departmentId, supplierId } = req.query;
+        const db = admin.firestore();
+        let query = db.collection('expenses').where('deleted', '==', false);
+
+        // Apply filters
+        if (status) query = query.where('status', '==', status);
+        if (businessUnitId) query = query.where('businessUnitId', '==', businessUnitId);
+        if (departmentId) query = query.where('departmentId', '==', departmentId);
+        if (supplierId) query = query.where('supplierId', '==', supplierId);
+
+        query = query.orderBy('expenseDate', 'desc');
+
+        const snapshot = await query.get();
+        const expenses = [];
+        snapshot.forEach(doc => {
+            expenses.push({ id: doc.id, ...doc.data() });
+        });
+
+        res.status(200).json(expenses);
+    } catch (error) {
+        console.error('Error fetching expenses:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/gastos:
+ *   post:
+ *     summary: Crea un nuevo gasto
+ *     tags: [Gastos]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - businessUnitId
+ *               - departmentId
+ *               - groupId
+ *               - conceptId
+ *               - supplierId
+ *               - paymentMethodId
+ *               - amount
+ *               - currency
+ *               - expenseDate
+ *     responses:
+ *       '201':
+ *         description: Gasto creado
+ *       '400':
+ *         description: Datos inválidos
+ *       '403':
+ *         description: No autorizado
+ */
+app.post('/api/control/gastos', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+
+        const {
+            businessUnitId, departmentId, groupId, conceptId, supplierId,
+            paymentMethodId, amount, currency, expenseDate, invoiceNumber,
+            dueDate, description, authorizedBy, receiptImageUrl
+        } = req.body;
+
+        // Validate required fields
+        if (!businessUnitId || !departmentId || !groupId || !conceptId || !supplierId || !paymentMethodId || !amount || !currency || !expenseDate) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        const db = admin.firestore();
+
+        // Validate supplier is associated with concept
+        const conceptDoc = await db.collection('conceptos').doc(conceptId).get();
+        if (!conceptDoc.exists) {
+            return res.status(400).json({ message: 'Concept not found' });
+        }
+        const conceptData = conceptDoc.data();
+        if (!conceptData.proveedoresIds || !conceptData.proveedoresIds.includes(supplierId)) {
+            return res.status(400).json({ message: 'Supplier is not associated with this concept' });
+        }
+
+        // Generate incremental expense ID
+        const expenseId = await generateExpenseId(db);
+
+        const newExpense = {
+            expenseId,
+            businessUnitId,
+            departmentId,
+            groupId,
+            conceptId,
+            supplierId,
+            paymentMethodId,
+            amount: parseFloat(amount),
+            currency,
+            expenseDate: new Date(expenseDate).toISOString(),
+            invoiceNumber: invoiceNumber || '',
+            dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+            description: description || '',
+            authorizedBy: authorizedBy || '',
+            receiptImageUrl: receiptImageUrl || '',
+            status: 'draft',
+            createdBy: req.user.uid,
+            createdAt: new Date().toISOString(),
+            deleted: false,
+        };
+
+        const docRef = await db.collection('expenses').add(newExpense);
+        res.status(201).json({ id: docRef.id, ...newExpense });
+    } catch (error) {
+        console.error('Error creating expense:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/gastos/{expenseId}:
+ *   put:
+ *     summary: Actualiza un gasto (solo super_admin puede editar en cualquier estado)
+ *     tags: [Gastos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: expenseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Gasto actualizado
+ *       '403':
+ *         description: No autorizado
+ */
+app.put('/api/control/gastos/:expenseId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+
+        const { expenseId } = req.params;
+        const db = admin.firestore();
+        const expenseRef = db.collection('expenses').doc(expenseId);
+        const expenseDoc = await expenseRef.get();
+
+        if (!expenseDoc.exists) {
+            return res.status(404).json({ message: 'Expense not found' });
+        }
+
+        const currentExpense = expenseDoc.data();
+
+        // Only super_admin can edit in any state, others only in 'draft' or 'rejected'
+        if (!req.user.super_admin && !['draft', 'rejected'].includes(currentExpense.status)) {
+            return res.status(403).json({ message: 'Only super_admin can edit expenses in this state' });
+        }
+
+        const {
+            businessUnitId, departmentId, groupId, conceptId, supplierId,
+            paymentMethodId, amount, currency, expenseDate, invoiceNumber,
+            dueDate, description, authorizedBy, receiptImageUrl
+        } = req.body;
+
+        const updatedData = {
+            ...(businessUnitId && { businessUnitId }),
+            ...(departmentId && { departmentId }),
+            ...(groupId && { groupId }),
+            ...(conceptId && { conceptId }),
+            ...(supplierId && { supplierId }),
+            ...(paymentMethodId && { paymentMethodId }),
+            ...(amount && { amount: parseFloat(amount) }),
+            ...(currency && { currency }),
+            ...(expenseDate && { expenseDate: new Date(expenseDate).toISOString() }),
+            invoiceNumber: invoiceNumber || currentExpense.invoiceNumber,
+            dueDate: dueDate ? new Date(dueDate).toISOString() : currentExpense.dueDate,
+            description: description !== undefined ? description : currentExpense.description,
+            authorizedBy: authorizedBy !== undefined ? authorizedBy : currentExpense.authorizedBy,
+            receiptImageUrl: receiptImageUrl !== undefined ? receiptImageUrl : currentExpense.receiptImageUrl,
+            updatedAt: new Date().toISOString(),
+        };
+
+        await expenseRef.update(updatedData);
+        res.status(200).json({ id: expenseId, ...currentExpense, ...updatedData });
+    } catch (error) {
+        console.error('Error updating expense:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/gastos/{expenseId}/submit:
+ *   post:
+ *     summary: Envía un gasto para aprobación (draft -> pending)
+ *     tags: [Gastos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: expenseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Gasto enviado para aprobación
+ *       '400':
+ *         description: Estado inválido
+ *       '403':
+ *         description: No autorizado
+ */
+app.post('/api/control/gastos/:expenseId/submit', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+
+        const { expenseId } = req.params;
+        const db = admin.firestore();
+        const expenseRef = db.collection('expenses').doc(expenseId);
+        const expenseDoc = await expenseRef.get();
+
+        if (!expenseDoc.exists) {
+            return res.status(404).json({ message: 'Expense not found' });
+        }
+
+        const currentExpense = expenseDoc.data();
+
+        if (!['draft', 'rejected'].includes(currentExpense.status)) {
+            return res.status(400).json({ message: 'Expense must be in draft or rejected status to submit' });
+        }
+
+        if (!currentExpense.receiptImageUrl) {
+            return res.status(400).json({ message: 'Receipt image is required before submitting' });
+        }
+
+        await expenseRef.update({
+            status: 'pending',
+            rejectionReason: null,
+            updatedAt: new Date().toISOString(),
+        });
+
+        res.status(200).json({ message: 'Expense submitted for approval' });
+    } catch (error) {
+        console.error('Error submitting expense:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/gastos/{expenseId}/approve:
+ *   post:
+ *     summary: Aprueba un gasto (solo super_admin)
+ *     tags: [Gastos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: expenseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Gasto aprobado
+ *       '400':
+ *         description: Estado inválido
+ *       '403':
+ *         description: No autorizado (solo super_admin)
+ */
+app.post('/api/control/gastos/:expenseId/approve', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || !req.user.super_admin) {
+            return res.status(403).json({ message: 'Forbidden: super_admin role required' });
+        }
+
+        const { expenseId } = req.params;
+        const db = admin.firestore();
+        const expenseRef = db.collection('expenses').doc(expenseId);
+        const expenseDoc = await expenseRef.get();
+
+        if (!expenseDoc.exists) {
+            return res.status(404).json({ message: 'Expense not found' });
+        }
+
+        const currentExpense = expenseDoc.data();
+
+        if (currentExpense.status !== 'pending') {
+            return res.status(400).json({ message: 'Only pending expenses can be approved' });
+        }
+
+        await expenseRef.update({
+            status: 'approved',
+            approvedBy: req.user.uid,
+            approvedAt: new Date().toISOString(),
+            rejectionReason: null,
+            updatedAt: new Date().toISOString(),
+        });
+
+        res.status(200).json({ message: 'Expense approved successfully' });
+    } catch (error) {
+        console.error('Error approving expense:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/gastos/{expenseId}/reject:
+ *   post:
+ *     summary: Rechaza un gasto (solo super_admin, vuelve a estado draft)
+ *     tags: [Gastos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: expenseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - rejectionReason
+ *             properties:
+ *               rejectionReason:
+ *                 type: string
+ *     responses:
+ *       '200':
+ *         description: Gasto rechazado
+ *       '400':
+ *         description: Estado inválido o falta motivo
+ *       '403':
+ *         description: No autorizado (solo super_admin)
+ */
+app.post('/api/control/gastos/:expenseId/reject', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || !req.user.super_admin) {
+            return res.status(403).json({ message: 'Forbidden: super_admin role required' });
+        }
+
+        const { expenseId } = req.params;
+        const { rejectionReason } = req.body;
+
+        if (!rejectionReason || !rejectionReason.trim()) {
+            return res.status(400).json({ message: 'Rejection reason is required' });
+        }
+
+        const db = admin.firestore();
+        const expenseRef = db.collection('expenses').doc(expenseId);
+        const expenseDoc = await expenseRef.get();
+
+        if (!expenseDoc.exists) {
+            return res.status(404).json({ message: 'Expense not found' });
+        }
+
+        const currentExpense = expenseDoc.data();
+
+        if (currentExpense.status !== 'pending') {
+            return res.status(400).json({ message: 'Only pending expenses can be rejected' });
+        }
+
+        await expenseRef.update({
+            status: 'draft', // Vuelve a draft para corrección
+            rejectionReason,
+            approvedBy: null,
+            approvedAt: null,
+            updatedAt: new Date().toISOString(),
+        });
+
+        res.status(200).json({ message: 'Expense rejected and returned to draft' });
+    } catch (error) {
+        console.error('Error rejecting expense:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @swagger
+ * /api/control/gastos/{expenseId}:
+ *   delete:
+ *     summary: Elimina un gasto (soft delete)
+ *     tags: [Gastos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: expenseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       '200':
+ *         description: Gasto eliminado
+ *       '403':
+ *         description: No autorizado
+ */
+app.delete('/api/control/gastos/:expenseId', authMiddleware, async (req, res) => {
+    try {
+        if (!req.user || (!req.user.admin && !req.user.super_admin)) {
+            return res.status(403).json({ message: 'Forbidden: admin or super_admin role required' });
+        }
+
+        const { expenseId } = req.params;
+        const db = admin.firestore();
+        const expenseRef = db.collection('expenses').doc(expenseId);
+
+        await expenseRef.update({
+            deleted: true,
+            deletedAt: new Date().toISOString(),
+        });
+
+        res.status(200).json({ message: 'Expense deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting expense:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 // --- Driver Management ---
 
 /**

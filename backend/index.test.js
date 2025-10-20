@@ -127,4 +127,499 @@ describe('API Endpoints', () => {
       expect(response.body).toEqual(expect.objectContaining(mockOrder));
     });
   });
+
+  describe('Payment Methods Endpoints', () => {
+    describe('GET /api/control/metodos-pago', () => {
+      it('should return 403 Forbidden for non-admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-regular' };
+          next();
+        });
+        const response = await request(app).get('/api/control/metodos-pago');
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 200 OK and payment methods for admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        const mockPaymentMethods = [
+          { id: 'pm1', name: 'Efectivo', active: true, deleted: false },
+          { id: 'pm2', name: 'Tarjeta de Crédito', active: true, deleted: false },
+        ];
+        admin.firestore().get.mockResolvedValue({
+          empty: false,
+          forEach: (callback) => mockPaymentMethods.forEach((pm) => callback({ id: pm.id, data: () => pm })),
+        });
+        const response = await request(app).get('/api/control/metodos-pago');
+        expect(response.statusCode).toBe(200);
+        expect(Array.isArray(response.body)).toBe(true);
+      });
+    });
+
+    describe('POST /api/control/metodos-pago', () => {
+      it('should return 403 Forbidden for non-admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-regular' };
+          next();
+        });
+        const response = await request(app)
+          .post('/api/control/metodos-pago')
+          .send({ name: 'Transferencia' });
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 400 Bad Request if name is missing', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        const response = await request(app)
+          .post('/api/control/metodos-pago')
+          .send({});
+        expect(response.statusCode).toBe(400);
+      });
+
+      it('should return 201 Created for valid admin request', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        admin.firestore().add.mockResolvedValue({ id: 'new-pm-id' });
+        const response = await request(app)
+          .post('/api/control/metodos-pago')
+          .send({ name: 'Transferencia', description: 'Transferencia bancaria', active: true });
+        expect(response.statusCode).toBe(201);
+        expect(response.body).toHaveProperty('id');
+        expect(response.body.name).toBe('Transferencia');
+      });
+    });
+
+    describe('PUT /api/control/metodos-pago/:metodoPagoId', () => {
+      const metodoPagoId = 'pm-123';
+
+      it('should return 403 Forbidden for non-admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-regular' };
+          next();
+        });
+        const response = await request(app)
+          .put(`/api/control/metodos-pago/${metodoPagoId}`)
+          .send({ name: 'Efectivo Actualizado' });
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 400 Bad Request if name is missing', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        const response = await request(app)
+          .put(`/api/control/metodos-pago/${metodoPagoId}`)
+          .send({});
+        expect(response.statusCode).toBe(400);
+      });
+
+      it('should return 200 OK for valid admin update', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        admin.firestore().update.mockResolvedValue();
+        const response = await request(app)
+          .put(`/api/control/metodos-pago/${metodoPagoId}`)
+          .send({ name: 'Efectivo Actualizado', description: 'Pago en efectivo', active: false });
+        expect(response.statusCode).toBe(200);
+        expect(response.body.name).toBe('Efectivo Actualizado');
+      });
+    });
+
+    describe('DELETE /api/control/metodos-pago/:metodoPagoId', () => {
+      const metodoPagoId = 'pm-123';
+
+      it('should return 403 Forbidden for non-admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-regular' };
+          next();
+        });
+        const response = await request(app).delete(`/api/control/metodos-pago/${metodoPagoId}`);
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 200 OK for valid admin deletion', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        admin.firestore().update.mockResolvedValue();
+        const response = await request(app).delete(`/api/control/metodos-pago/${metodoPagoId}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body.message).toContain('deleted successfully');
+      });
+    });
+  });
+
+  describe('Expenses Endpoints', () => {
+    const gastoId = 'test-expense-id';
+    const mockExpenseData = {
+      businessUnitId: 'bu-1',
+      departmentId: 'dept-1',
+      groupId: 'group-1',
+      conceptId: 'concept-1',
+      supplierId: 'supplier-1',
+      paymentMethodId: 'pm-1',
+      amount: 1000,
+      currency: 'MXN',
+      expenseDate: '2025-01-15',
+      invoiceNumber: 'F-001',
+      description: 'Test expense',
+      authorizedBy: 'John Doe',
+      receiptImageUrl: 'https://example.com/receipt.jpg',
+    };
+
+    describe('POST /api/control/gastos/upload-receipt', () => {
+      it('should return 403 Forbidden for non-admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-regular' };
+          next();
+        });
+        const response = await request(app).post('/api/control/gastos/upload-receipt');
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 400 Bad Request when no file is uploaded', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        const response = await request(app).post('/api/control/gastos/upload-receipt');
+        expect(response.statusCode).toBe(400);
+        expect(response.body.message).toContain('No file uploaded');
+      });
+    });
+
+    describe('GET /api/control/gastos', () => {
+      it('should return 403 Forbidden for non-admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-regular' };
+          next();
+        });
+        const response = await request(app).get('/api/control/gastos');
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 200 OK with expenses for admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        admin.firestore().get.mockResolvedValue({ forEach: jest.fn() });
+        const response = await request(app).get('/api/control/gastos');
+        expect(response.statusCode).toBe(200);
+        expect(Array.isArray(response.body)).toBe(true);
+      });
+
+      it('should filter expenses by status when status query param is provided', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        admin.firestore().get.mockResolvedValue({ forEach: jest.fn() });
+        const response = await request(app).get('/api/control/gastos?status=pending');
+        expect(response.statusCode).toBe(200);
+      });
+    });
+
+    describe('POST /api/control/gastos', () => {
+      it('should return 403 Forbidden for non-admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-regular' };
+          next();
+        });
+        const response = await request(app).post('/api/control/gastos').send(mockExpenseData);
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 400 Bad Request when required fields are missing', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        const response = await request(app).post('/api/control/gastos').send({});
+        expect(response.statusCode).toBe(400);
+        expect(response.body.message).toContain('required');
+      });
+
+      it('should return 200 OK for valid expense creation', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        // Mock concept and supplier validation
+        admin.firestore().get.mockResolvedValueOnce({
+          empty: false,
+          docs: [{ data: () => ({ proveedoresIds: ['supplier-1'] }) }],
+        });
+        // Mock expense ID generation query
+        admin.firestore().get.mockResolvedValueOnce({ empty: true });
+        // Mock expense creation
+        admin.firestore().set.mockResolvedValue();
+
+        const response = await request(app).post('/api/control/gastos').send(mockExpenseData);
+        expect(response.statusCode).toBe(200);
+        expect(response.body.message).toContain('created successfully');
+      });
+    });
+
+    describe('PUT /api/control/gastos/:id', () => {
+      it('should return 403 Forbidden for non-admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-regular' };
+          next();
+        });
+        const response = await request(app).put(`/api/control/gastos/${gastoId}`).send(mockExpenseData);
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 404 Not Found for non-existent expense', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        // Mock the doc().get() chain to return non-existent doc
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({ exists: false }),
+        });
+        const response = await request(app).put(`/api/control/gastos/${gastoId}`).send(mockExpenseData);
+        expect(response.statusCode).toBe(404);
+      });
+
+      it('should return 200 OK for valid expense update by super_admin', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-super', super_admin: true };
+          next();
+        });
+        // Mock the doc().get() and update() chain
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({
+            exists: true,
+            data: () => ({ status: 'pending', createdBy: 'other-user' }),
+          }),
+          update: jest.fn().mockResolvedValue(),
+        });
+        // Mock concept and supplier validation query
+        admin.firestore().get.mockResolvedValue({
+          empty: false,
+          docs: [{ data: () => ({ proveedoresIds: ['supplier-1'] }) }],
+        });
+
+        const response = await request(app).put(`/api/control/gastos/${gastoId}`).send(mockExpenseData);
+        expect(response.statusCode).toBe(200);
+        expect(response.body.message).toContain('updated');
+      });
+    });
+
+    describe('DELETE /api/control/gastos/:id', () => {
+      it('should return 403 Forbidden for non-admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-regular' };
+          next();
+        });
+        const response = await request(app).delete(`/api/control/gastos/${gastoId}`);
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 404 Not Found for non-existent expense', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        // Mock the doc().get() chain to return non-existent doc
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({ exists: false }),
+        });
+        const response = await request(app).delete(`/api/control/gastos/${gastoId}`);
+        expect(response.statusCode).toBe(404);
+      });
+
+      it('should return 200 OK for valid expense soft deletion', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        // Mock the doc().get() and update() chain
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({ exists: true }),
+          update: jest.fn().mockResolvedValue(),
+        });
+        const response = await request(app).delete(`/api/control/gastos/${gastoId}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body.message).toContain('deleted');
+      });
+    });
+
+    describe('POST /api/control/gastos/:id/submit', () => {
+      it('should return 403 Forbidden for non-admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-regular' };
+          next();
+        });
+        const response = await request(app).post(`/api/control/gastos/${gastoId}/submit`);
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 404 Not Found for non-existent expense', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        // Mock the doc().get() chain to return non-existent doc
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({ exists: false }),
+        });
+        const response = await request(app).post(`/api/control/gastos/${gastoId}/submit`);
+        expect(response.statusCode).toBe(404);
+      });
+
+      it('should return 400 Bad Request when receipt image is missing', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        // Mock the doc().get() chain
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({
+            exists: true,
+            data: () => ({ status: 'draft', receiptImageUrl: null }),
+          }),
+        });
+
+        const response = await request(app).post(`/api/control/gastos/${gastoId}/submit`);
+        expect(response.statusCode).toBe(400);
+        expect(response.body.message).toContain('Receipt image');
+      });
+
+      it('should return 200 OK for valid submission', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        // Mock the doc().get() and update() chain
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({
+            exists: true,
+            data: () => ({ status: 'draft', receiptImageUrl: 'https://example.com/receipt.jpg' }),
+          }),
+          update: jest.fn().mockResolvedValue(),
+        });
+
+        const response = await request(app).post(`/api/control/gastos/${gastoId}/submit`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body.message).toContain('submitted');
+      });
+    });
+
+    describe('POST /api/control/gastos/:id/approve', () => {
+      it('should return 403 Forbidden for non-super_admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        const response = await request(app).post(`/api/control/gastos/${gastoId}/approve`);
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 404 Not Found for non-existent expense', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-super', super_admin: true };
+          next();
+        });
+        // Mock the doc().get() chain to return non-existent doc
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({ exists: false }),
+        });
+        const response = await request(app).post(`/api/control/gastos/${gastoId}/approve`);
+        expect(response.statusCode).toBe(404);
+      });
+
+      it('should return 200 OK for valid approval by super_admin', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-super', super_admin: true };
+          next();
+        });
+        // Mock the doc().get() and update() chain
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({
+            exists: true,
+            data: () => ({ status: 'pending' }),
+          }),
+          update: jest.fn().mockResolvedValue(),
+        });
+
+        const response = await request(app).post(`/api/control/gastos/${gastoId}/approve`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body.message).toContain('approved');
+      });
+    });
+
+    describe('POST /api/control/gastos/:id/reject', () => {
+      it('should return 403 Forbidden for non-super_admin users', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-admin', admin: true };
+          next();
+        });
+        const response = await request(app)
+          .post(`/api/control/gastos/${gastoId}/reject`)
+          .send({ rejectionReason: 'Test reason' });
+        expect(response.statusCode).toBe(403);
+      });
+
+      it('should return 400 Bad Request when rejection reason is missing', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-super', super_admin: true };
+          next();
+        });
+        const response = await request(app).post(`/api/control/gastos/${gastoId}/reject`).send({});
+        expect(response.statusCode).toBe(400);
+        expect(response.body.message).toContain('Rejection reason');
+      });
+
+      it('should return 404 Not Found for non-existent expense', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-super', super_admin: true };
+          next();
+        });
+        // Mock the doc().get() chain to return non-existent doc
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({ exists: false }),
+        });
+        const response = await request(app)
+          .post(`/api/control/gastos/${gastoId}/reject`)
+          .send({ rejectionReason: 'Test reason' });
+        expect(response.statusCode).toBe(404);
+      });
+
+      it('should return 200 OK for valid rejection by super_admin', async () => {
+        authMiddleware.mockImplementation((req, res, next) => {
+          req.user = { uid: 'test-uid-super', super_admin: true };
+          next();
+        });
+        // Mock the doc().get() and update() chain
+        admin.firestore().doc = jest.fn().mockReturnValue({
+          get: jest.fn().mockResolvedValue({
+            exists: true,
+            data: () => ({ status: 'pending' }),
+          }),
+          update: jest.fn().mockResolvedValue(),
+        });
+
+        const response = await request(app)
+          .post(`/api/control/gastos/${gastoId}/reject`)
+          .send({ rejectionReason: 'Incomplete documentation' });
+        expect(response.statusCode).toBe(200);
+        expect(response.body.message).toContain('rejected');
+      });
+    });
+  });
 });

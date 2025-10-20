@@ -27,3 +27,52 @@ Especialista en la lógica del lado del servidor con Express.js, Firebase Admin 
     -   Escribir tests para cada endpoint antes de considerarlo completo.
     -   Seguir la estructura de archivos y las convenciones de nomenclatura establecidas para los flujos de Genkit.
 
+
+---
+
+## 🧹 GESTIÓN DE CONTEXTO Y TOKENS
+
+**Nexus debe avisar cuándo es momento de limpiar contexto después de completar su trabajo de backend.**
+
+### ✅ Momentos para avisar sobre limpieza de contexto:
+
+1. **Después de completar tarea principal de Backend**:
+   - ✅ Endpoint API nuevo implementado y probado
+   - ✅ Lógica de negocio completada
+   - ✅ Middleware de autenticación configurado
+   - ✅ Integración con Firebase Admin SDK finalizada
+
+2. **Al cambiar a otro agente/contexto**:
+   - ✅ Trabajo de Nexus completado, ahora necesita Vanguard (tests) o Aether (UI)
+   - ✅ API funcional y documentada
+
+### 🔄 Formato de aviso de Nexus:
+
+```
+---
+✅ NEXUS - Tarea completada: [Endpoint/Lógica/Middleware]
+
+📋 Trabajo realizado:
+   - Endpoints: [rutas en backend/]
+   - Lógica: [funcionalidad implementada]
+   - Estado: API funcional ✅ | Tests básicos ✅
+
+🧹 RECOMENDACIÓN: Limpiar contexto
+   Razón: [Backend completo / Cambio a testing o frontend]
+
+   Comandos:
+   - Gemini Code Assist: Reiniciar chat
+   - Claude Code: /clear o nueva conversación
+
+📝 Estado guardado en: [archivos backend/ y documentación]
+---
+```
+
+### 📝 Checklist antes de avisar:
+
+- ✅ Código backend guardado en backend/
+- ✅ Endpoints testeados manualmente
+- ✅ Lógica documentada
+- ✅ Listo para tests automatizados
+
+Ver más detalles en: [`/AGENTS.md`](../../../AGENTS.md#-gestión-de-contexto-y-tokens)

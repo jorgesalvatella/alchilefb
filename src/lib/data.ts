@@ -59,14 +59,30 @@ export const expenseCategories = {
 
 export type Expense = {
   id: string;
-  date: Timestamp;
+  expenseId: string; // ID incremental formato: AAAAMM-NNN (ej: 202501-001)
+  businessUnitId: string;
+  departmentId: string;
+  groupId: string;
+  conceptId: string;
+  supplierId: string; // Proveedor asociado al concepto
+  paymentMethodId: string; // Referencia a PaymentMethod
   amount: number;
-  description: string;
-  supplierId?: string;
-  paymentMethod: 'Efectivo' | 'Tarjeta de Crédito' | 'Transferencia Bancaria';
-  department: string;
-  group: string;
-  concept: string;
+  currency: 'USD' | 'MXN';
+  expenseDate: Timestamp; // Fecha del gasto
+  invoiceNumber?: string; // Número de factura/boleta
+  dueDate?: Timestamp; // Fecha de vencimiento
+  description?: string; // Notas/Descripción del gasto
+  authorizedBy?: string; // Quién lo autorizó
+  receiptImageUrl?: string; // URL de la imagen del comprobante (obligatoria)
+  status: 'draft' | 'pending' | 'approved' | 'rejected'; // Workflow
+  rejectionReason?: string; // Motivo del rechazo (si aplica)
+  createdBy: string; // UID del usuario que lo creó
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+  approvedBy?: string; // UID del super_admin que lo aprobó
+  approvedAt?: Timestamp;
+  deleted: boolean;
+  deletedAt?: Timestamp;
 };
 
 export type Supplier = {
@@ -105,17 +121,13 @@ export type Concept = {
   groupId: string;
 };
 
-export type Supplier = {
+export type PaymentMethod = {
   id: string;
   name: string;
-  contactPerson?: string;
-  phone?: string;
-  email?: string;
-  conceptIds?: string[];
-};
-
-export type Department = {
-  id: string;
-  name: string;
+  description?: string;
+  active: boolean;
+  deleted: boolean;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 };
     

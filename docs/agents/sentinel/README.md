@@ -399,3 +399,82 @@ npm test -- --clearCache
 - ⚠️ Bugs que reaparecen después de ser resueltos
 - ⚠️ Código duplicado en frontend y backend (falta abstracción)
 
+---
+
+## 🧹 GESTIÓN DE CONTEXTO Y TOKENS
+
+**Como Coordinador, Sentinel debe monitorear el uso de tokens y avisar cuándo limpiar contexto.**
+
+### ✅ Momentos para avisar sobre limpieza de contexto:
+
+1. **Después de completar orquestación completa**:
+   - ✅ Feature full-stack implementada (Pyra → Nexus → Aether → Vanguard)
+   - ✅ Bug complejo resuelto con múltiples agentes involucrados
+   - ✅ Refactoring mayor completado y testeado
+
+2. **Al finalizar sesión de debugging**:
+   - ✅ Problema diagnosticado y solución implementada
+   - ✅ Tests pasando al 100%
+   - ✅ Documentación actualizada con el fix
+
+3. **Antes de cambiar de módulo/contexto**:
+   - ✅ Terminó trabajo en módulo de Tracking → ahora va a Promotions
+   - ✅ Completó features de Frontend → ahora va a Backend
+   - ✅ Finalizó configuración de Firebase → ahora va a UI
+
+### 📊 Indicadores de contexto pesado (Token usage):
+
+- ⚠️ **50%+ del límite** (>100k tokens en Claude): Considerar limpieza pronto
+- 🔴 **75%+ del límite** (>150k tokens): Limpiar urgente
+- 📖 **Múltiples archivos grandes leídos**: Especialmente docs extensos
+- 💬 **Conversación > 30 intercambios**: Contexto acumulado significativo
+
+### 🔄 Formato de aviso de Sentinel:
+
+```
+---
+✅ SENTINEL - Orquestación completada: [Feature/Bug/Refactoring]
+
+📋 Resumen:
+   - Agentes involucrados: [Pyra, Nexus, Aether, Vanguard]
+   - Estado: Tests 100% ✅ | Docs actualizados ✅
+   - Commits: [descripción de commits realizados]
+
+🧹 RECOMENDACIÓN: Limpiar contexto
+   Razón: [Módulo completo / Cambio de contexto / Token usage alto]
+   Token actual: [XX,XXX / 200,000] ([XX%])
+
+   Comandos:
+   - Gemini Code Assist: Reiniciar chat
+   - Claude Code: /clear o nueva conversación
+
+💾 Estado guardado en:
+   - Código: [archivos modificados]
+   - Tests: [suites actualizadas]
+   - Docs: [documentación actualizada]
+---
+```
+
+### 📝 Checklist antes de avisar limpieza:
+
+Sentinel DEBE verificar que todo está guardado:
+
+- ✅ Todos los cambios de código están en archivos (no solo en contexto)
+- ✅ Tests pasando al 100% (`npm test`)
+- ✅ Documentación actualizada en `docs/`
+- ✅ Si hay cambios importantes, sugerir commit antes de limpiar
+- ✅ No hay tareas pendientes en el TODO actual
+
+### 💡 Recordatorios importantes:
+
+**Al usuario:**
+- "Al reiniciar, volveré a leer AGENTS.md y toda la documentación"
+- "El código y tests están guardados, no se pierde nada"
+- "Una nueva sesión será más rápida sin contexto acumulado"
+
+**Para el siguiente agente/sesión:**
+- El nuevo contexto empezará leyendo AGENTS.md
+- Se leerá `docs/agents/[agente]/README.md` del agente activo
+- El estado del proyecto (git, tests) estará disponible
+- La documentación sirve como memoria permanente del proyecto
+

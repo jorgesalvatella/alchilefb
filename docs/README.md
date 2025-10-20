@@ -98,6 +98,7 @@ Documentación detallada de agentes de IA especializados:
 - [Nexus](./agents/nexus/README.md) - Ingeniero de Backend
 - [Vanguard](./agents/vanguard/README.md) - Agente de Pruebas y Calidad
 - [Aire](./agents/aire/README.md) - Especialista en DevOps
+- [Raptoure](./agents/raptoure/README.md) - Experto en Seguridad
 
 ---
 
