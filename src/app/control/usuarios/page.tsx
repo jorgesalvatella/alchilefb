@@ -2,7 +2,7 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import type { AppUser } from '@/lib/data';
+import type { AppUser, BusinessUnit } from '@/lib/data';
 import { Users, UserCog, Shield, UserX, CheckCircle, XCircle, Pen, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { EditUserDialog } from '@/components/control/edit-user-dialog';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 
 export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,12 +58,20 @@ export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
           url += `?${params.toString()}`;
         }
 
-        const response = await fetch(url, {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (!response.ok) throw new Error('No se pudo obtener los usuarios.');
-        const data = await response.json();
-        setUsers(data);
+        const [usersResponse, businessUnitsResponse] = await Promise.all([
+          fetch(url, { headers: { 'Authorization': `Bearer ${token}` } }),
+          fetch('/api/control/unidades-de-negocio', { headers: { 'Authorization': `Bearer ${token}` } })
+        ]);
+
+        if (!usersResponse.ok) throw new Error('No se pudo obtener los usuarios.');
+        if (!businessUnitsResponse.ok) throw new Error('No se pudo obtener las sucursales.');
+
+        const usersData = await usersResponse.json();
+        const businessUnitsData = await businessUnitsResponse.json();
+        
+        setUsers(usersData);
+        setBusinessUnits(businessUnitsData);
+
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -148,6 +157,13 @@ export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
     });
   };
 
+  const sucursalMap = new Map(businessUnits.map(bu => [bu.id, bu.name]));
+
+  const getSucursalNames = (sucursalIds: string[] | undefined) => {
+    if (!sucursalIds || sucursalIds.length === 0) return 'N/A';
+    return sucursalIds.map(id => sucursalMap.get(id) || id).join(', ');
+  };
+
   const breadcrumbItems = [
     { label: 'Control', href: '/control' },
     { label: 'Usuarios', href: '/control/usuarios' },
@@ -210,19 +226,22 @@ export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
           users.map((userData) => (
             <Card key={userData.id} className="bg-black/50 backdrop-blur-sm border-white/10 text-white">
               <CardHeader>
-                <CardTitle className="text-purple-400 flex items-center justify-between">
+                <CardTitle className="text-purple-400 break-all">
                   <span>{userData.email}</span>
-                  {getActiveBadge(userData.active)}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-sm space-y-2">
+              <CardContent className="text-sm space-y-2 break-all">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold">Estado:</span>
+                  {getActiveBadge(userData.active)}
+                </div>
                 <div><span className="font-semibold">Nombre:</span> {userData.displayName || 'N/A'}</div>
                 <div><span className="font-semibold">Teléfono:</span> {userData.phoneNumber || 'N/A'}</div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold">Rol:</span> {getRoleBadge(userData.role)}
                 </div>
-                <div><span className="font-semibold">Sucursal:</span> {userData.sucursalId || 'N/A'}</div>
-                <div><span className="font-semibold">Departamento:</span> {userData.departamento || 'N/A'}</div>
+                <div><span className="font-semibold">Sucursal:</span> {getSucursalNames(userData.sucursalIds)}</div>
+                <div><span className="font-semibold">Área:</span> {userData.area || 'N/A'}</div>
                 <div><span className="font-semibold">Último acceso:</span> {formatDate(userData.lastLogin)}</div>
               </CardContent>
               <CardFooter className="flex justify-end space-x-2">
@@ -251,7 +270,7 @@ export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
               <TableHead className="text-white/80">Rol</TableHead>
               <TableHead className="text-white/80">Estado</TableHead>
               <TableHead className="text-white/80">Sucursal</TableHead>
-              <TableHead className="text-white/80">Departamento</TableHead>
+              <TableHead className="text-white/80">Área</TableHead>
               <TableHead className="text-white/80">Último Acceso</TableHead>
               <TableHead className="text-right text-white/80">Acciones</TableHead>
             </TableRow>
@@ -263,13 +282,13 @@ export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
               <TableRow><TableCell colSpan={9} className="text-center text-red-500 py-12">Error: {error}</TableCell></TableRow>
             ) : users.map((userData) => (
               <TableRow key={userData.id} className="border-b border-white/10 hover:bg-white/5">
-                <TableCell className="font-medium text-white text-sm">{userData.email}</TableCell>
-                <TableCell className="text-white/80">{userData.displayName || 'N/A'}</TableCell>
-                <TableCell className="text-white/80 text-sm">{userData.phoneNumber || 'N/A'}</TableCell>
+                <TableCell className="font-medium text-white text-sm break-all">{userData.email}</TableCell>
+                <TableCell className="text-white/80 break-all">{userData.displayName || 'N/A'}</TableCell>
+                <TableCell className="text-white/80 text-sm break-all">{userData.phoneNumber || 'N/A'}</TableCell>
                 <TableCell>{getRoleBadge(userData.role)}</TableCell>
                 <TableCell>{getActiveBadge(userData.active)}</TableCell>
-                <TableCell className="text-white/80 text-sm">{userData.sucursalId || 'N/A'}</TableCell>
-                <TableCell className="text-white/80 text-sm">{userData.departamento || 'N/A'}</TableCell>
+                <TableCell className="text-white/80 text-sm break-all">{getSucursalNames(userData.sucursalIds)}</TableCell>
+                <TableCell className="text-white/80 text-sm break-all">{userData.area || 'N/A'}</TableCell>
                 <TableCell className="text-white/80 text-xs">{formatDate(userData.lastLogin)}</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="icon" onClick={() => handleEdit(userData)} className="text-white/60 hover:text-orange-400" title="Editar">

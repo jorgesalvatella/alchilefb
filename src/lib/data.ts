@@ -143,8 +143,8 @@ export type AppUser = {
   photoURL?: string;
   role: UserRole;
   active: boolean; // Estado activo/inactivo
-  sucursalId?: string; // Sucursal asignada
-  departamento?: string; // Departamento organizacional
+  sucursalIds?: string[]; // Sucursales asignadas
+  area?: string; // Área organizacional
   createdAt: Timestamp;
   lastLogin?: Timestamp;
   deleted: boolean;

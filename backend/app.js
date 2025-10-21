@@ -4411,8 +4411,8 @@ app.get('/api/control/usuarios', authMiddleware, requireAdmin, async (req, res) 
         photoURL: userRecord.photoURL || firestoreData.photoURL || '',
         role: userRole,
         active: !userRecord.disabled,
-        sucursalId: firestoreData.sucursalId || '',
-        departamento: firestoreData.departamento || '',
+        sucursalIds: firestoreData.sucursalIds || [],
+        departamento: firestoreData.area || '',
         createdAt: userRecord.metadata.creationTime,
         lastLogin: userRecord.metadata.lastSignInTime || null,
         deleted: false,
@@ -4428,7 +4428,7 @@ app.get('/api/control/usuarios', authMiddleware, requireAdmin, async (req, res) 
       users = users.filter(u => u.active === isActive);
     }
     if (sucursalId) {
-      users = users.filter(u => u.sucursalId === sucursalId);
+      users = users.filter(u => u.sucursalIds && u.sucursalIds.includes(sucursalId));
     }
 
     // Ordenar por fecha de creación descendente
@@ -4489,7 +4489,7 @@ app.get('/api/control/usuarios', authMiddleware, requireAdmin, async (req, res) 
 app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
-    const { role, active, sucursalId, departamento, displayName, phoneNumber } = req.body;
+    const { role, active, sucursalIds, area, displayName, phoneNumber } = req.body;
 
     // Verificar que el usuario existe
     let targetUser;
@@ -4565,8 +4565,8 @@ app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (
       updatedAt: new Date().toISOString(),
     };
 
-    if (sucursalId !== undefined) updateData.sucursalId = sucursalId;
-    if (departamento !== undefined) updateData.departamento = departamento;
+    if (sucursalIds !== undefined) updateData.sucursalIds = sucursalIds;
+    if (area !== undefined) updateData.area = area;
     if (displayName !== undefined) updateData.displayName = displayName;
     if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
 

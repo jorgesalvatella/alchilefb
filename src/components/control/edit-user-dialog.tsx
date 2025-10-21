@@ -15,8 +15,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useUser } from '@/firebase/provider';
-import type { AppUser, UserRole } from '@/lib/data';
+import type { AppUser, UserRole, BusinessUnit } from '@/lib/data';
 import { useToast } from '@/hooks/use-toast';
+import { MultiSelect } from '@/components/ui/multi-select';
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -37,13 +38,35 @@ export function EditUserDialog({
   const [phoneNumber, setPhoneNumber] = useState('');
   const [role, setRole] = useState<UserRole>('usuario');
   const [active, setActive] = useState(true);
-  const [sucursalId, setSucursalId] = useState('');
-  const [departamento, setDepartamento] = useState('');
+  const [sucursalIds, setSucursalIds] = useState<string[]>([]);
+  const [area, setArea] = useState('');
+  const [businessUnits, setBusinessUnits] = useState<BusinessUnit[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
 
   // Determine if current user is super_admin
   const isSuperAdmin = !!claims?.super_admin;
+
+  useEffect(() => {
+    async function fetchBusinessUnits() {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch('/api/control/unidades-de-negocio', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error('Failed to fetch business units');
+        const data = await response.json();
+        setBusinessUnits(data);
+      } catch (error) {
+        toast({ title: 'Error', description: (error as Error).message, variant: 'destructive' });
+      }
+    }
+
+    if (isOpen) {
+      fetchBusinessUnits();
+    }
+  }, [isOpen, user, toast]);
 
   // Initialize form when userData changes
   useEffect(() => {
@@ -52,8 +75,8 @@ export function EditUserDialog({
       setPhoneNumber(userData.phoneNumber || '');
       setRole(userData.role);
       setActive(userData.active);
-      setSucursalId(userData.sucursalId || '');
-      setDepartamento(userData.departamento || '');
+      setSucursalIds(userData.sucursalIds || []);
+      setArea(userData.area || '');
     }
   }, [userData, isOpen]);
 
@@ -80,8 +103,8 @@ export function EditUserDialog({
         phoneNumber: phoneNumber || null,
         role,
         active,
-        sucursalId: sucursalId || null,
-        departamento: departamento || null,
+        sucursalIds: sucursalIds || [],
+        area: area || null,
       };
 
       const response = await fetch(url, {
@@ -105,6 +128,8 @@ export function EditUserDialog({
       setIsLoading(false);
     }
   };
+
+  const sucursalOptions = businessUnits.map(bu => ({ label: bu.name, value: bu.id }));
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -193,25 +218,28 @@ export function EditUserDialog({
             />
           </div>
 
-          {/* Sucursal */}
-          <div className="space-y-2">
-            <Label htmlFor="sucursalId" className="text-white/80">Sucursal ID</Label>
-            <Input
-              id="sucursalId"
-              value={sucursalId}
-              onChange={(e) => setSucursalId(e.target.value)}
-              className="bg-white/5 border-white/20"
-              placeholder="Ej: SUC-001"
-            />
-          </div>
+          {/* Sucursales */}
+          {(role === 'admin' || role === 'repartidor' || role === 'usuario') && (
+            <div className="space-y-2">
+              <Label htmlFor="sucursalIds" className="text-white/80">Sucursales Asignadas</Label>
+              <MultiSelect
+                options={sucursalOptions}
+                onValueChange={setSucursalIds}
+                defaultValue={sucursalIds}
+                placeholder="Seleccionar sucursales..."
+                className="bg-white/5 border-white/20"
+              />
+              <p className="text-xs text-white/40">Asigna una o más sucursales a este usuario.</p>
+            </div>
+          )}
 
-          {/* Departamento */}
+          {/* Área */}
           <div className="space-y-2">
-            <Label htmlFor="departamento" className="text-white/80">Departamento</Label>
+            <Label htmlFor="area" className="text-white/80">Área</Label>
             <Input
-              id="departamento"
-              value={departamento}
-              onChange={(e) => setDepartamento(e.target.value)}
+              id="area"
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
               className="bg-white/5 border-white/20"
               placeholder="Ej: Operaciones, Ventas, etc."
             />
