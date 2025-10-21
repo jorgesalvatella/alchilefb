@@ -12,6 +12,7 @@ import { Pen, User as UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserProfile {
   firstName?: string;
@@ -35,6 +36,10 @@ function ProfilePage({ user }: WithAuthProps) {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordChangeError, setPasswordChangeError] = useState<string | null>(null);
 
   // Effect to fetch data from our API
   useEffect(() => {
@@ -98,12 +103,78 @@ function ProfilePage({ user }: WithAuthProps) {
 
       setUserProfile(prev => prev ? { ...prev, firstName, lastName, phoneNumber } : null);
       setIsEditing(false);
-      alert('Perfil actualizado correctamente');
+      toast({
+        title: "Éxito",
+        description: "Perfil actualizado correctamente.",
+        variant: "default",
+      });
     } catch (error) {
       console.error("Error updating profile: ", error);
-      alert(`Error al actualizar perfil: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      toast({
+        title: "Error",
+        description: `Error al actualizar perfil: ${error instanceof Error ? error.message : 'Error desconocido'}`, 
+        variant: "destructive",
+      });
     }
   };
+
+  const handlePasswordChange = async () => {
+    if (!user) return;
+    setPasswordChangeError(null);
+
+    // Frontend validation
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      setPasswordChangeError("Todos los campos de contraseña son obligatorios.");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setPasswordChangeError("La nueva contraseña y la confirmación no coinciden.");
+      return;
+    }
+    // Robust password validation (min 8 chars, 1 number, 1 uppercase, 1 lowercase)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      setPasswordChangeError("La nueva contraseña debe tener al menos 8 caracteres, incluyendo una mayúscula, una minúscula y un número.");
+      return;
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/me/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Server error response:', errorData);
+        throw new Error(errorData.message || `Failed to change password (${response.status})`);
+      }
+
+      toast({
+        title: "Éxito",
+        description: "Contraseña actualizada correctamente. Por seguridad, se recomienda cerrar sesión y volver a iniciar.",
+        variant: "default",
+      });
+      // Clear password fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (error) {
+      console.error("Error changing password: ", error);
+      toast({
+        title: "Error",
+        description: `Error al cambiar contraseña: ${error instanceof Error ? error.message : 'Error desconocido'}`, 
+        variant: "destructive",
+      });
+    }
+  };
+
+  const { toast } = useToast();
 
   if (isLoading) {
     return (
@@ -125,8 +196,8 @@ function ProfilePage({ user }: WithAuthProps) {
   }
 
   // Robust display name calculation
-  const displayName = userProfile?.firstName || user.displayName?.split(' ')?.[0] || '';
-  const displayLastName = userProfile?.lastName || user.displayName?.split(' ')?.[1] || '';
+  const displayName = userProfile?.firstName || user.displayName?.split(' ')[0] || '';
+  const displayLastName = userProfile?.lastName || user.displayName?.split(' ')[1] || '';
   const displayEmail = userProfile?.email || user.email || '';
   const displayPhone = userProfile?.phoneNumber || '';
   const displayPhotoUrl = userProfile?.profilePictureUrl || user.photoURL;
@@ -174,9 +245,27 @@ function ProfilePage({ user }: WithAuthProps) {
                         <div>
                             <Label htmlFor="phone">Teléfono</Label>
                             <Input id="phone" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} className="bg-white/5 border-white/20" />
+                            </div>
+                        <Separator className="bg-white/20 my-6" />
+                        <h3 className="text-xl font-semibold">Cambiar Contraseña</h3>
+                        <div className="space-y-4">
+                            <div>
+                                <Label htmlFor="currentPassword">Contraseña Actual</Label>
+                                <Input id="currentPassword" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="bg-white/5 border-white/20" />
+                            </div>
+                            <div>
+                                <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                                <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="bg-white/5 border-white/20" />
+                            </div>
+                            <div>
+                                <Label htmlFor="confirmNewPassword">Confirmar Nueva Contraseña</Label>
+                                <Input id="confirmNewPassword" type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} className="bg-white/5 border-white/20" />
+                            </div>
+                            {passwordChangeError && <p className="text-red-500 text-sm">{passwordChangeError}</p>}
+                            <Button onClick={handlePasswordChange} className="w-full bg-blue-600 hover:bg-blue-700">Actualizar Contraseña</Button>
                         </div>
                         <div className="flex gap-4">
-                            <Button onClick={handleProfileUpdate} className="bg-orange-500 hover:bg-orange-600">Guardar Cambios</Button>
+                            <Button onClick={handleProfileUpdate} className="bg-orange-500 hover:bg-orange-600">Guardar Cambios de Perfil</Button>
                             <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancelar</Button>
                         </div>
                     </div>
