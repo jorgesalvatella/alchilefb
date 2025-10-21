@@ -131,6 +131,8 @@ export function Header() {
           setUserRole('super_admin');
         } else if (idTokenResult.claims.admin) {
           setUserRole('admin');
+        } else if (idTokenResult.claims.repartidor) {
+          setUserRole('repartidor');
         } else {
           setUserRole('customer');
         }

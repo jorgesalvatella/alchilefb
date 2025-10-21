@@ -17,7 +17,7 @@ export type NavItem = {
   href: string;
   label: string;
   icon?: LucideIcon;
-  roles: Array<'super_admin' | 'admin' | 'customer'>;
+  roles: Array<'super_admin' | 'admin' | 'customer' | 'repartidor'>;
   isLabel?: boolean;
 };
 
@@ -107,6 +107,21 @@ export const baseNavigation: NavItem[] = [
 ];
 
 export const userMenuNavigation: NavItem[] = [
-    { href: '/perfil', label: 'Perfil', roles: ['customer', 'admin', 'super_admin'] },
-    { href: '/mis-pedidos', label: 'Mis Pedidos', roles: ['customer', 'admin', 'super_admin'] },
+    { href: '/perfil', label: 'Perfil', roles: ['customer', 'admin', 'super_admin', 'repartidor'] },
+    { href: '/mis-pedidos', label: 'Mis Pedidos', roles: ['customer', 'admin', 'super_admin', 'repartidor'] },
+];
+
+export const repartidorNavigation: NavItem[] = [
+  {
+    href: '/repartidor',
+    label: 'Panel Repartidor',
+    icon: Truck,
+    roles: ['repartidor'],
+  },
+  {
+    href: '/repartidor/pedidos',
+    label: 'Mis Entregas',
+    icon: ShoppingCart,
+    roles: ['repartidor'],
+  },
 ];

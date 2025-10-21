@@ -12,9 +12,13 @@ import { useAuth } from '@/firebase/provider';
 import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useUser } from '@/firebase';
 import { Separator } from '@/components/ui/separator';
+import { getLoginAttempts, setLoginAttempt, isBlocked, getBlockedUntil, clearLoginAttempts } from '@/lib/cookie-utils';
+import { formatDistanceToNowStrict } from 'date-fns';
+
+const MAX_FAILED_ATTEMPTS = 5; // Re-declare for frontend display consistency
 
 const loginSchema = z.object({
   email: z.string().email('Por favor, introduce un correo electrónico válido.'),
@@ -33,6 +37,9 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
 
+  const [isLoginBlocked, setIsLoginBlocked] = useState(false);
+  const [blockMessage, setBlockMessage] = useState('');
+
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -45,14 +52,59 @@ export default function LoginPage() {
     if (!isUserLoading && user) {
       router.push('/');
     }
+
+    const blocked = isBlocked();
+    setIsLoginBlocked(blocked);
+    if (blocked) {
+      const blockedUntil = getBlockedUntil();
+      if (blockedUntil) {
+        setBlockMessage(`Demasiados intentos fallidos. Inténtalo de nuevo en ${formatDistanceToNowStrict(blockedUntil, { addSuffix: true })}.`);
+      }
+    }
   }, [user, isUserLoading, router]);
 
-  const onSubmit = (values: z.infer<typeof loginSchema>) => {
-    initiateEmailSignIn(auth, values.email, values.password);
-    toast({
-      title: 'Iniciando sesión...',
-      description: 'Serás redirigido en un momento si tus credenciales son correctas.',
-    });
+  const onSubmit = async (values: z.infer<typeof loginSchema>) => {
+    if (isLoginBlocked) {
+      toast({
+        title: 'Acceso Bloqueado',
+        description: blockMessage,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await initiateEmailSignIn(auth, values.email, values.password);
+      clearLoginAttempts(); // Clear attempts on successful login
+      toast({
+        title: 'Iniciando sesión...',
+        description: 'Serás redirigido en un momento si tus credenciales son correctas.',
+      });
+    } catch (error: any) {
+      setLoginAttempt(true); // Increment failed attempts
+      const currentAttempts = getLoginAttempts().attempts;
+      const blocked = isBlocked();
+
+      if (blocked) {
+        const blockedUntil = getBlockedUntil();
+        if (blockedUntil) {
+          setBlockMessage(`Demasiados intentos fallidos. Inténtalo de nuevo en ${formatDistanceToNowStrict(blockedUntil, { addSuffix: true })}.`);
+        }
+        setIsLoginBlocked(true);
+        toast({
+          title: 'Acceso Bloqueado',
+          description: blockMessage,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error de inicio de sesión',
+          description: `Credenciales incorrectas. Te quedan ${MAX_FAILED_ATTEMPTS - currentAttempts} intentos.`, // Use MAX_FAILED_ATTEMPTS from cookie-utils
+          variant: 'destructive',
+        });
+      }
+      console.error('Login error:', error);
+    }
   };
 
   return (
@@ -119,11 +171,17 @@ export default function LoginPage() {
               <Button 
                 type="submit" 
                 className="w-full font-headline text-lg py-6 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white hover:scale-105 transition-transform duration-300"
+                disabled={isLoginBlocked || form.formState.isSubmitting}
               >
-                Iniciar Sesión
+                {isLoginBlocked ? 'Acceso Bloqueado' : 'Iniciar Sesión'}
               </Button>
             </form>
           </Form>
+          {isLoginBlocked && (
+            <p className="text-red-500 text-center mt-4 text-sm">
+              {blockMessage}
+            </p>
+          )}
           
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">

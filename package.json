@@ -49,6 +49,7 @@
     "embla-carousel-react": "^8.6.0",
     "firebase": "^11.9.1",
     "genkit": "^1.20.0",
+    "js-cookie": "^3.0.5",
     "lucide-react": "^0.475.0",
     "next": "^15.5.4",
     "patch-package": "^8.0.0",
@@ -63,6 +64,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.28.3",
     "@playwright/test": "^1.56.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -71,6 +73,7 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "babel-jest": "^30.2.0",
     "genkit-cli": "^1.20.0",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.2.0",
@@ -80,8 +83,6 @@
     "tailwindcss": "^3.4.1",
     "tailwindcss-scrollbar": "^0.1.0",
     "typescript": "^5",
-    "whatwg-fetch": "^3.6.20",
-    "@babel/preset-env": "^7.28.3",
-    "babel-jest": "^30.2.0"
+    "whatwg-fetch": "^3.6.20"
   }
 }

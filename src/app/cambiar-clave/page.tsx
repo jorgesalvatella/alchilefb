@@ -14,12 +14,40 @@ import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'La contraseña actual es requerida.'),
-  newPassword: z.string().min(6, 'La nueva contraseña debe tener al menos 6 caracteres.'),
+  newPassword: z.string()
+    .min(8, 'La nueva contraseña debe tener al menos 8 caracteres.')
+    .regex(/[A-Z]/, 'La nueva contraseña debe contener al menos una letra mayúscula.')
+    .regex(/[a-z]/, 'La nueva contraseña debe contener al menos una letra minúscula.')
+    .regex(/[0-9]/, 'La nueva contraseña debe contener al menos un número.'),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Las contraseñas no coinciden.",
   path: ["confirmPassword"],
 });
+
+// Helper functions for password strength
+const getPasswordStrength = (password: string) => {
+  let strength = 0;
+  if (password.length >= 8) strength += 25;
+  if (/[A-Z]/.test(password)) strength += 25;
+  if (/[a-z]/.test(password)) strength += 25;
+  if (/[0-9]/.test(password)) strength += 25;
+  return Math.min(strength, 100);
+};
+
+const getPasswordStrengthColor = (password: string) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 50) return "bg-red-500";
+  if (strength < 75) return "bg-yellow-500";
+  return "bg-green-500";
+};
+
+const getPasswordStrengthText = (password: string) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 50) return "Débil";
+  if (strength < 75) return "Media";
+  return "Fuerte";
+};
 
 export default function ChangePasswordPage() {
   const { user } = useUser();
@@ -35,6 +63,8 @@ export default function ChangePasswordPage() {
       confirmPassword: '',
     },
   });
+
+  const newPasswordValue = form.watch('newPassword');
 
   const onSubmit = async (values: z.infer<typeof changePasswordSchema>) => {
     if (!user || !user.email) {
@@ -134,6 +164,31 @@ export default function ChangePasswordPage() {
                       />
                     </FormControl>
                     <FormMessage />
+                    <div className="mt-2 text-sm text-white/70 space-y-1">
+                      <p className={newPasswordValue.length >= 8 ? "text-green-400" : ""}>
+                        • Al menos 8 caracteres
+                      </p>
+                      <p className={/[A-Z]/.test(newPasswordValue) ? "text-green-400" : ""}>
+                        • Al menos una letra mayúscula
+                      </p>
+                      <p className={/[a-z]/.test(newPasswordValue) ? "text-green-400" : ""}>
+                        • Al menos una letra minúscula
+                      </p>
+                      <p className={/[0-9]/.test(newPasswordValue) ? "text-green-400" : ""}>
+                        • Al menos un número
+                      </p>
+                    </div>
+                    <div className="mt-2">
+                      <div className="h-2 w-full rounded-full bg-gray-700">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-300 ${getPasswordStrengthColor(newPasswordValue)}`} 
+                          style={{ width: `${getPasswordStrength(newPasswordValue)}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-sm text-white/70 mt-1">
+                        Nivel de seguridad: {getPasswordStrengthText(newPasswordValue)}
+                      </p>
+                    </div>
                   </FormItem>
                 )}
               />

@@ -22,6 +22,30 @@ interface UserProfile {
   profilePictureUrl?: string;
 }
 
+// Helper functions for password strength
+const getPasswordStrength = (password: string) => {
+  let strength = 0;
+  if (password.length >= 8) strength += 25;
+  if (/[A-Z]/.test(password)) strength += 25;
+  if (/[a-z]/.test(password)) strength += 25;
+  if (/[0-9]/.test(password)) strength += 25;
+  return Math.min(strength, 100);
+};
+
+const getPasswordStrengthColor = (password: string) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 50) return "bg-red-500";
+  if (strength < 75) return "bg-yellow-500";
+  return "bg-green-500";
+};
+
+const getPasswordStrengthText = (password: string) => {
+  const strength = getPasswordStrength(password);
+  if (strength < 50) return "Débil";
+  if (strength < 75) return "Media";
+  return "Fuerte";
+};
+
 function ProfilePage({ user }: WithAuthProps) {
   const router = useRouter();
 
@@ -256,13 +280,38 @@ function ProfilePage({ user }: WithAuthProps) {
                             <div>
                                 <Label htmlFor="newPassword">Nueva Contraseña</Label>
                                 <Input id="newPassword" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="bg-white/5 border-white/20" />
+                                <div className="mt-2 text-sm text-white/70 space-y-1">
+                                  <p className={newPassword.length >= 8 ? "text-green-400" : ""}>
+                                    • Al menos 8 caracteres
+                                  </p>
+                                  <p className={/[A-Z]/.test(newPassword) ? "text-green-400" : ""}>
+                                    • Al menos una letra mayúscula
+                                  </p>
+                                  <p className={/[a-z]/.test(newPassword) ? "text-green-400" : ""}>
+                                    • Al menos una letra minúscula
+                                  </p>
+                                  <p className={/[0-9]/.test(newPassword) ? "text-green-400" : ""}>
+                                    • Al menos un número
+                                  </p>
+                                </div>
+                                <div className="mt-2">
+                                  <div className="h-2 w-full rounded-full bg-gray-700">
+                                    <div 
+                                      className={`h-full rounded-full transition-all duration-300 ${getPasswordStrengthColor(newPassword)}`} 
+                                      style={{ width: `${getPasswordStrength(newPassword)}%` }}
+                                    ></div>
+                                  </div>
+                                  <p className="text-sm text-white/70 mt-1">
+                                    Nivel de seguridad: {getPasswordStrengthText(newPassword)}
+                                  </p>
+                                </div>
                             </div>
                             <div>
                                 <Label htmlFor="confirmNewPassword">Confirmar Nueva Contraseña</Label>
                                 <Input id="confirmNewPassword" type="password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} className="bg-white/5 border-white/20" />
                             </div>
                             {passwordChangeError && <p className="text-red-500 text-sm">{passwordChangeError}</p>}
-                            <Button onClick={handlePasswordChange} className="w-full bg-blue-600 hover:bg-blue-700">Actualizar Contraseña</Button>
+                            <Button onClick={handlePasswordChange} className="w-full bg-green-600 hover:bg-green-700">Actualizar Contraseña</Button>
                         </div>
                         <div className="flex gap-4">
                             <Button onClick={handleProfileUpdate} className="bg-orange-500 hover:bg-orange-600">Guardar Cambios de Perfil</Button>

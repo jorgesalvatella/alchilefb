@@ -43,6 +43,15 @@ Se realizó una auditoría de seguridad exhaustiva sobre las funcionalidades de 
     *   **Hallazgo:** Uso de `process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID` para el `projectId`.
     *   **Opinión de Raptoure:** **Mejora Significativa.** Aumenta la seguridad y mantenibilidad al evitar el hardcoding de IDs de proyecto.
 
+### 2.3. Mejoras en la Experiencia de Usuario (UX) para Cambio de Contraseña
+
+*   **Directrices de Política de Contraseña:**
+    *   **Hallazgo:** Se han implementado directrices visuales en tiempo real para la nueva contraseña, indicando requisitos como longitud mínima (8 caracteres), uso de mayúsculas, minúsculas y números. Estas directrices se actualizan dinámicamente a medida que el usuario escribe, cambiando de color (verde/gris) según se cumplan los criterios.
+    *   **Opinión de Raptoure:** **Excelente.** Esta mejora guía proactivamente al usuario hacia la creación de contraseñas robustas, reduciendo la frustración y mejorando la seguridad general al fomentar contraseñas más difíciles de adivinar o romper.
+*   **Indicador de Fortaleza de Contraseña:**
+    *   **Hallazgo:** Se ha añadido un indicador visual de fortaleza de contraseña (barra de progreso y texto: Débil, Media, Fuerte) que proporciona retroalimentación instantánea sobre la complejidad de la contraseña introducida.
+    *   **Opinión de Raptoure:** **Muy Positivo.** Complementa las directrices de política, ofreciendo una representación clara del nivel de seguridad de la contraseña. Esto empodera al usuario para elegir contraseñas más seguras y refuerza las buenas prácticas de seguridad.
+
 ---
 
 ## 3. Funcionalidad de Gestión de Usuarios
