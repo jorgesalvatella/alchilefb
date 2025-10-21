@@ -149,5 +149,6 @@ export type AppUser = {
   lastLogin?: Timestamp;
   deleted: boolean;
   deletedAt?: Timestamp;
+  forcePasswordChange?: boolean; // Added for forced password reset flow
 };
     

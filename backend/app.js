@@ -4304,17 +4304,52 @@ app.delete('/api/me/addresses/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Set default address
 app.put('/api/me/addresses/set-default/:id', authMiddleware, async (req, res) => {
-  try {
+    const { uid } = req.user;
     const { id } = req.params;
-    const userRef = db.collection('users').doc(req.user.uid);
-    await userRef.update({ defaultDeliveryAddressId: id });
-    res.status(200).json({ message: 'Default address updated successfully' });
-  } catch (error) {
-    console.error('Error setting default address:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
+
+    try {
+        const userRef = db.collection('users').doc(uid);
+        await userRef.update({ defaultAddressId: id });
+        res.status(200).json({ message: 'Default address updated successfully' });
+    } catch (error) {
+        console.error('Error setting default address:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+app.post('/api/me/password-changed', authMiddleware, async (req, res) => {
+    const { uid } = req.user;
+
+    try {
+        const userDocRef = db.collection('users').doc(uid);
+        const docSnap = await userDocRef.get();
+
+        if (docSnap.exists()) {
+            // If doc exists, just update the flag
+            await userDocRef.update({
+                forcePasswordChange: false,
+            });
+        } else {
+            // If doc does not exist, create it to repair data inconsistency
+            console.warn(`User document missing for UID: ${uid}. Creating it now.`);
+            const userRecord = await admin.auth().getUser(uid);
+            await userDocRef.set({
+                email: userRecord.email,
+                displayName: userRecord.displayName || 'Usuario',
+                role: 'usuario', // Default role
+                active: true,
+                deleted: false,
+                createdAt: new Date().toISOString(),
+                forcePasswordChange: false, // Ensure flag is false on creation
+            });
+        }
+
+        res.status(200).json({ message: 'Password change process completed successfully.' });
+    } catch (error) {
+        console.error(`[DEBUG] Error processing password change completion for user ${uid}:`, JSON.stringify(error, null, 2));
+        res.status(500).json({ message: 'Internal Server Error while finalizing password change.' });
+    }
 });
 */
 
@@ -4616,59 +4651,102 @@ app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (
  *         description: Error del servidor
  */
 app.delete('/api/control/usuarios/:userId', authMiddleware, async (req, res) => {
-  try {
-    // Solo super_admin puede eliminar usuarios
-    if (!req.user || !req.user.super_admin) {
-      return res.status(403).json({
-        message: 'Forbidden: Only super_admin can delete users'
-      });
+    // Solo super_admin puede eliminar
+    if (!req.user.super_admin) {
+        return res.status(403).json({ message: 'Forbidden: Solo los super administradores pueden eliminar usuarios.' });
     }
 
     const { userId } = req.params;
 
-    // Verificar que el usuario existe
-    let targetUser;
     try {
-      targetUser = await admin.auth().getUser(userId);
+        // Eliminar de Firebase Authentication
+        await admin.auth().deleteUser(userId);
+
+        // Marcar como eliminado en Firestore
+        const userDocRef = db.collection('users').doc(userId);
+        await userDocRef.update({
+            active: false,
+            deleted: true,
+deletedAt: new Date().toISOString(),
+        });
+
+        res.status(200).json({ message: 'Usuario eliminado exitosamente.' });
     } catch (error) {
-      return res.status(404).json({ message: 'User not found' });
+        console.error(`Error al eliminar usuario ${userId}:`, error);
+        res.status(500).json({ message: 'Error interno del servidor al eliminar el usuario.', error: error.message });
     }
+});
 
-    // No permitir eliminar al propio usuario
-    if (userId === req.user.uid) {
-      return res.status(400).json({
-        message: 'Cannot delete your own user account'
-      });
+/**
+ * @swagger
+ * /api/control/usuarios/{uid}/generar-clave:
+ *   post:
+ *     summary: Genera una contraseña temporal para un usuario
+ *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: uid
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: El UID del usuario para el cual generar una nueva contraseña.
+ *     responses:
+ *       '200':
+ *         description: Contraseña temporal generada exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 temporaryPassword:
+ *                   type: string
+ *                   description: La nueva contraseña temporal para el usuario.
+ *       '403':
+ *         description: No autorizado. Se requiere rol de admin o super_admin.
+ *       '404':
+ *         description: Usuario no encontrado.
+ *       '500':
+ *         description: Error interno del servidor.
+ */
+app.post('/api/control/usuarios/:uid/generar-clave', authMiddleware, requireAdmin, async (req, res) => {
+    const { uid } = req.params;
+
+    // Helper function to generate a random password
+    const generateSecurePassword = () => {
+        const length = 12;
+        const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        let retVal = "";
+        for (let i = 0, n = charset.length; i < length; ++i) {
+            retVal += charset.charAt(Math.floor(Math.random() * n));
+        }
+        return retVal;
+    };
+
+    try {
+        const temporaryPassword = generateSecurePassword();
+
+        // Update password in Firebase Auth
+        await admin.auth().updateUser(uid, {
+            password: temporaryPassword,
+        });
+
+        // Set flag in Firestore to force password change on next login
+        const userDocRef = db.collection('users').doc(uid);
+        await userDocRef.update({
+            forcePasswordChange: true,
+        });
+
+        res.status(200).json({ temporaryPassword });
+
+    } catch (error) {
+        console.error(`Error al generar la contraseña para el usuario ${uid}:`, error);
+        if (error.code === 'auth/user-not-found') {
+            return res.status(404).json({ message: 'Usuario no encontrado.' });
+        }
+        res.status(500).json({ message: 'Error interno del servidor al generar la contraseña.', error: error.message });
     }
-
-    // Deshabilitar usuario en Firebase Auth (soft delete)
-    await admin.auth().updateUser(userId, {
-      disabled: true,
-    });
-
-    // Marcar como eliminado en Firestore
-    const userRef = db.collection('users').doc(userId);
-    const userDoc = await userRef.get();
-
-    if (userDoc.exists) {
-      await userRef.update({
-        deleted: true,
-        deletedAt: new Date().toISOString(),
-      });
-    } else {
-      // Si no existe en Firestore, crearlo como eliminado
-      await userRef.set({
-        deleted: true,
-        deletedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-      });
-    }
-
-    res.status(200).json({ message: 'User deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting user:', error);
-    res.status(500).json({ message: 'Internal Server Error' });
-  }
 });
 
 module.exports = app;

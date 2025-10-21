@@ -3,7 +3,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import type { AppUser, BusinessUnit } from '@/lib/data';
-import { Users, UserCog, Shield, UserX, CheckCircle, XCircle, Pen, Trash2 } from 'lucide-react';
+import { Users, UserCog, Shield, UserX, CheckCircle, XCircle, Pen, Trash2, KeyRound } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { EditUserDialog } from '@/components/control/edit-user-dialog';
 import { Breadcrumbs } from '@/components/ui/breadcrumb';
@@ -25,6 +25,8 @@ export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [sucursalFilter, setSucursalFilter] = useState<string>('');
+
+  const [isGeneratingPassword, setIsGeneratingPassword] = useState<string | null>(null);
 
   // Determine if current user is super_admin
   const isSuperAdmin = !!claims?.super_admin;
@@ -84,6 +86,32 @@ export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
   const handleEdit = (item: AppUser) => {
     setSelectedUser(item);
     setDialogOpen(true);
+  };
+
+  const handleGeneratePassword = async (item: AppUser) => {
+    if (!user || !confirm(`Se generará una nueva contraseña temporal para el usuario ${item.email}. El usuario deberá cambiarla en su próximo inicio de sesión. ¿Desea continuar?`)) return;
+
+    setIsGeneratingPassword(item.id);
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/control/usuarios/${item.id}/generar-clave`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo generar la contraseña.');
+      }
+
+      const { temporaryPassword } = await response.json();
+      alert(`Contraseña temporal generada para ${item.email}:\n\n${temporaryPassword}\n\n--- IMPORTANTE ---\nEspere al menos 30 segundos antes de usar esta contraseña para dar tiempo a que se actualice en el sistema.`);
+
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsGeneratingPassword(null);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -245,6 +273,9 @@ export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
                 <div><span className="font-semibold">Último acceso:</span> {formatDate(userData.lastLogin)}</div>
               </CardContent>
               <CardFooter className="flex justify-end space-x-2">
+                <Button variant="ghost" size="icon" onClick={() => handleGeneratePassword(userData)} className="text-white/60 hover:text-yellow-400" disabled={isGeneratingPassword === userData.id} title="Generar Clave Temporal">
+                  {isGeneratingPassword === userData.id ? <span className="animate-spin h-4 w-4">...</span> : <KeyRound className="h-4 w-4" />}
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => handleEdit(userData)} className="text-white/60 hover:text-orange-400">
                   <Pen className="h-4 w-4" />
                 </Button>
@@ -291,6 +322,9 @@ export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
                 <TableCell className="text-white/80 text-sm break-all">{userData.area || 'N/A'}</TableCell>
                 <TableCell className="text-white/80 text-xs">{formatDate(userData.lastLogin)}</TableCell>
                 <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" onClick={() => handleGeneratePassword(userData)} className="text-white/60 hover:text-yellow-400" disabled={isGeneratingPassword === userData.id} title="Generar Clave Temporal">
+                    {isGeneratingPassword === userData.id ? <span className="animate-spin h-4 w-4">...</span> : <KeyRound className="h-4 w-4" />}
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => handleEdit(userData)} className="text-white/60 hover:text-orange-400" title="Editar">
                     <Pen className="h-4 w-4" />
                   </Button>

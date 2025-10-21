@@ -1,9 +1,10 @@
 'use client';
 
 import { useUser } from '@/firebase/provider';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, ComponentType } from 'react';
 import { User } from 'firebase/auth';
+import { AppUser } from '@/lib/types';
 
 // --- Injected Props Definition ---
 // The component wrapped by withAuth will receive these props.
@@ -22,8 +23,9 @@ const LoadingScreen = () => (
 
 export function withAuth<P extends object>(WrappedComponent: ComponentType<P & WithAuthProps>, requiredRole: Role) {
   return function WithAuth(props: P) {
-    const { user, isUserLoading, claims } = useUser();
+    const { user, userData, isUserLoading, claims } = useUser();
     const router = useRouter();
+    const pathname = usePathname();
 
     const authCheckComplete = !isUserLoading && (user ? claims !== null : true);
 
@@ -44,10 +46,16 @@ export function withAuth<P extends object>(WrappedComponent: ComponentType<P & W
         return;
       }
 
+      // Check for forced password change
+      if (userData?.forcePasswordChange === true && pathname !== '/cambiar-clave') {
+        router.replace('/cambiar-clave');
+        return;
+      }
+
       if (!hasPermission()) {
         router.replace('/menu');
       }
-    }, [authCheckComplete, user, claims, router]);
+    }, [authCheckComplete, user, userData, claims, router, pathname]);
 
     if (authCheckComplete && hasPermission()) {
       // The user and claims are guaranteed to be non-null here.
