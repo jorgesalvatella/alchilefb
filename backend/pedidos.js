@@ -475,7 +475,7 @@ router.put('/control/:orderId/status', authMiddleware, async (req, res) => {
 
       // If there are no other active orders, set the driver to available
       if (otherOrdersSnapshot.empty) {
-        const driverRef = db.collection('drivers').doc(driverId);
+        const driverRef = db.collection('repartidores').doc(driverId);
         await driverRef.update({
           status: 'available',
           currentOrderId: null
@@ -700,7 +700,7 @@ router.put('/control/:orderId/asignar-repartidor', authMiddleware, async (req, r
     }
 
     const orderRef = db.collection('pedidos').doc(orderId);
-    const driverRef = db.collection('drivers').doc(driverId);
+    const driverRef = db.collection('repartidores').doc(driverId);
 
     await db.runTransaction(async (transaction) => {
       const orderDoc = await transaction.get(orderRef);
@@ -714,6 +714,11 @@ router.put('/control/:orderId/asignar-repartidor', authMiddleware, async (req, r
       }
 
       const driverData = driverDoc.data();
+
+      // Verificar que el repartidor no esté eliminado (soft delete)
+      if (driverData.deleted === true) {
+        throw new Error('Repartidor no encontrado');
+      }
 
       
       const orderData = orderDoc.data();

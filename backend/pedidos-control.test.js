@@ -550,6 +550,8 @@ describe('Orders Hub Backend Endpoints', () => {
   });
 
   describe('PUT /api/pedidos/control/:orderId/asignar-repartidor', () => {
+    // NOTA: Este endpoint debe usar la colección 'repartidores' (no 'drivers')
+    // para mantener consistencia con GET /api/control/drivers
     const mockOrder = {
       status: 'Preparando',
       userId: 'user1',
@@ -636,7 +638,22 @@ describe('Orders Hub Backend Endpoints', () => {
       expect(res.body.message).toContain('exitosamente');
       expect(mockTransactionUpdate).toHaveBeenCalledTimes(2);
     });
-    
+
+    it('should return 404 if driver is soft deleted', async () => {
+      const deletedDriver = { ...mockDriver, deleted: true };
+      mockTransactionGet
+        .mockResolvedValueOnce({ exists: true, data: () => mockOrder })
+        .mockResolvedValueOnce({ exists: true, data: () => deletedDriver });
+
+      const res = await request(app)
+        .put('/api/pedidos/control/order123/asignar-repartidor')
+        .set('Authorization', 'Bearer admin-token')
+        .send({ driverId: 'driver456' });
+
+      expect(res.statusCode).toBe(404);
+      expect(res.body.message).toBe('Repartidor no encontrado');
+    });
+
     it('should return 400 if order is in a non-assignable state', async () => {
       const deliveredOrder = { ...mockOrder, status: 'Entregado' };
       mockTransactionGet
