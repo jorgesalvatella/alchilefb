@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ShoppingBag, CookingPot, Bike, Pizza, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
+import { useFirestore } from '@/firebase/provider';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 
 const statusIcons: { [key: string]: React.ElementType } = {
   'Pedido Realizado': CheckCircle,
@@ -40,36 +42,42 @@ function safeTimestampToDate(timestamp: any): Date | null {
 function OrdersPage({ user }: WithAuthProps) {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const firestore = useFirestore();
 
   useEffect(() => {
-    const fetchOrders = async () => {
-      if (user) {
-        try {
-          const token = await user.getIdToken();
+    if (!user || !firestore) {
+      setIsLoading(false);
+      return;
+    }
 
-          const response = await fetch('/api/me/orders', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
+    // Establecer subscripción en tiempo real a los pedidos del usuario
+    const ordersRef = collection(firestore, 'pedidos');
+    const q = query(
+      ordersRef,
+      where('userId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
 
-          if (!response.ok) {
-            throw new Error('Failed to fetch orders');
-          }
-
-          const data = await response.json();
-          setOrders(data);
-        } catch (error) {
-          console.error(error);
-          setOrders([]); // Set to empty array on error
-        } finally {
-          setIsLoading(false);
-        }
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const ordersData: Order[] = [];
+        querySnapshot.forEach((doc) => {
+          ordersData.push({ ...doc.data(), id: doc.id } as Order);
+        });
+        setOrders(ordersData);
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error('Error al suscribirse a los pedidos:', error);
+        setOrders([]);
+        setIsLoading(false);
       }
-    };
+    );
 
-    fetchOrders();
-  }, [user]);
+    // Cleanup: desuscribirse cuando el componente se desmonte
+    return () => unsubscribe();
+  }, [user, firestore]);
 
   const renderSkeleton = () => (
     <main className="container mx-auto px-4 py-12 sm:px-6 lg:px-8 pt-32">

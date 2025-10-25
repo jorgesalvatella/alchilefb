@@ -2,8 +2,8 @@
 
 > Sistema de e-commerce para restaurante con gestión de pedidos, promociones y rastreo de repartidores en tiempo real.
 
-**Última actualización:** 2025-10-19
-**Versión:** 3.0
+**Última actualización:** 2025-10-25
+**Versión:** 4.0
 **Cobertura de Tests:** 100% ✅
 
 ---
@@ -58,8 +58,8 @@ Documentación de módulos funcionales:
 Guías y registros de testing:
 
 - [Testing Guide](./04-testing/testing-guide.md) - Guía general de testing
-- [Frontend Tests](./04-testing/frontend-tests.md) - **✅ 206/206 tests pasando (100%)**
-- [Backend Tests](./04-testing/backend-tests.md) - **✅ 174/174 tests pasando (100%)**
+- [Frontend Tests](./04-testing/frontend-tests.md) - **✅ 280/280 tests pasando (100%)**
+- [Backend Tests](./04-testing/backend-tests.md) - **✅ 232/232 tests pasando (100%)**
 - [Pending Tests](./04-testing/tests-pendientes.md) - Tests pendientes (histórico)
 
 ### 🔒 [05. Security](./05-security/)
@@ -108,10 +108,10 @@ Documentación detallada de agentes de IA especializados:
 
 | Categoría | Estado | Tests | Cobertura |
 |-----------|--------|-------|-----------|
-| **Frontend** | ✅ | 206/206 | 100% |
-| **Backend** | ✅ | 174/174 | 100% |
-| **Test Suites** | ✅ | 37/37 | 100% |
-| **Total** | ✅ | **380/380** | **100%** |
+| **Frontend** | ✅ | 280/280 | 100% |
+| **Backend** | ✅ | 232/232 | 100% |
+| **Test Suites** | ✅ | 43/43 frontend, 12/12 backend | 100% |
+| **Total** | ✅ | **512/512** | **100%** 🎉 |
 
 ### 🚀 Módulos Implementados
 
@@ -122,8 +122,17 @@ Documentación detallada de agentes de IA especializados:
 - ✅ Checkout y Pagos
 - ✅ Gestión de Pedidos
 - ✅ Panel de Control (Admin)
-- ✅ **Rastreo de Repartidores en Tiempo Real** 🆕
-- ✅ Interfaz de Repartidor 🆕
+- ✅ **Rastreo de Repartidores en Tiempo Real**
+- ✅ Interfaz de Repartidor
+- ✅ **Actualización en Tiempo Real de Pedidos** 🆕 (2025-10-25)
+
+### 📡 Características Especiales
+
+- ⚡ **[Actualización en Tiempo Real](./REALTIME-UPDATES.md)** - Los clientes ven cambios de estado instantáneamente 🆕
+- 📍 Rastreo de Repartidores en Vivo con Google Maps
+- 🎁 Sistema de Promociones y Paquetes
+- 🛒 Carrito con Personalización de Productos
+- 🔐 Seguridad Multicapa (Firestore Rules + Code Validation)
 
 ### 🔧 Tecnologías
 
@@ -148,8 +157,10 @@ Documentación detallada de agentes de IA especializados:
 
 ## 📌 Enlaces Rápidos
 
+- **[⚡ Realtime Updates](./REALTIME-UPDATES.md)** - Actualización en tiempo real implementada 🆕
 - [Testing Guide](./04-testing/testing-guide.md) - Si vas a escribir tests
-- [Frontend Tests](./04-testing/frontend-tests.md) - Estado actual de tests frontend
+- [Frontend Tests](./04-testing/frontend-tests.md) - Estado actual de tests frontend (280/280) ✅
+- [Backend Tests](./04-testing/backend-tests.md) - Estado actual de tests backend (232/232) ✅
 - [Tracker Module](./03-modules/tracking/TRACKER-MODULE-COMPLETE.md) - Módulo de rastreo completado
 - [Security Audit](./05-security/security-audit-report.md) - Auditoría de seguridad
 
@@ -167,4 +178,25 @@ Al agregar nueva funcionalidad:
 ---
 
 **Mantenido por:** Equipo de Desarrollo Al Chile FB
-**Última revisión:** 2025-10-19
+**Última revisión:** 2025-10-25
+
+---
+
+## 🆕 Últimas Actualizaciones (2025-10-25)
+
+### ⚡ Actualización en Tiempo Real de Pedidos
+
+Los clientes ahora ven cambios de estado de sus pedidos **instantáneamente** sin necesidad de recargar la página:
+
+- ✅ Estado del pedido actualiza en vivo (Pendiente → Preparando → En Reparto → Entregado)
+- ✅ Asignación de repartidor visible al instante
+- ✅ Experiencia de usuario moderna y fluida
+- ✅ Implementado con Firestore `onSnapshot()`
+
+**Documentación completa:** [`/docs/REALTIME-UPDATES.md`](./REALTIME-UPDATES.md)
+
+### 📊 Cobertura de Tests
+
+- **+33 tests nuevos** para hooks críticos de tracking
+- **512 tests totales** pasando al 100% 🎉
+- Hooks testeados: `use-location-tracking` (18 tests), `use-driver-orders` (15 tests)

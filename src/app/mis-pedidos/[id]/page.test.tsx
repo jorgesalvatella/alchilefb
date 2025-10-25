@@ -2,6 +2,22 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { getAuth } from 'firebase/auth';
 import { notFound } from 'next/navigation';
 
+// Mock Firestore
+const mockOnSnapshot = jest.fn();
+const mockDoc = jest.fn();
+
+jest.mock('firebase/firestore', () => ({
+  doc: (...args: any[]) => mockDoc(...args),
+  onSnapshot: (...args: any[]) => mockOnSnapshot(...args),
+}));
+
+// Mock useFirestore
+jest.mock('@/firebase/provider', () => ({
+  useFirestore: jest.fn(() => ({
+    collection: jest.fn()
+  })),
+}));
+
 // Mock withAuth to return the component directly with a mock user
 jest.mock('@/firebase/withAuth', () => ({
   withAuth: (Component: any) => {
@@ -49,18 +65,23 @@ describe('OrderTrackingPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetch.mockClear();
+    mockOnSnapshot.mockClear();
+    mockDoc.mockReturnValue({});
   });
 
   it('should call notFound() if order is not found (404)', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 404,
+    // Mock onSnapshot para retornar que el documento no existe
+    mockOnSnapshot.mockImplementation((docRef, successCallback) => {
+      const mockDocSnapshot = {
+        exists: () => false,
+      };
+      successCallback(mockDocSnapshot);
+      return jest.fn(); // unsubscribe function
     });
 
     render(<OrderTrackingPage />);
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith('/api/me/orders/order-123', expect.any(Object));
       expect(mockNotFound).toHaveBeenCalled();
     });
   });
@@ -79,11 +100,19 @@ describe('OrderTrackingPage', () => {
       ],
       shippingAddress: {
         formattedAddress: '123 Main St, Anytown, USA'
-      }
+      },
+      userId: 'test-user-123',
     };
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockOrder),
+
+    // Mock onSnapshot para retornar el pedido
+    mockOnSnapshot.mockImplementation((docRef, successCallback) => {
+      const mockDocSnapshot = {
+        exists: () => true,
+        data: () => mockOrder,
+        id: 'order-123',
+      };
+      successCallback(mockDocSnapshot);
+      return jest.fn(); // unsubscribe function
     });
 
     render(<OrderTrackingPage />);

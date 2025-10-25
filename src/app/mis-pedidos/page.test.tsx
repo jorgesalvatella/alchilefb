@@ -1,6 +1,28 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { getAuth } from 'firebase/auth';
 
+// Mock Firestore
+const mockOnSnapshot = jest.fn();
+const mockCollection = jest.fn();
+const mockQuery = jest.fn();
+const mockWhere = jest.fn();
+const mockOrderBy = jest.fn();
+
+jest.mock('firebase/firestore', () => ({
+  collection: (...args: any[]) => mockCollection(...args),
+  query: (...args: any[]) => mockQuery(...args),
+  where: (...args: any[]) => mockWhere(...args),
+  orderBy: (...args: any[]) => mockOrderBy(...args),
+  onSnapshot: (...args: any[]) => mockOnSnapshot(...args),
+}));
+
+// Mock useFirestore
+jest.mock('@/firebase/provider', () => ({
+  useFirestore: jest.fn(() => ({
+    collection: mockCollection
+  })),
+}));
+
 // Mock withAuth to return the component directly with a mock user
 jest.mock('@/firebase/withAuth', () => ({
   withAuth: (Component: any) => {
@@ -42,12 +64,23 @@ describe('OrdersPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetch.mockClear();
+    mockOnSnapshot.mockClear();
+    mockCollection.mockReturnValue({});
+    mockQuery.mockReturnValue({});
+    mockWhere.mockReturnValue({});
+    mockOrderBy.mockReturnValue({});
   });
 
   it('should display empty state if user has no orders', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve([]),
+    // Mock onSnapshot para retornar pedidos vacíos
+    mockOnSnapshot.mockImplementation((query, successCallback) => {
+      const mockQuerySnapshot = {
+        forEach: (callback: any) => {
+          // No hay pedidos
+        },
+      };
+      successCallback(mockQuerySnapshot);
+      return jest.fn(); // unsubscribe function
     });
 
     render(<OrdersPage />);
@@ -60,12 +93,24 @@ describe('OrdersPage', () => {
 
   it('should display a list of orders for an authenticated user', async () => {
     const mockOrders = [
-      { id: 'order1', status: 'Entregado', totalVerified: 100, createdAt: { _seconds: 1672531200 } },
-      { id: 'order2', status: 'En Reparto', totalVerified: 150, createdAt: { _seconds: 1672617600 } },
+      { id: 'order1', status: 'Entregado', totalVerified: 100, createdAt: { _seconds: 1672531200 }, userId: 'test-user-123' },
+      { id: 'order2', status: 'En Reparto', totalVerified: 150, createdAt: { _seconds: 1672617600 }, userId: 'test-user-123' },
     ];
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockOrders),
+
+    // Mock onSnapshot para retornar los pedidos
+    mockOnSnapshot.mockImplementation((query, successCallback) => {
+      const mockQuerySnapshot = {
+        forEach: (callback: any) => {
+          mockOrders.forEach(order => {
+            callback({
+              data: () => order,
+              id: order.id,
+            });
+          });
+        },
+      };
+      successCallback(mockQuerySnapshot);
+      return jest.fn(); // unsubscribe function
     });
 
     render(<OrdersPage />);
@@ -76,14 +121,14 @@ describe('OrdersPage', () => {
       expect(screen.getByText('$100.00')).toBeInTheDocument();
       expect(screen.getByText('$150.00')).toBeInTheDocument();
     });
-
-    expect(mockFetch).toHaveBeenCalledWith('/api/me/orders', {
-      headers: { Authorization: 'Bearer test-token' },
-    });
   });
 
   it('should handle fetch errors gracefully', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('API is down'));
+    // Mock onSnapshot para retornar error
+    mockOnSnapshot.mockImplementation((query, successCallback, errorCallback) => {
+      errorCallback(new Error('Firestore error'));
+      return jest.fn(); // unsubscribe function
+    });
 
     render(<OrdersPage />);
 

@@ -10,6 +10,8 @@ import type { Order } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
+import { useFirestore } from '@/firebase/provider';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const allSteps = [
   { id: 1, name: 'Pedido Realizado', icon: CheckCircle, status: 'Pedido Realizado' },
@@ -62,38 +64,45 @@ function OrderTrackingPage({ user }: WithAuthProps) {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const mapImage = PlaceHolderImages.getById('map-placeholder');
+  const firestore = useFirestore();
 
   useEffect(() => {
-    const fetchOrder = async () => {
-      if (user) {
-        try {
-          const token = await user.getIdToken();
-          const response = await fetch(`/api/me/orders/${id}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
+    if (!user || !firestore) {
+      setIsLoading(false);
+      return;
+    }
 
-          if (response.status === 404) {
-            notFound();
-            return;
-          }
-          if (!response.ok) {
-            throw new Error('Failed to fetch order details');
-          }
+    // Establecer subscripción en tiempo real al pedido
+    const orderRef = doc(firestore, 'pedidos', id);
 
-          const data = await response.json();
-          setOrder(data);
-        } catch (error) {
-          console.error(error);
-        } finally {
-          setIsLoading(false);
+    const unsubscribe = onSnapshot(
+      orderRef,
+      (docSnapshot) => {
+        if (!docSnapshot.exists()) {
+          notFound();
+          return;
         }
-      }
-    };
 
-    fetchOrder();
-  }, [user, id]);
+        const orderData = docSnapshot.data() as Order;
+
+        // Verificar que el pedido pertenece al usuario
+        if (orderData.userId !== user.uid) {
+          notFound();
+          return;
+        }
+
+        setOrder({ ...orderData, id: docSnapshot.id });
+        setIsLoading(false);
+      },
+      (error) => {
+        console.error('Error al suscribirse al pedido:', error);
+        setIsLoading(false);
+      }
+    );
+
+    // Cleanup: desuscribirse cuando el componente se desmonte
+    return () => unsubscribe();
+  }, [user, firestore, id]);
 
   const [deliveryCoords, setDeliveryCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);

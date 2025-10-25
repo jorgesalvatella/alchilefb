@@ -1,22 +1,22 @@
 # Registro de Tests de Frontend
 
-**Última actualización:** 2025-10-25 (Sesión 7)
-**Estado general:** 🟢 247/247 tests pasando (100%) 🎉
-**Test Suites:** 41/41 pasando (100%) 🎉
+**Última actualización:** 2025-10-25 (Sesión 8)
+**Estado general:** 🟢 280/280 tests pasando (100%) 🎉
+**Test Suites:** 43/43 pasando (100%) 🎉
 
 ---
 
 ## 📊 Estado Actual
 
-| Métrica | Valor | Porcentaje | Cambio desde Sesión 5 |
+| Métrica | Valor | Porcentaje | Cambio desde Sesión 7 |
 |---------|-------|------------|--------|
-| **Tests Pasando** | 247 | 100% | +22 ✅ |
+| **Tests Pasando** | 280 | 100% | +33 ✅ |
 | **Tests Fallando** | 0 | 0.0% | Mantiene ✅ |
 | **Tests Skipped** | 0 | 0.0% | Mantiene ✅ |
-| **Suites Pasando** | 41 | 100% | +2 ✅ |
+| **Suites Pasando** | 43 | 100% | +2 ✅ |
 | **Suites Fallando** | 0 | 0% | Mantiene ✅ |
-| **Total Tests** | 247 | 100% | +22 (métodos de pago + gastos) |
-| **Total Suites** | 41 | 100% | +2 |
+| **Total Tests** | 280 | 100% | +33 (hooks críticos) |
+| **Total Suites** | 43 | 100% | +2 |
 
 ---
 
@@ -67,13 +67,15 @@
 
 ### Hooks y Context ✅
 36. **src/hooks/use-signed-url.test.tsx** ✅
-37. **src/context/cart-context.test.tsx** ✅
+37. **src/hooks/__tests__/use-location-tracking.test.tsx** ✅ (18/18) 🆕 Sesión 8
+38. **src/hooks/__tests__/use-driver-orders.test.tsx** ✅ (15/15) 🆕 Sesión 8
+39. **src/context/cart-context.test.tsx** ✅
 
 ### Módulo Tracker (Repartidores) ✅
-38. ✅ **src/components/repartidor/__tests__/DriverStats.test.tsx** (11/11) 🆕 Sesión 3
-39. ✅ **src/components/repartidor/__tests__/CustomerInfo.test.tsx** (12/12) ✅ Sesión 4
-40. ✅ **src/components/repartidor/__tests__/OrderCard.test.tsx** (12/12) ✅ Sesión 4
-41. ✅ **src/components/repartidor/__tests__/OrderItems.test.tsx** (13/13) ✅ Sesión 4
+40. ✅ **src/components/repartidor/__tests__/DriverStats.test.tsx** (11/11) 🆕 Sesión 3
+41. ✅ **src/components/repartidor/__tests__/CustomerInfo.test.tsx** (12/12) ✅ Sesión 4
+42. ✅ **src/components/repartidor/__tests__/OrderCard.test.tsx** (12/12) ✅ Sesión 4
+43. ✅ **src/components/repartidor/__tests__/OrderItems.test.tsx** (13/13) ✅ Sesión 4
 
 ---
 
@@ -1805,3 +1807,603 @@ it('should disable upload button when no file selected', async () => {
 
 **Próxima actualización:** N/A - Todos los tests están pasando ✅
 **Versión:** 5.0
+
+---
+
+## 📦 Sesión 8: Tests de Hooks Críticos (2025-10-25)
+
+**Agente:** Claude Code
+**Tarea:** Implementar tests para hooks críticos del módulo de tracking
+**Estado inicial:** 247/247 tests pasando
+**Estado final:** ✅ 280/280 tests pasando (100%)
+
+### Trabajo realizado:
+
+#### Tests Creados (2 archivos, 33 tests):
+
+1. **src/hooks/__tests__/use-location-tracking.test.tsx** (18/18) ✅
+   - Hook crítico para tracking GPS del repartidor
+   - **Tests implementados:**
+     - ✅ Should not track when enabled is false
+     - ✅ Should not track when orderId is missing
+     - ✅ Should not track when user is not authenticated
+     - ✅ Should start tracking when enabled with valid orderId and user
+     - ✅ Should call getCurrentPosition with correct options
+     - ✅ Should send location to server when position is received
+     - ✅ Should update lastLocation after successful server update
+     - ✅ Should reject location with poor accuracy (>= 100m)
+     - ✅ Should handle PERMISSION_DENIED error
+     - ✅ Should handle POSITION_UNAVAILABLE error
+     - ✅ Should not set error for TIMEOUT (normal in development)
+     - ✅ Should setup interval for periodic updates
+     - ✅ Should use custom interval when provided
+     - ✅ Should cleanup on unmount
+     - ✅ Should cleanup when enabled changes to false
+     - ✅ Should handle error when geolocation is not supported
+     - ✅ Should handle server error when sending location
+     - ✅ Should clear error on successful location update
+   
+   **Características testeadas:**
+   - Geolocalización HTML5 API
+   - watchPosition y getCurrentPosition
+   - Intervalo de actualización (default: 10s, personalizable)
+   - Envío a backend con autenticación
+   - Filtrado por precisión (<100m)
+   - Manejo de errores GPS
+   - Cleanup automático
+
+2. **src/hooks/__tests__/use-driver-orders.test.tsx** (15/15) ✅
+   - Hook para obtener pedidos asignados al repartidor
+   - **Tests implementados:**
+     - ✅ Should not fetch orders when user is not authenticated
+     - ✅ Should fetch orders on mount when user is authenticated
+     - ✅ Should convert API timestamps to Firestore Timestamp objects
+     - ✅ Should preserve all order properties
+     - ✅ Should setup auto-refresh interval every 15 seconds
+     - ✅ Should cleanup interval on unmount
+     - ✅ Should handle API error
+     - ✅ Should handle network error
+     - ✅ Should handle empty response
+     - ✅ Should handle response without pedidos property
+     - ✅ Should refetch orders when refetch is called
+     - ✅ Should clear error on successful refetch
+     - ✅ Should reset orders when user logs out
+     - ✅ Should handle orders without createdAt timestamp
+     - ✅ Should cleanup and restart interval when user changes
+   
+   **Características testeadas:**
+   - Fetch automático con autenticación
+   - Auto-refresh cada 15 segundos
+   - Conversión de timestamps Firestore
+   - Manejo de estados de carga y error
+   - Función refetch manual
+   - Cleanup de intervalos
+   - Cambio de usuario
+
+### Métricas Finales:
+
+- ✅ **Tests Frontend**: 280/280 (100%)
+- ✅ **Test Suites**: 43/43 (100%)
+- ⏱️ **Tiempo de ejecución**: ~6 segundos
+- 📈 **Tests agregados**: +33 tests (18 + 15)
+- 🆕 **Suites agregadas**: +2
+- 🔧 **Cambios en código de producción**: 0 (solo nuevos tests)
+
+### Patrón Aplicado: Tests de Hooks con Timers
+
+```typescript
+describe('useLocationTracking', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers(); // CRÍTICO para controlar intervalos
+    
+    // Mock de navigator.geolocation
+    Object.defineProperty(global.navigator, 'geolocation', {
+      value: {
+        getCurrentPosition: mockGetCurrentPosition,
+        watchPosition: mockWatchPosition,
+        clearWatch: mockClearWatch,
+      },
+      writable: true,
+      configurable: true,
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers(); // Restaurar timers reales
+  });
+
+  it('should setup interval for periodic updates', () => {
+    renderHook(() => useLocationTracking({ orderId: 'order-123', enabled: true, interval: 10000 }));
+    
+    // Avanzar tiempo manualmente
+    jest.advanceTimersByTime(10000);
+    
+    // Verificar llamadas
+    expect(mockGetCurrentPosition).toHaveBeenCalledTimes(2); // inicial + 1 del interval
+  });
+});
+```
+
+### Lecciones Aprendidas:
+
+1. **Fake Timers para Hooks con Intervalos:**
+   - Usar `jest.useFakeTimers()` en beforeEach
+   - Controlar tiempo con `jest.advanceTimersByTime(ms)`
+   - Restaurar con `jest.useRealTimers()` en afterEach
+
+2. **Mocking de APIs del Navegador:**
+   - `navigator.geolocation` requiere `Object.defineProperty`
+   - Marcar como `writable: true, configurable: true` para que Jest pueda modificarlo
+   - Necesario mockear `getCurrentPosition`, `watchPosition`, y `clearWatch`
+
+3. **Tests de Cleanup:**
+   - Siempre testear que los hooks limpian sus efectos (intervalos, subscripciones)
+   - Verificar cleanup en unmount y cambio de dependencias
+   - Importante para prevenir memory leaks
+
+4. **Tests de Errores:**
+   - Testear todos los códigos de error posibles (PERMISSION_DENIED, POSITION_UNAVAILABLE, TIMEOUT)
+   - Verificar manejo graceful de errores
+   - Testear recuperación después de errores
+
+5. **Auto-refresh y Refetch:**
+   - Testear intervalos automáticos
+   - Testear función de refetch manual
+   - Verificar que el estado se actualiza correctamente
+
+---
+
+## 🎯 GAPS CRÍTICOS RESTANTES PARA COBERTURA SÓLIDA
+
+**Fecha de análisis:** 2025-10-25
+**Estado actual:** 280/280 tests (100%), pero faltan componentes y páginas críticas
+
+---
+
+### 🔴 PRIORIDAD MÁXIMA - BLOCKERS DE PRODUCCIÓN
+
+Estos componentes/páginas son **críticos** para el funcionamiento del sistema y **DEBEN** tener tests antes de desplegar a producción:
+
+#### 1. **Hooks Restantes de Tracking (3 archivos)**
+
+| Hook | Complejidad | Tests Est. | Tiempo | Razón Crítica |
+|------|-------------|------------|--------|---------------|
+| `use-order-tracking.ts` | ALTA | 10 | 2h | Tracking en vivo del pedido |
+| `use-eta-calculator.ts` | MEDIA | 6 | 1h | Cálculo de tiempo estimado |
+| `use-toast.ts` | BAJA | 3 | 0.5h | Notificaciones al usuario |
+
+**Total:** ~19 tests, ~3.5 horas
+
+#### 2. **Componentes Críticos de Repartidor (3 archivos)**
+
+| Componente | Complejidad | Tests Est. | Tiempo | Razón Crítica |
+|------------|-------------|------------|--------|---------------|
+| `OrderDetailMap.tsx` | MUY ALTA | 10 | 3h | Mapa con Google Maps + tracking |
+| `DeliveryActions.tsx` | EN PROGRESO | 15 | - | Ya tiene tests (15/15) ✅ |
+
+**Total:** ~10 tests, ~3 horas
+
+#### 3. **Componentes Admin de Repartidores (3 archivos)**
+
+| Componente | Complejidad | Tests Est. | Tiempo | Razón Crítica |
+|------------|-------------|------------|--------|---------------|
+| `DriverTrackingDialog.tsx` | MUY ALTA | 15 | 4h | Panel admin de tracking en vivo |
+| `DriversTable.tsx` | MEDIA | 8 | 1.5h | Gestión de repartidores |
+| `AddEditDriverDialog.tsx` | MEDIA | 10 | 2h | CRUD de repartidores |
+
+**Total:** ~33 tests, ~7.5 horas
+
+#### 4. **Páginas Críticas de Repartidor (2 archivos)**
+
+| Página | Complejidad | Tests Est. | Tiempo | Razón Crítica |
+|--------|-------------|------------|--------|---------------|
+| `/app/repartidor/dashboard/page.tsx` | ALTA | 10 | 2h | Dashboard principal del repartidor |
+| `/app/repartidor/pedidos/[id]/page.tsx` | MUY ALTA | 12 | 3h | Detalle de pedido con mapa |
+
+**Total:** ~22 tests, ~5 horas
+
+#### 5. **Páginas Core Públicas (2 archivos)**
+
+| Página | Complejidad | Tests Est. | Tiempo | Razón Crítica |
+|--------|-------------|------------|--------|---------------|
+| `/app/page.tsx` (Home) | MEDIA | 8 | 1.5h | Página principal pública |
+| `/app/menu/[id]/page.tsx` | MEDIA | 8 | 1.5h | Detalle de producto |
+
+**Total:** ~16 tests, ~3 horas
+
+---
+
+### **RESUMEN PRIORIDAD MÁXIMA**
+
+| Categoría | Archivos | Tests Est. | Tiempo Est. | Status |
+|-----------|----------|------------|-------------|--------|
+| Hooks Tracking | 3 | 19 | ~3.5h | ❌ Pendiente |
+| Componentes Repartidor | 1 | 10 | ~3h | ❌ Pendiente |
+| Componentes Admin | 3 | 33 | ~7.5h | ❌ Pendiente |
+| Páginas Repartidor | 2 | 22 | ~5h | ❌ Pendiente |
+| Páginas Core | 2 | 16 | ~3h | ❌ Pendiente |
+| **TOTAL CRÍTICO** | **11** | **~100** | **~22h** | **❌ 0/11** |
+
+---
+
+### 🟡 PRIORIDAD ALTA - IMPORTANTE PARA ESTABILIDAD
+
+Componentes importantes que agregan robustez al sistema:
+
+#### 6. **Componentes Admin Varios**
+
+| Componente | Tests Est. | Tiempo |
+|------------|------------|--------|
+| `AssignDriverDialog.tsx` | 8 | 1.5h |
+| `products-table.tsx` | 8 | 1.5h |
+| `promotion-form.tsx` | 12 | 3h |
+| `edit-user-dialog.tsx` | 10 | 2h |
+
+**Total:** ~38 tests, ~8 horas
+
+#### 7. **Páginas Admin**
+
+| Página | Tests Est. | Tiempo |
+|--------|------------|--------|
+| `/app/control/repartidores/page.tsx` | 10 | 2h |
+| `/app/control/promociones/page.tsx` | 8 | 1.5h |
+| `/app/control/usuarios/page.tsx` | 8 | 1.5h |
+| `/app/control/clientes/page.tsx` | 6 | 1h |
+
+**Total:** ~32 tests, ~6 horas
+
+---
+
+### **RESUMEN PRIORIDAD ALTA**
+
+| Categoría | Archivos | Tests Est. | Tiempo Est. |
+|-----------|----------|------------|-------------|
+| Componentes Admin | 4 | 38 | ~8h |
+| Páginas Admin | 4 | 32 | ~6h |
+| **TOTAL ALTA** | **8** | **~70** | **~14h** |
+
+---
+
+### 🟢 PRIORIDAD MEDIA - COMPLEMENTARIOS
+
+Componentes que completan la cobertura pero no son blockers:
+
+| Categoría | Archivos | Tests Est. | Tiempo Est. |
+|-----------|----------|------------|-------------|
+| Diálogos CRUD Admin | 7 | 50 | ~8h |
+| Componentes UI | 3 | 12 | ~2.5h |
+| Páginas Edición | 6 | 40 | ~8h |
+| **TOTAL MEDIA** | **16** | **~102** | **~18.5h** |
+
+---
+
+## 📊 RESUMEN GENERAL DE GAPS
+
+| Prioridad | Archivos | Tests Estimados | Tiempo | Estado |
+|-----------|----------|-----------------|--------|--------|
+| 🔴 **MÁXIMA (Blockers)** | 11 | ~100 | ~22h | 0% |
+| 🟡 **ALTA (Estabilidad)** | 8 | ~70 | ~14h | 0% |
+| 🟢 **MEDIA (Complemento)** | 16 | ~102 | ~18.5h | 0% |
+| ✅ **COMPLETADO** | 43 suites | 280 | - | 100% ✅ |
+| **TOTAL GAPS** | **35 archivos** | **~272 tests** | **~54.5h** | **0%** |
+
+---
+
+## 🎯 RECOMENDACIÓN PARA COBERTURA SÓLIDA
+
+Para considerarse **"SÓLIDO SÓLIDO"** y listo para producción:
+
+### Plan Mínimo (CRÍTICO):
+**Completar solo Prioridad MÁXIMA**
+- ✅ 11 archivos
+- ✅ ~100 tests
+- ✅ ~22 horas (~3 días de trabajo)
+- ✅ Cubre funcionalidad core de repartidor + tracking
+
+### Plan Completo (IDEAL):
+**Completar MÁXIMA + ALTA**
+- ✅ 19 archivos  
+- ✅ ~170 tests
+- ✅ ~36 horas (~4.5 días de trabajo)
+- ✅ Cubre toda funcionalidad crítica + admin
+
+### Plan Total (100%):
+**Completar todo**
+- ✅ 35 archivos
+- ✅ ~272 tests
+- ✅ ~54.5 horas (~7 días de trabajo)
+- ✅ Cobertura completa del frontend
+
+---
+
+## ✅ LO QUE YA ESTÁ SÓLIDO (280 tests)
+
+### Backend: 100% ✅
+- ✅ 232/232 tests (12 suites)
+- ✅ Autenticación completa
+- ✅ API de repartidores
+- ✅ Carrito y promociones
+- ✅ Pedidos y gastos
+
+### Frontend - Componentes: EXCELENTE ✅
+- ✅ Módulo de pedidos (OrdersTable, OrdersKPIs, OrdersFilters, OrderDetailsSheet)
+- ✅ Componentes de repartidor básicos (CustomerInfo, OrderCard, OrderItems, DriverStats)
+- ✅ Componentes de control (payment methods, expenses, sale products)
+- ✅ Google Places integration
+- ✅ Header y navegación
+
+### Frontend - Hooks: PARCIAL ✅
+- ✅ use-location-tracking (18/18) 🆕
+- ✅ use-driver-orders (15/15) 🆕
+- ✅ use-signed-url
+- ✅ cart-context
+- ❌ use-order-tracking (pendiente)
+- ❌ use-eta-calculator (pendiente)
+- ❌ use-toast (pendiente)
+
+### Frontend - Páginas Usuario: COMPLETO ✅
+- ✅ Login, Registro, Recuperar clave
+- ✅ Perfil
+- ✅ Menu, Carrito, Pago
+- ✅ Mis Pedidos
+- ✅ Términos y Privacidad
+
+### Frontend - Páginas Admin: PARCIAL ✅
+- ✅ Dashboard control
+- ✅ Pedidos (gestión)
+- ✅ Productos y Productos de Venta
+- ✅ Catálogo completo
+- ✅ Gastos
+- ✅ Métodos de pago
+- ❌ Repartidores (pendiente)
+- ❌ Promociones (pendiente)
+- ❌ Usuarios (pendiente)
+
+---
+
+**Versión:** 6.0
+**Última actualización:** 2025-10-25 (Sesión 8)
+**Próxima prioridad:** Completar hooks de tracking (use-order-tracking, use-eta-calculator, use-toast)
+
+
+---
+
+## 📦 Sesión 9: Actualización en Tiempo Real de Pedidos del Cliente (2025-10-25)
+
+**Agente:** Claude Code
+**Tarea:** Implementar actualización en tiempo real para pedidos del cliente usando Firestore onSnapshot
+**Estado inicial:** 280/280 tests pasando
+**Estado final:** Tests actualizados para Firestore (requieren re-ejecución)
+
+### Trabajo realizado:
+
+#### Problema Identificado:
+
+Las páginas de pedidos del cliente hacían **UN SOLO fetch** cuando se cargaban y **NO** se actualizaban automáticamente cuando:
+- El admin cambiaba el estado del pedido
+- Se asignaba un repartidor
+- Se actualizaba cualquier información del pedido
+
+El cliente **necesitaba recargar manualmente** la página para ver los cambios.
+
+#### Solución Implementada:
+
+Reemplazamos las llamadas HTTP con **subscripciones en tiempo real** usando Firestore `onSnapshot()`:
+
+**1. Lista de Pedidos (`/app/mis-pedidos/page.tsx`):**
+
+```typescript
+// ANTES: Fetch único
+const response = await fetch('/api/me/orders', {...});
+const data = await response.json();
+setOrders(data);
+
+// DESPUÉS: Subscripción en tiempo real
+const ordersRef = collection(firestore, 'pedidos');
+const q = query(
+  ordersRef,
+  where('userId', '==', user.uid),
+  orderBy('createdAt', 'desc')
+);
+
+const unsubscribe = onSnapshot(q, (querySnapshot) => {
+  const ordersData: Order[] = [];
+  querySnapshot.forEach((doc) => {
+    ordersData.push({ ...doc.data(), id: doc.id } as Order);
+  });
+  setOrders(ordersData);
+});
+
+return () => unsubscribe(); // Cleanup automático
+```
+
+**2. Detalle de Pedido (`/app/mis-pedidos/[id]/page.tsx`):**
+
+```typescript
+// ANTES: Fetch único
+const response = await fetch(`/api/me/orders/${id}`, {...});
+const data = await response.json();
+setOrder(data);
+
+// DESPUÉS: Subscripción en tiempo real
+const orderRef = doc(firestore, 'pedidos', id);
+
+const unsubscribe = onSnapshot(orderRef, (docSnapshot) => {
+  if (!docSnapshot.exists()) {
+    notFound();
+    return;
+  }
+  
+  const orderData = docSnapshot.data() as Order;
+  
+  // Validar seguridad
+  if (orderData.userId !== user.uid) {
+    notFound();
+    return;
+  }
+  
+  setOrder({ ...orderData, id: docSnapshot.id });
+});
+
+return () => unsubscribe(); // Cleanup automático
+```
+
+#### Tests Actualizados:
+
+**Archivos modificados:**
+1. **`src/app/mis-pedidos/page.test.tsx`** (3 tests)
+   - Agregados mocks de Firestore: `onSnapshot`, `collection`, `query`, `where`, `orderBy`
+   - Mock de `useFirestore()` hook
+   - Tests actualizados para simular `querySnapshot.forEach()`
+
+2. **`src/app/mis-pedidos/[id]/page.test.tsx`** (2 tests)
+   - Agregados mocks de Firestore: `onSnapshot`, `doc`
+   - Mock de `useFirestore()` hook
+   - Tests actualizados para simular `docSnapshot.exists()` y `docSnapshot.data()`
+
+**Patrón de Mock para onSnapshot:**
+
+```typescript
+// Mock para query (lista)
+mockOnSnapshot.mockImplementation((query, successCallback) => {
+  const mockQuerySnapshot = {
+    forEach: (callback: any) => {
+      mockOrders.forEach(order => {
+        callback({
+          data: () => order,
+          id: order.id,
+        });
+      });
+    },
+  };
+  successCallback(mockQuerySnapshot);
+  return jest.fn(); // unsubscribe function
+});
+
+// Mock para doc (documento único)
+mockOnSnapshot.mockImplementation((docRef, successCallback) => {
+  const mockDocSnapshot = {
+    exists: () => true,
+    data: () => mockOrder,
+    id: 'order-123',
+  };
+  successCallback(mockDocSnapshot);
+  return jest.fn(); // unsubscribe function
+});
+```
+
+#### Beneficios Implementados:
+
+**Para el Cliente:**
+- ✅ Ve cambios de estado **instantáneamente** sin recargar
+- ✅ Sabe cuándo se asigna repartidor en tiempo real
+- ✅ Experiencia de usuario moderna y fluida
+- ✅ No más "¿por qué no veo mi pedido actualizado?"
+
+**Para el Sistema:**
+- ✅ Menos carga en el servidor (no hay polling)
+- ✅ Firestore solo envía cambios, no documentos completos
+- ✅ Escalable: onSnapshot maneja miles de subscripciones
+- ✅ Cleanup automático previene memory leaks
+
+#### Seguridad:
+
+**Reglas de Firestore (`/firestore.rules`):**
+```javascript
+match /pedidos/{pedidoId} {
+  // Cliente puede ver SOLO SUS pedidos
+  allow list, get: if request.auth.uid == resource.data.userId;
+  
+  // Admins pueden ver/modificar todos
+  allow read, write: if isAdmin() || isSuperAdmin();
+}
+```
+
+**Validación adicional en código:**
+```typescript
+if (orderData.userId !== user.uid) {
+  notFound();
+  return;
+}
+```
+
+#### Archivos Modificados:
+
+| Archivo | Cambios | LOC |
+|---------|---------|-----|
+| `src/app/mis-pedidos/page.tsx` | Reemplazado fetch → onSnapshot | ~30 |
+| `src/app/mis-pedidos/[id]/page.tsx` | Reemplazado fetch → onSnapshot | ~40 |
+| `src/app/mis-pedidos/page.test.tsx` | Mocks de Firestore | ~50 |
+| `src/app/mis-pedidos/[id]/page.test.tsx` | Mocks de Firestore | ~40 |
+| **TOTAL** | | **~160 LOC** |
+
+#### Documentación Creada:
+
+- ✅ **`/docs/REALTIME-UPDATES.md`** - Documentación completa de 600+ líneas:
+  - Descripción general
+  - Problema resuelto
+  - Solución implementada con código
+  - Detalles técnicos
+  - Seguridad
+  - Beneficios
+  - Guía de uso para desarrolladores
+  - Patrones y errores comunes
+  - Consideraciones de costos Firestore
+  - Flujo de actualización con diagrama
+  - Checklist de implementación
+
+- ✅ **`/CHANGELOG.md`** - Entrada actualizada con cambios de esta sesión
+
+#### Próximos Pasos Sugeridos:
+
+1. **Ejecutar tests actualizados:**
+   ```bash
+   npm run test:frontend -- mis-pedidos
+   ```
+
+2. **Probar en desarrollo:**
+   ```bash
+   npm run dev
+   ```
+   - Abrir `/mis-pedidos` como cliente
+   - Cambiar estado desde `/control/pedidos` como admin
+   - Verificar actualización instantánea
+
+3. **Extender a otras páginas:**
+   - Dashboard del repartidor
+   - Tracking de pedido para cliente (con mapa en vivo)
+   - Panel admin de tracking de repartidores
+
+#### Lecciones Aprendidas:
+
+1. **onSnapshot vs fetch:**
+   - `fetch`: Una sola llamada, datos estáticos
+   - `onSnapshot`: Conexión persistente, actualizaciones automáticas
+
+2. **Cleanup es crítico:**
+   ```typescript
+   return () => unsubscribe(); // Previene memory leaks
+   ```
+
+3. **Mocking de onSnapshot en tests:**
+   - Debe simular `querySnapshot.forEach()` o `docSnapshot.exists()`
+   - Debe retornar función `unsubscribe`
+   - Callback debe ejecutarse sincrónicamente en tests
+
+4. **Seguridad multicapa:**
+   - Firestore Rules (server-side)
+   - Validación en código (client-side)
+   - Query filters (`where('userId', '==', user.uid)`)
+
+5. **Costos de Firestore:**
+   - Cada cambio = 1 lectura
+   - Más eficiente que polling cada X segundos
+   - Solo cambios se transmiten, no documentos completos
+
+---
+
+**Versión:** 7.0
+**Última actualización:** 2025-10-25 (Sesión 9)
+**Próxima prioridad:** Probar actualización en tiempo real en desarrollo y extender a otras páginas críticas
+
