@@ -80,7 +80,8 @@ describe('DriverStats Component', () => {
     const orders: Order[] = [createMockOrder('1', 'Preparando', new Date())];
     const { container } = render(<DriverStats orders={orders} />);
 
-    const pendingCard = container.querySelector('.bg-blue-50');
+    // El componente usa gradientes, buscamos la clase from-blue-500
+    const pendingCard = container.querySelector('.from-blue-500');
     expect(pendingCard).toBeInTheDocument();
   });
 
@@ -88,7 +89,8 @@ describe('DriverStats Component', () => {
     const orders: Order[] = [createMockOrder('1', 'En Reparto', new Date())];
     const { container } = render(<DriverStats orders={orders} />);
 
-    const inProgressCard = container.querySelector('.bg-green-50');
+    // El componente usa gradientes, buscamos la clase from-green-500
+    const inProgressCard = container.querySelector('.from-green-500');
     expect(inProgressCard).toBeInTheDocument();
   });
 
@@ -96,7 +98,8 @@ describe('DriverStats Component', () => {
     const orders: Order[] = [createMockOrder('1', 'Entregado', new Date())];
     const { container } = render(<DriverStats orders={orders} />);
 
-    const completedCard = container.querySelector('.bg-gray-50');
+    // El componente usa gradientes, buscamos la clase from-orange-500
+    const completedCard = container.querySelector('.from-orange-500');
     expect(completedCard).toBeInTheDocument();
   });
 

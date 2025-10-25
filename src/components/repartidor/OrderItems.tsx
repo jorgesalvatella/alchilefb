@@ -7,13 +7,29 @@ interface OrderItemsProps {
   items: Array<{
     name: string;
     quantity: number;
-    price: number;
+    price?: number; // Opcional, puede no existir
+    subtotalItem?: number; // Precio total del item (price * quantity)
+    totalItem?: number; // Total con impuestos
   }>;
   total: number;
   paymentMethod: string;
 }
 
 export function OrderItems({ items, total, paymentMethod }: OrderItemsProps) {
+  // Calcular el precio de un item (unitario o total)
+  const getItemPrice = (item: any) => {
+    // Si tiene subtotalItem (estructura del backend), usarlo
+    if (item.subtotalItem !== undefined) {
+      return item.subtotalItem;
+    }
+    // Si tiene price y quantity, calcular
+    if (item.price !== undefined && item.quantity) {
+      return item.price * item.quantity;
+    }
+    // Fallback a 0
+    return 0;
+  };
+
   const getPaymentMethodLabel = (method: string) => {
     const methods: { [key: string]: string } = {
       'cash': 'Efectivo',
@@ -55,7 +71,7 @@ export function OrderItems({ items, total, paymentMethod }: OrderItemsProps) {
                 </p>
               </div>
               <p className="font-semibold text-gray-700">
-                ${(item.price * item.quantity).toFixed(2)}
+                ${getItemPrice(item).toFixed(2)}
               </p>
             </div>
           ))}
@@ -68,7 +84,7 @@ export function OrderItems({ items, total, paymentMethod }: OrderItemsProps) {
               <span className="text-lg font-semibold">Total</span>
             </div>
             <span className="text-2xl font-bold text-green-600">
-              ${total.toFixed(2)}
+              ${(total || 0).toFixed(2)}
             </span>
           </div>
 

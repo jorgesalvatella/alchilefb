@@ -78,23 +78,26 @@ function OrderDetailPage({ params, user, claims }: PageProps & WithAuthProps) {
   }
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center gap-4 shadow-lg sticky top-0 z-10">
+    <main className="min-h-screen overflow-x-hidden">
+      {/* Page Title */}
+      <div className="text-center mb-8 pt-32 px-4">
         <button
           onClick={() => router.back()}
-          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 text-orange-500 hover:text-orange-400 transition-colors mb-6"
           aria-label="Volver"
         >
-          <ArrowLeft className="w-6 h-6" />
+          <ArrowLeft className="w-5 h-5" />
+          <span className="font-semibold">Volver a Mis Pedidos</span>
         </button>
-        <div className="flex-1">
-          <h1 className="text-lg font-bold">Pedido #{order.id.slice(-6).toUpperCase()}</h1>
-          <p className="text-blue-100 text-sm">Detalles de entrega</p>
-        </div>
-      </header>
+        <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-4 break-words">
+          <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+            Pedido #{order.id.slice(-6).toUpperCase()}
+          </span>
+        </h1>
+        <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto px-4">Detalles de entrega</p>
+      </div>
 
-      <div className="p-4 space-y-6 pb-24">
+      <div className="px-4 space-y-6 pb-32">
         {/* Status Badge */}
         <div className="flex items-center justify-between">
           <Badge className={`${getStatusColor(order.status)} border px-4 py-2 text-sm font-semibold`}>
@@ -113,7 +116,7 @@ function OrderDetailPage({ params, user, claims }: PageProps & WithAuthProps) {
 
         {/* Map */}
         <div>
-          <h2 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-white/90 mb-3 flex items-center gap-2">
             <Package className="w-4 h-4" />
             Ubicación del Cliente
           </h2>
@@ -132,11 +135,11 @@ function OrderDetailPage({ params, user, claims }: PageProps & WithAuthProps) {
         />
 
         {/* Delivery Actions */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 border-t border-gray-700 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900/95 backdrop-blur-sm border-t border-gray-700 shadow-lg z-20">
           <DeliveryActions order={order} />
         </div>
       </div>
-    </div>
+    </main>
   );
 }
 

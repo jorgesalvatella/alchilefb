@@ -178,7 +178,7 @@ router.put('/me/update-location', authMiddleware, requireRepartidor, async (req,
 
     // Si se proporciona orderId, actualizar también el pedido
     if (orderId) {
-      const orderRef = db.collection('orders').doc(orderId);
+      const orderRef = db.collection('pedidos').doc(orderId);
       const orderDoc = await orderRef.get();
 
       if (!orderDoc.exists) {
@@ -237,7 +237,7 @@ router.get('/me/pedidos', authMiddleware, requireRepartidor, async (req, res) =>
     const repartidorId = repartidoresSnapshot.docs[0].id;
 
     // Construir query para pedidos
-    let pedidosQuery = db.collection('orders')
+    let pedidosQuery = db.collection('pedidos')
       .where('driverId', '==', repartidorId);
 
     // Filtrar por estado si se proporciona
@@ -325,7 +325,7 @@ router.put('/:orderId/marcar-en-camino', authMiddleware, requireRepartidor, asyn
     const { currentLocation } = req.body;
 
     // 1. Obtener el pedido
-    const orderRef = db.collection('orders').doc(orderId);
+    const orderRef = db.collection('pedidos').doc(orderId);
     const orderDoc = await orderRef.get();
 
     if (!orderDoc.exists) {
@@ -463,7 +463,7 @@ router.put('/:orderId/marcar-entregado', authMiddleware, requireRepartidor, asyn
     const { deliveryNotes, signature } = req.body;
 
     // 1. Obtener el pedido
-    const orderRef = db.collection('orders').doc(orderId);
+    const orderRef = db.collection('pedidos').doc(orderId);
     const orderDoc = await orderRef.get();
 
     if (!orderDoc.exists) {

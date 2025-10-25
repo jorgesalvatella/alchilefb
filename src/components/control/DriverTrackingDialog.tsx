@@ -91,7 +91,7 @@ export function DriverTrackingDialog({
     });
 
     // Suscribirse al pedido activo del repartidor
-    const ordersRef = collection(db, 'orders');
+    const ordersRef = collection(db, 'pedidos');
     const activeOrderQuery = query(
       ordersRef,
       where('driverId', '==', driverId),

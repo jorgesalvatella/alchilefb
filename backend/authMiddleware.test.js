@@ -22,9 +22,18 @@ const mockAuth = {
   getUser: jest.fn(() => Promise.resolve({ uid: 'test-user-id', customClaims: { admin: true } })),
 };
 
+// Referencia al mock para acceso directo en tests
+const mockVerifyIdToken = mockAuth.verifyIdToken;
+
 jest.mock('firebase-admin', () => ({
   initializeApp: jest.fn(),
-  firestore: jest.fn(() => mockFirestore),
+  firestore: Object.assign(
+    jest.fn(() => mockFirestore),
+    {
+      FieldValue: mockFirestore.FieldValue,
+      Timestamp: mockFirestore.Timestamp,
+    }
+  ),
   auth: jest.fn(() => mockAuth),
 }));
 

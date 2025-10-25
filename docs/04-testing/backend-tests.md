@@ -1,8 +1,8 @@
 # Registro de Tests de Backend
 
-**Última actualización:** 2025-10-20
-**Estado general:** ✅ 209/209 tests pasando (100%)
-**Test Suites:** 11 totales, 11 pasando
+**Última actualización:** 2025-10-25
+**Estado general:** ✅ 232/232 tests pasando (100%)
+**Test Suites:** 12 totales, 12 pasando
 
 ---
 
@@ -396,13 +396,13 @@
 | Categorías Venta | categorias-venta.test.js | 13 | ✅ | ALTO |
 | Endpoints Generales + Gastos | index.test.js | 46 | ✅ | CRÍTICO |
 | Pedidos (Usuario) | pedidos.test.js | 3 | ✅ | CRÍTICO |
-| Pedidos (Control) | pedidos-control.test.js | 17 | ✅ | CRÍTICO |
+| Pedidos (Control) | pedidos-control.test.js | 20 | ✅ | CRÍTICO |
 | Productos Venta | productos-venta.test.js | 7 | ✅ | ALTO |
 | Perfil Usuario | profile.test.js | 2 | ✅ | MEDIO |
 | Promociones/Paquetes | promotions.test.js | 28 | ✅ | CRÍTICO |
 | Repartidores | repartidores.test.js | 60 | ✅ | CRÍTICO |
 
-**Total: 209 tests** ✅
+**Total: 232 tests** ✅ (+23 desde última actualización)
 
 ---
 
@@ -524,6 +524,72 @@
 ---
 
 ## Notas de Implementación
+
+### Cambios Realizados el 2025-10-25:
+
+**🔧 Correcciones de Tests Backend (16 tests fallando → 0 fallando)**
+
+**Archivos corregidos:**
+
+1. **authMiddleware.test.js** - Corregidos 12 tests fallando
+   - **Problema**: Variable `mockVerifyIdToken` no definida (ReferenceError)
+   - **Causa**: Se intentaba acceder a `mockVerifyIdToken.mockReset()` en beforeEach pero la variable nunca fue declarada
+   - **Solución**: Agregada línea `const mockVerifyIdToken = mockAuth.verifyIdToken;` después de definir `mockAuth` (línea 26)
+   - **Resultado**: ✅ 15/15 tests pasando
+
+   - **Problema adicional**: `admin.firestore.FieldValue.serverTimestamp()` retornaba undefined
+   - **Causa**: El mock de firebase-admin no exponía `FieldValue` y `Timestamp` en el nivel correcto
+   - **Solución**: Modificado el mock usando `Object.assign()` para agregar FieldValue y Timestamp a la función firestore:
+     ```javascript
+     firestore: Object.assign(
+       jest.fn(() => mockFirestore),
+       {
+         FieldValue: mockFirestore.FieldValue,
+         Timestamp: mockFirestore.Timestamp,
+       }
+     )
+     ```
+   - **Resultado**: ✅ Todos los tests de authMiddleware ahora pasan
+
+2. **pedidos-control.test.js** - Corregidos 4 tests fallando
+   - **Problema 1**: Test "should create a driver successfully" - esperaba 201, recibía 409 (Conflict)
+   - **Causa**: El endpoint verifica que el `userId` no esté ya asociado a un repartidor. El mock retornaba `empty: false` en todas las queries, causando que el endpoint pensara que ya existía un driver
+   - **Solución**: Configurar `mockSnapshot.empty = true` antes de la petición en el test específico
+   - **Resultado**: ✅ Test pasando
+
+   - **Problema 2**: Test "should create a driver successfully" - error 400 "El userId no corresponde a un usuario repartidor válido"
+   - **Causa**: El endpoint llama a `admin.auth().getUser(userId)` para verificar custom claims. El mock siempre retornaba el mismo usuario admin sin claim `repartidor`
+   - **Solución**: Convertir `getUser` en un mock dinámico que retorna diferentes usuarios según el `userId`:
+     ```javascript
+     const mockGetUser = jest.fn((userId) => {
+       if (userId === 'new-driver-user-id') {
+         return Promise.resolve({
+           uid: 'new-driver-user-id',
+           customClaims: { repartidor: true },
+         });
+       }
+       return Promise.resolve({
+         uid: 'test-admin-uid',
+         customClaims: { admin: true },
+       });
+     });
+     ```
+   - **Resultado**: ✅ 20/20 tests de pedidos-control pasando
+
+**Tests agregados:**
+- Se agregaron 3 nuevos tests en pedidos-control.test.js para la funcionalidad de drivers
+
+**Resumen de correcciones:**
+- ✅ **Antes**: 16 tests fallando en backend (12 en authMiddleware, 4 en pedidos-control)
+- ✅ **Después**: 0 tests fallando, 232/232 pasando (100%)
+- ✅ **Test Suites**: 12/12 pasando (100%)
+- ✅ **Tiempo de ejecución**: ~3 segundos
+
+**Lecciones aprendidas:**
+1. **Mocks de Firebase Admin**: Es crucial mockear tanto el módulo principal (`firebase-admin`) como los submódulos específicos (`firebase-admin/storage`)
+2. **FieldValue en el lugar correcto**: `admin.firestore.FieldValue` requiere que FieldValue esté expuesto en la función firestore, no solo en la instancia
+3. **Mocks dinámicos**: Usar funciones que retornan valores diferentes según parámetros permite tests más realistas
+4. **Estado de snapshots**: Resetear `mockSnapshot.empty` correctamente en beforeEach y ajustar por test según necesidad
 
 ### Cambios Realizados el 2025-10-20:
 

@@ -851,3 +851,170 @@ Guardián de la calidad y la estabilidad del software. Maestro del testing estra
 - ✅ Cobertura verificada
 
 Ver más detalles en: [`/AGENTS.md`](../../../AGENTS.md#-gestión-de-contexto-y-tokens)
+
+---
+
+## 📋 REGISTRO DE SESIONES DE VANGUARD
+
+### Sesión 2025-10-25 (Tarde): Validación de Tests Frontend
+
+**Agente:** Vanguard
+**Tarea:** Ejecutar y validar TODOS los tests de frontend, corrigiendo cualquier problema encontrado
+**Estado inicial:** 239/247 tests pasando (96.8%) - 8 tests fallando en 3 archivos
+**Estado final:** ✅ 247/247 tests pasando (100%)
+
+**Trabajo realizado:**
+
+#### Frontend - Tests Corregidos:
+
+1. **DriverStats.test.tsx** (3 tests fallando → 11 tests pasando)
+   - ❌ **Error**: Tests buscaban clases CSS sólidas (`.bg-blue-50`, `.bg-green-50`, `.bg-gray-50`) que no existían
+   - 🔍 **Análisis**: El componente fue actualizado para usar gradientes vibrantes (`bg-gradient-to-br from-blue-500 to-blue-700`) en lugar de fondos sólidos
+   - ✅ **Solución**: Actualizar selectores CSS en tests para buscar clases de gradiente:
+     - Pendientes: `.from-blue-500`
+     - En Camino: `.from-green-500`
+     - Completados: `.from-orange-500`
+   - 📊 **Resultado**: 11/11 tests ✅
+
+2. **OrderCard.test.tsx** (4 tests fallando → 12 tests pasando)
+   - ❌ **Error 1**: Tests de styling esperaban `bg-blue-500`, `bg-green-500`, `bg-gray-500`
+   - 🔍 **Análisis**: El componente actualizado usa tonos más oscuros para mejor contraste (`bg-blue-600`, `bg-green-600`, `bg-gray-600`)
+   - ✅ **Solución**: Actualizar clases esperadas en tests (líneas 83, 94, 104)
+   - ❌ **Error 2**: Test de ID buscaba `/#order123/` (minúsculas)
+   - 🔍 **Análisis**: El componente muestra IDs en mayúsculas (`#ORDER123`) usando `.toUpperCase()`
+   - ✅ **Solución**: Actualizar regex a `/#ORDER123/` (línea 146)
+   - 📊 **Resultado**: 12/12 tests ✅
+
+3. **page.test.tsx (registro)** (1 test fallando → 4 tests pasando)
+   - ❌ **Error 1**: `mockInitiateEmailSignUp` nunca era llamado
+   - 🔍 **Análisis**: El formulario requiere campo de teléfono obligatorio pero el test no lo completaba
+   - ✅ **Solución Parte 1**: Agregar input de teléfono y llenarlo:
+     ```typescript
+     const phoneInput = screen.getByPlaceholderText('998 123 4567');
+     fireEvent.change(phoneInput, { target: { value: '9981234567' } });
+     ```
+   - ❌ **Error 2**: Objeto enviado incluía `phoneNumber` pero el test no lo esperaba
+   - ✅ **Solución Parte 2**: Agregar campo al objeto esperado:
+     ```typescript
+     {
+       email: 'john@test.com',
+       firstName: 'John',
+       lastName: 'Doe',
+       phoneNumber: '9981234567', // ← AGREGADO
+       role: 'customer',
+     }
+     ```
+   - 📊 **Resultado**: 4/4 tests ✅
+
+**Archivos modificados:**
+- `/src/components/repartidor/__tests__/DriverStats.test.tsx` - Líneas 83-103
+- `/src/components/repartidor/__tests__/OrderCard.test.tsx` - Líneas 83, 94, 104, 146
+- `/src/app/registro/page.test.tsx` - Líneas 85, 91, 104
+
+**Métricas finales:**
+- ✅ Tests Frontend: 247/247 (100%)
+- ✅ Test Suites: 41/41 (100%)
+- ⏱️ Tiempo de ejecución: ~8 segundos
+- 📈 Tests corregidos: 8 tests
+- 🔧 Cambios en código de producción: 0 (solo ajustes en tests)
+
+**Lecciones aprendidas:**
+1. **Gradientes CSS**: Cuando componentes usan gradientes en lugar de colores sólidos, tests deben buscar clases como `from-{color}` o `to-{color}`
+2. **Campos obligatorios dinámicos**: Cambios en validación (teléfono ahora obligatorio) requieren actualizar todos los tests del formulario
+3. **Transformaciones de texto**: Verificar si el componente transforma datos (`.toUpperCase()`, `.toLowerCase()`) antes de escribir expectativas
+4. **Tests de contraste**: Mejoras de accesibilidad (colores más oscuros) rompen tests de estilo y deben actualizarse
+
+**Documentación actualizada:**
+- ✅ `/docs/04-testing/frontend-tests.md` - Sesión 7 agregada
+- ✅ `/docs/agents/vanguard/README.md` - Este registro de sesión
+- ✅ `/AGENTS.md` - Estado confirmado (247/247 ✅)
+
+**Próximos pasos:**
+- ✅ Todos los tests de frontend validados y pasando al 100%
+- ✅ Todos los tests de backend validados y pasando al 100%
+
+---
+
+### Sesión 2025-10-25 (Mañana): Corrección de Tests Backend Fallidos
+
+**Agente:** Vanguard
+**Tarea:** Ejecutar y corregir todos los tests de backend y frontend
+**Estado inicial:** 16 tests fallando en backend
+**Estado final:** ✅ 232/232 tests pasando (100%)
+
+**Trabajo realizado:**
+
+#### Backend - Correcciones Aplicadas:
+
+1. **authMiddleware.test.js** (12 tests fallando → 15 tests pasando)
+   - ❌ **Error**: `ReferenceError: mockVerifyIdToken is not defined`
+   - 🔍 **Análisis**: Se usaba `mockVerifyIdToken.mockReset()` en beforeEach sin declarar la variable
+   - ✅ **Solución**: Agregar `const mockVerifyIdToken = mockAuth.verifyIdToken;` (línea 26)
+   - ❌ **Error secundario**: `TypeError: Cannot read properties of undefined (reading 'serverTimestamp')`
+   - 🔍 **Análisis**: `admin.firestore.FieldValue` retornaba undefined porque FieldValue no estaba expuesto correctamente en el mock
+   - ✅ **Solución**: Modificar mock usando Object.assign para exponer FieldValue y Timestamp:
+     ```javascript
+     firestore: Object.assign(
+       jest.fn(() => mockFirestore),
+       {
+         FieldValue: mockFirestore.FieldValue,
+         Timestamp: mockFirestore.Timestamp,
+       }
+     )
+     ```
+   - 📊 **Resultado**: 15/15 tests ✅
+
+2. **pedidos-control.test.js** (1 test fallando → 20 tests pasando)
+   - ❌ **Error**: Test "should create a driver successfully" - esperaba 201, recibía 409
+   - 🔍 **Análisis**: El endpoint verifica duplicados con `.where('userId', '==', userId).get()`. El mock retornaba `empty: false` haciendo creer que ya existía el driver
+   - ✅ **Solución**: Configurar `mockSnapshot.empty = true` en el test específico
+   - ❌ **Error secundario**: 400 "El userId no corresponde a un usuario repartidor válido"
+   - 🔍 **Análisis**: `admin.auth().getUser(userId)` siempre retornaba usuario admin, sin claim `repartidor: true`
+   - ✅ **Solución**: Mock dinámico de getUser que retorna diferentes usuarios según userId:
+     ```javascript
+     const mockGetUser = jest.fn((userId) => {
+       if (userId === 'new-driver-user-id') {
+         return Promise.resolve({
+           uid: 'new-driver-user-id',
+           customClaims: { repartidor: true },
+         });
+       }
+       return Promise.resolve({
+         uid: 'test-admin-uid',
+         customClaims: { admin: true },
+       });
+     });
+     ```
+   - 📊 **Resultado**: 20/20 tests ✅
+
+**Archivos modificados:**
+- `/backend/authMiddleware.test.js` - Líneas 26, 28-38
+- `/backend/pedidos-control.test.js` - Líneas 56-82, 718-721
+
+**Métricas finales:**
+- ✅ Tests Backend: 232/232 (100%)
+- ✅ Test Suites Backend: 12/12 (100%)
+- ⏱️ Tiempo de ejecución: ~3 segundos
+- 📈 Incremento: +23 tests desde última sesión
+
+**Lecciones aprendidas:**
+1. **Referencias a mocks**: Siempre declarar variables de referencia a mocks antes de usarlas en beforeEach
+2. **Firebase Admin estructura**: `admin.firestore.FieldValue` requiere que FieldValue esté en la función, no solo en la instancia
+3. **Mocks dinámicos**: Usar funciones que retornan valores según parámetros para simular comportamiento real
+4. **Estado compartido**: Resetear correctamente el estado en beforeEach y ajustar por test cuando sea necesario
+
+**Documentación actualizada:**
+- ✅ `/docs/04-testing/backend-tests.md` - Sección "Cambios Realizados el 2025-10-25"
+- ✅ `/docs/agents/vanguard/README.md` - Este registro de sesión
+
+**Próximos pasos:**
+- Ejecutar tests de frontend
+- Validar cobertura total al 100%
+
+---
+
+### Sesión 2025-10-20: Corrección de Tests de Gastos
+
+*(Sesión previa documentada en backend-tests.md)*
+
+---

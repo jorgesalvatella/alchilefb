@@ -53,6 +53,21 @@ jest.mock('firebase-admin', () => {
     })),
   };
 
+  const mockGetUser = jest.fn((userId) => {
+    // Mock dinámico basado en el userId solicitado
+    if (userId === 'new-driver-user-id') {
+      return Promise.resolve({
+        uid: 'new-driver-user-id',
+        customClaims: { repartidor: true },
+      });
+    }
+    // Default: admin user
+    return Promise.resolve({
+      uid: 'test-admin-uid',
+      customClaims: { admin: true },
+    });
+  });
+
   return {
     initializeApp: jest.fn(),
     firestore,
@@ -61,10 +76,7 @@ jest.mock('firebase-admin', () => {
         uid: 'test-admin-uid',
         admin: true,
       }),
-      getUser: jest.fn().mockResolvedValue({
-        uid: 'test-admin-uid',
-        customClaims: { admin: true },
-      }),
+      getUser: mockGetUser,
     }),
   };
 });
@@ -704,6 +716,10 @@ describe('Orders Hub Backend Endpoints', () => {
     };
 
     it('should create a driver successfully', async () => {
+      // Mock para que no exista un driver con este userId
+      mockSnapshot.empty = true;
+      mockSnapshot.docs = [];
+
       mockAdd.mockResolvedValueOnce({ id: 'driver-new' });
 
       const res = await request(app)

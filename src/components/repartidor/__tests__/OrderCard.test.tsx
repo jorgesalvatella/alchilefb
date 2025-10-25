@@ -80,7 +80,8 @@ describe('OrderCard Component', () => {
 
     const statusBadge = screen.getByText(/Preparando/);
     expect(statusBadge).toBeInTheDocument();
-    expect(statusBadge).toHaveClass('bg-blue-500');
+    // El componente usa bg-blue-600 en lugar de bg-blue-500
+    expect(statusBadge).toHaveClass('bg-blue-600');
   });
 
   it('should render "En Reparto" status badge with correct styling', () => {
@@ -89,7 +90,8 @@ describe('OrderCard Component', () => {
 
     const statusBadge = screen.getByText(/En Reparto/);
     expect(statusBadge).toBeInTheDocument();
-    expect(statusBadge).toHaveClass('bg-green-500');
+    // El componente usa bg-green-600 en lugar de bg-green-500
+    expect(statusBadge).toHaveClass('bg-green-600');
   });
 
   it('should render "Entregado" status badge with correct styling', () => {
@@ -98,7 +100,8 @@ describe('OrderCard Component', () => {
 
     const statusBadge = screen.getByText(/Entregado/);
     expect(statusBadge).toBeInTheDocument();
-    expect(statusBadge).toHaveClass('bg-gray-500');
+    // El componente usa bg-gray-600 en lugar de bg-gray-500
+    expect(statusBadge).toHaveClass('bg-gray-600');
   });
 
   it('should have correct link to order detail page', () => {
@@ -139,8 +142,8 @@ describe('OrderCard Component', () => {
   it('should display order ID in short format', () => {
     render(<OrderCard order={mockOrder} />);
 
-    // Should show first 8 characters of ID with # prefix
-    expect(screen.getByText(/#order123/)).toBeInTheDocument();
+    // Should show first 8 characters of ID with # prefix in uppercase
+    expect(screen.getByText(/#ORDER123/)).toBeInTheDocument();
   });
 
   it('should display phone number if available', () => {

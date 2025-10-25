@@ -13,7 +13,7 @@ function AdminCustomersPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const ordersCollection = useMemoFirebase(
-    () => (firestore ? collection(firestore, 'orders') : null),
+    () => (firestore ? collection(firestore, 'pedidos') : null),
     [firestore]
   );
   const { data: orders, isLoading: isLoadingOrders } = useCollection<Order>(ordersCollection);

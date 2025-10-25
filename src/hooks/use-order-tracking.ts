@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/firebase/config';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useUser } from '@/firebase/provider';
 
 interface DriverLocation {
   lat: number;
@@ -30,13 +29,15 @@ interface UseOrderTrackingReturn {
   error: string | null;
 }
 
+const TRACKING_REFRESH_INTERVAL = 10000; // 10 segundos (más frecuente para tracking)
+
 /**
- * Hook para suscribirse a las actualizaciones de un pedido en tiempo real,
+ * Hook para obtener un pedido específico y sus actualizaciones,
  * incluyendo la ubicación del repartidor durante la entrega.
  *
  * @param orderId - ID del pedido a trackear
  * @param enabled - Si está habilitado el tracking (default: true)
- * @returns Datos del pedido y ubicación del repartidor en tiempo real
+ * @returns Datos del pedido y ubicación del repartidor
  *
  * @example
  * ```tsx
@@ -54,57 +55,84 @@ export function useOrderTracking({
   orderId,
   enabled = true,
 }: UseOrderTrackingOptions): UseOrderTrackingReturn {
+  const { user } = useUser();
   const [order, setOrder] = useState<Order | null>(null);
   const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    if (!enabled || !orderId) {
+  const fetchOrder = useCallback(async () => {
+    if (!user || !orderId) {
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    try {
+      const token = await user.getIdToken();
 
-    // Suscribirse al documento del pedido en tiempo real
-    const orderRef = doc(db, 'orders', orderId);
+      // Intentar obtener el pedido de la lista de pedidos del repartidor
+      const response = await fetch('/api/repartidores/me/pedidos', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-    const unsubscribe = onSnapshot(
-      orderRef,
-      (snapshot) => {
-        if (snapshot.exists()) {
-          const orderData = { id: snapshot.id, ...snapshot.data() } as Order;
-          setOrder(orderData);
-
-          // Actualizar ubicación del repartidor si está disponible
-          if (orderData.driverLocation) {
-            setDriverLocation(orderData.driverLocation);
-          } else {
-            setDriverLocation(null);
-          }
-
-          setError(null);
-        } else {
-          setError('Pedido no encontrado');
-          setOrder(null);
-          setDriverLocation(null);
-        }
-        setLoading(false);
-      },
-      (err) => {
-        console.error('Error al suscribirse al pedido:', err);
-        setError(err.message || 'Error al obtener datos del pedido');
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error('No se pudo cargar el pedido');
       }
-    );
 
-    // Cleanup: desuscribirse cuando el componente se desmonte
+      const data = await response.json();
+
+      // Buscar el pedido específico en la lista
+      const foundOrder = (data.pedidos || []).find((p: any) => p.id === orderId);
+
+      if (!foundOrder) {
+        throw new Error('Pedido no encontrado o no asignado a ti');
+      }
+
+      setOrder(foundOrder);
+
+      // Actualizar ubicación del repartidor si está disponible
+      if (foundOrder.driverLocation) {
+        setDriverLocation(foundOrder.driverLocation);
+      } else {
+        setDriverLocation(null);
+      }
+
+      setError(null);
+      setLoading(false);
+    } catch (err: any) {
+      console.error('Error fetching order:', err);
+      setError(err.message || 'Error al obtener datos del pedido');
+      setLoading(false);
+    }
+  }, [user, orderId]);
+
+  useEffect(() => {
+    if (!enabled || !orderId || !user) {
+      setLoading(false);
+      return;
+    }
+
+    // Fetch inicial
+    setLoading(true);
+    fetchOrder();
+
+    // Configurar auto-refresh para tracking en tiempo real
+    // Más frecuente (10s) porque el tracking requiere actualizaciones más rápidas
+    intervalRef.current = setInterval(() => {
+      fetchOrder();
+    }, TRACKING_REFRESH_INTERVAL);
+
+    // Cleanup: limpiar interval al desmontar
     return () => {
-      unsubscribe();
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
-  }, [orderId, enabled]);
+  }, [orderId, enabled, user, fetchOrder]);
 
   // Determinar si el tracking está activo
   const isTracking = order?.status === 'En Reparto' && !!driverLocation;

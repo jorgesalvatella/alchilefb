@@ -81,8 +81,9 @@ export function useLocationTracking({ orderId, enabled, interval = 10000 }: Loca
         errorMessage = 'Ubicación no disponible. Verifica tu conexión.';
         break;
       case error.TIMEOUT:
-        errorMessage = 'Tiempo de espera agotado al obtener ubicación.';
-        break;
+        // No mostrar error por timeout - es común en entornos de desarrollo
+        console.warn('Timeout al obtener ubicación (normal en desarrollo)');
+        return; // No setear error para timeout
     }
 
     setError(errorMessage);
@@ -116,8 +117,8 @@ export function useLocationTracking({ orderId, enabled, interval = 10000 }: Loca
     // Configuración de geolocalización
     const options: PositionOptions = {
       enableHighAccuracy: false, // Ahorrar batería (suficiente para delivery)
-      timeout: 10000, // 10 segundos
-      maximumAge: 5000, // Usar caché de hasta 5 segundos
+      timeout: 30000, // 30 segundos (más tiempo para entornos lentos)
+      maximumAge: 10000, // Usar caché de hasta 10 segundos
     };
 
     // Obtener ubicación inicial inmediatamente

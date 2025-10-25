@@ -116,7 +116,7 @@ jest.mock('firebase-admin', () => {
         return { empty: true, docs: [] };
       }
 
-      if (collectionName === 'orders') {
+      if (collectionName === 'pedidos') {
         // Filtrar pedidos por driverId
         const driverIdCondition = conditions.find(c => c.field === 'driverId');
         const statusCondition = conditions.find(c => c.field === 'status');

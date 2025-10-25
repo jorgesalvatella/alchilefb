@@ -82,11 +82,13 @@ describe('SignupPage', () => {
     const nameInput = screen.getByPlaceholderText('Nombre Completo');
     const emailInput = screen.getByPlaceholderText('Correo Electrónico');
     const passwordInput = screen.getByPlaceholderText('Contraseña');
+    const phoneInput = screen.getByPlaceholderText('998 123 4567');
     const submitButton = screen.getByRole('button', { name: /Crear Cuenta/i });
 
     fireEvent.change(nameInput, { target: { value: 'John Doe' } });
     fireEvent.change(emailInput, { target: { value: 'john@test.com' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    fireEvent.change(phoneInput, { target: { value: '9981234567' } });
     fireEvent.click(submitButton);
 
     await waitFor(() => {
@@ -99,6 +101,7 @@ describe('SignupPage', () => {
           email: 'john@test.com',
           firstName: 'John',
           lastName: 'Doe',
+          phoneNumber: '9981234567',
           role: 'customer',
         }
       );
