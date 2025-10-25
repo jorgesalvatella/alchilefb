@@ -4,12 +4,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { LogOut, Menu as MenuIcon, ShoppingCart, User } from 'lucide-react';
+import { LogOut, Menu as MenuIcon, ShoppingCart, User, Truck } from 'lucide-react';
 
 import { useAuth, useUser } from '@/firebase';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { adminNavigation, baseNavigation, userMenuNavigation } from '@/lib/navigation';
+import { adminNavigation, baseNavigation, userMenuNavigation, repartidorNavigation } from '@/lib/navigation';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -22,6 +22,39 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useCart } from '@/context/cart-context';
+
+function RepartidorMenu({ userRole }: { userRole: string }) {
+  const pathname = usePathname();
+  const filteredNav = repartidorNavigation.filter(item => item.roles.includes(userRole as any));
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className={cn(
+          "relative font-headline tracking-wider transition-colors hover:bg-fresh-green hover:text-black text-white/80 data-[state=open]:text-white",
+          pathname.startsWith('/repartidor') && "text-white"
+        )}>
+          Repartidor
+          {pathname.startsWith('/repartidor') && <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-gradient-to-r from-yellow-400 to-orange-500"></span>}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="bg-black border-white/10 text-white w-64">
+        {filteredNav.map((item) => (
+          item.isLabel ? (
+            <DropdownMenuLabel key={item.label} className="text-white/60 text-xs px-2 py-1.5">{item.label}</DropdownMenuLabel>
+          ) : (
+            <DropdownMenuItem key={item.href} asChild className="hover:bg-orange-500 hover:text-black focus:bg-orange-500 focus:text-black cursor-pointer">
+              <Link href={item.href}>
+                {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+                <span>{item.label}</span>
+              </Link>
+            </DropdownMenuItem>
+          )
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 function UserNav() {
   const auth = useAuth();
@@ -144,6 +177,7 @@ export function Header() {
 
   const closeSheet = () => setSheetOpen(false);
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+  const isRepartidor = userRole === 'repartidor';
 
   const DesktopNav = () => (
     <nav className="hidden md:flex items-center gap-6 text-lg md:text-base font-medium text-white/80">
@@ -164,6 +198,7 @@ export function Header() {
         );
       })}
       {isAdmin && userRole && <AdminMenu userRole={userRole} />}
+      {isRepartidor && userRole && <RepartidorMenu userRole={userRole} />}
     </nav>
   );
 
@@ -186,8 +221,8 @@ export function Header() {
             <ShoppingCart className="h-4 w-4" />
             Carrito
           </Link>
-          {user ? userMenuNavigation.map((link) => (
-            <Link key={link.href} href={link.href} onClick={closeSheet} className="hover:text-yellow-400">{link.label}</Link>
+          {user ? userMenuNavigation.map((item) => (
+            <Link key={item.href} href={item.href} onClick={closeSheet} className="hover:text-yellow-400">{item.label}</Link>
           )) : (
             <Link href="/ingresar" onClick={closeSheet} className="hover:text-yellow-400 flex items-center justify-center gap-2">
                 <User className="h-4 w-4" />
@@ -203,7 +238,20 @@ export function Header() {
               ) : (
                 <Link key={item.href} href={item.href} onClick={closeSheet} className="hover:text-yellow-400 flex items-center justify-center gap-2">
                   {item.icon && <item.icon className="h-4 w-4" />}
-                  {item.label}
+                  <span>{item.label}</span>
+                </Link>
+              )
+          ))}
+          {isRepartidor && <DropdownMenuSeparator className="bg-white/10" />}
+          {isRepartidor && userRole && repartidorNavigation
+            .filter(item => item.roles.includes(userRole as any))
+            .map((item) => (
+              item.isLabel ? (
+                <h3 key={item.label} className="text-white/60 text-sm font-bold pt-4">{item.label}</h3>
+              ) : (
+                <Link key={item.href} href={item.href} onClick={closeSheet} className="hover:text-yellow-400 flex items-center justify-center gap-2">
+                  {item.icon && <item.icon className="h-4 w-4" />}
+                  <span>{item.label}</span>
                 </Link>
               )
           ))}

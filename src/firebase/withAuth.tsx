@@ -48,6 +48,12 @@ export function withAuth<P extends object>(WrappedComponent: ComponentType<P & W
 
       // Check for forced password change
       if (userData?.forcePasswordChange === true && pathname !== '/cambiar-clave') {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔐 [withAuth] Detected forcePasswordChange = true');
+          console.log('🔐 [withAuth] userData:', userData);
+          console.log('🔐 [withAuth] pathname:', pathname);
+          console.log('🔐 [withAuth] Redirecting to /cambiar-clave...');
+        }
         router.replace('/cambiar-clave');
         return;
       }
@@ -56,6 +62,15 @@ export function withAuth<P extends object>(WrappedComponent: ComponentType<P & W
         router.replace('/menu');
       }
     }, [authCheckComplete, user, userData, claims, router, pathname]);
+
+    // CRITICAL FIX: Block component rendering if forcePasswordChange is active
+    // This prevents the wrapped component from rendering before the redirect happens
+    if (userData?.forcePasswordChange === true && pathname !== '/cambiar-clave') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔐 [withAuth] Blocking component render due to forcePasswordChange');
+      }
+      return <LoadingScreen />;
+    }
 
     if (authCheckComplete && hasPermission()) {
       // The user and claims are guaranteed to be non-null here.

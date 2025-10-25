@@ -5,22 +5,53 @@ const admin = require('firebase-admin');
 
 // Mock de firebase-admin
 const mockUpdateUser = jest.fn();
+const mockGetUser = jest.fn();
+const mockSetCustomUserClaims = jest.fn();
 const mockUserDocUpdate = jest.fn();
+const mockUserDocGet = jest.fn();
+const mockUserDocSet = jest.fn();
+const mockRepartidoresAdd = jest.fn();
+const mockRepartidoresWhere = jest.fn();
+const mockRepartidoresLimit = jest.fn();
+const mockRepartidoresGet = jest.fn();
+const mockDocUpdate = jest.fn();
 
 jest.mock('firebase-admin', () => {
-    const firestore = {
-        collection: jest.fn().mockReturnThis(),
-        doc: jest.fn(() => ({
-            update: mockUserDocUpdate,
-        })),
+    const mockFieldValue = {
+        serverTimestamp: jest.fn(() => 'MOCK_TIMESTAMP'),
     };
+
+    const mockFirestoreInstance = {
+        collection: jest.fn((collectionName) => {
+            if (collectionName === 'users') {
+                return {
+                    doc: jest.fn(() => ({
+                        update: mockUserDocUpdate,
+                        get: mockUserDocGet,
+                        set: mockUserDocSet,
+                    })),
+                };
+            }
+            // Para 'repartidores'
+            return {
+                where: mockRepartidoresWhere,
+                add: mockRepartidoresAdd,
+            };
+        }),
+        FieldValue: mockFieldValue,
+    };
+
+    const mockFirestore = () => mockFirestoreInstance;
+    mockFirestore.FieldValue = mockFieldValue;
 
     return {
         initializeApp: jest.fn(),
         auth: () => ({
             updateUser: mockUpdateUser,
+            getUser: mockGetUser,
+            setCustomUserClaims: mockSetCustomUserClaims,
         }),
-        firestore: () => firestore,
+        firestore: mockFirestore,
     };
 });
 
@@ -40,8 +71,26 @@ jest.mock('./authMiddleware', () => jest.fn((req, res, next) => {
 }));
 
 describe('User Management API', () => {
-    afterEach(() => {
+    beforeEach(() => {
         jest.clearAllMocks();
+
+        // Configurar el chain de where().limit().get() Y where().get() para repartidores
+        mockRepartidoresWhere.mockReturnValue({
+            limit: mockRepartidoresLimit,
+            get: mockRepartidoresGet, // También soportar where().get() directamente
+        });
+        mockRepartidoresLimit.mockReturnValue({
+            get: mockRepartidoresGet,
+        });
+
+        // Por defecto, no existe documento de repartidor
+        mockRepartidoresGet.mockResolvedValue({ empty: true, docs: [] });
+
+        // Por defecto, documento de usuario existe con role 'usuario'
+        mockUserDocGet.mockResolvedValue({
+            exists: true,
+            data: () => ({ role: 'usuario' })
+        });
     });
 
     describe('POST /api/control/usuarios/:uid/generar-clave', () => {
@@ -97,8 +146,6 @@ describe('User Management API', () => {
             });
 
             // Verify Firestore was updated
-            expect(admin.firestore().collection).toHaveBeenCalledWith('users');
-            expect(admin.firestore().collection('users').doc).toHaveBeenCalledWith(targetUserId);
             expect(mockUserDocUpdate).toHaveBeenCalledWith({
                 forcePasswordChange: true,
             });
@@ -114,6 +161,267 @@ describe('User Management API', () => {
 
             expect(res.statusCode).toBe(200);
             expect(res.body).toHaveProperty('temporaryPassword');
+        });
+    });
+
+    describe('PATCH /api/control/usuarios/:userId - Auto-gestión de repartidores', () => {
+        const targetUserId = 'test-user-123';
+
+        beforeEach(() => {
+            // Mock default para getUser
+            mockGetUser.mockResolvedValue({
+                uid: targetUserId,
+                email: 'test@example.com',
+                displayName: 'Test User',
+                customClaims: {},
+            });
+
+            // Mock default para setCustomUserClaims
+            mockSetCustomUserClaims.mockResolvedValue();
+
+            // Mock default para updateUser
+            mockUpdateUser.mockResolvedValue();
+
+            // Mock default para user doc
+            mockUserDocGet.mockResolvedValue({
+                exists: true,
+                data: () => ({ role: 'usuario' }),
+            });
+            mockUserDocUpdate.mockResolvedValue();
+        });
+
+        it('should auto-create repartidor document when assigning role "repartidor"', async () => {
+            // Mock: No existe documento previo en 'repartidores'
+            mockRepartidoresGet.mockResolvedValue({ empty: true, docs: [] });
+            mockRepartidoresAdd.mockResolvedValue({ id: 'new-repartidor-id' });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({ role: 'repartidor' });
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.message).toBe('User updated successfully');
+
+            // Verificar que se llamó a setCustomUserClaims con los claims correctos
+            expect(mockSetCustomUserClaims).toHaveBeenCalledWith(targetUserId, {
+                super_admin: false,
+                admin: false,
+                repartidor: true,
+            });
+
+            // Verificar que se buscó en la colección 'repartidores'
+            expect(mockRepartidoresWhere).toHaveBeenCalledWith('userId', '==', targetUserId);
+
+            // Verificar que se creó el documento
+            expect(mockRepartidoresAdd).toHaveBeenCalledWith({
+                userId: targetUserId,
+                name: 'Test User',
+                phone: '',
+                vehicle: '',
+                status: 'offline',
+                currentOrderId: null,
+                createdAt: 'MOCK_TIMESTAMP',
+                updatedAt: 'MOCK_TIMESTAMP',
+                deleted: false,
+            });
+        });
+
+        it('should NOT create duplicate if repartidor document already exists', async () => {
+            // Mock: YA existe documento en 'repartidores'
+            mockRepartidoresGet.mockResolvedValue({
+                empty: false,
+                docs: [{
+                    id: 'existing-repartidor-id',
+                    data: () => ({ userId: targetUserId, deleted: false }),
+                    ref: { update: mockDocUpdate },
+                }],
+            });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({ role: 'repartidor' });
+
+            expect(res.statusCode).toBe(200);
+
+            // Verificar que NO se llamó a add (no crear duplicado)
+            expect(mockRepartidoresAdd).not.toHaveBeenCalled();
+        });
+
+        it('should reactivate soft-deleted repartidor document', async () => {
+            // Mock: Existe documento pero está soft-deleted
+            mockRepartidoresGet.mockResolvedValue({
+                empty: false,
+                docs: [{
+                    id: 'soft-deleted-repartidor-id',
+                    data: () => ({ userId: targetUserId, deleted: true }),
+                    ref: { update: mockDocUpdate },
+                }],
+            });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({ role: 'repartidor' });
+
+            expect(res.statusCode).toBe(200);
+
+            // Verificar que se reactivó el documento
+            expect(mockDocUpdate).toHaveBeenCalledWith({
+                deleted: false,
+                updatedAt: 'MOCK_TIMESTAMP',
+            });
+
+            // No se creó uno nuevo
+            expect(mockRepartidoresAdd).not.toHaveBeenCalled();
+        });
+
+        it('should soft-delete repartidor document when removing role "repartidor"', async () => {
+            // Mock: Usuario previo tenía role 'repartidor'
+            mockUserDocGet.mockResolvedValue({
+                exists: true,
+                data: () => ({ role: 'repartidor' }),
+            });
+
+            // Mock: Existe documento de repartidor
+            mockRepartidoresGet.mockResolvedValue({
+                empty: false,
+                docs: [{
+                    id: 'repartidor-to-delete-id',
+                    data: () => ({ userId: targetUserId, deleted: false }),
+                    ref: { update: mockDocUpdate },
+                }],
+            });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({ role: 'admin' }); // Cambiar a otro role
+
+            expect(res.statusCode).toBe(200);
+
+            // Verificar que se soft-deleted el documento
+            expect(mockDocUpdate).toHaveBeenCalledWith({
+                deleted: true,
+                updatedAt: 'MOCK_TIMESTAMP',
+            });
+        });
+
+        it('should use displayName from request body if provided', async () => {
+            mockRepartidoresGet.mockResolvedValue({ empty: true, docs: [] });
+            mockRepartidoresAdd.mockResolvedValue({ id: 'new-repartidor-id' });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({
+                    role: 'repartidor',
+                    displayName: 'Custom Display Name',
+                });
+
+            expect(res.statusCode).toBe(200);
+
+            // Verificar que se usó el displayName del body
+            expect(mockRepartidoresAdd).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    name: 'Custom Display Name',
+                })
+            );
+        });
+
+        it('should use phoneNumber from request body if provided', async () => {
+            mockRepartidoresGet.mockResolvedValue({ empty: true, docs: [] });
+            mockRepartidoresAdd.mockResolvedValue({ id: 'new-repartidor-id' });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({
+                    role: 'repartidor',
+                    phoneNumber: '+1234567890',
+                });
+
+            expect(res.statusCode).toBe(200);
+
+            // Verificar que se usó el phoneNumber del body
+            expect(mockRepartidoresAdd).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    phone: '+1234567890',
+                })
+            );
+        });
+
+        it('should fall back to email if displayName is not available', async () => {
+            // Mock getUser sin displayName
+            mockGetUser.mockResolvedValue({
+                uid: targetUserId,
+                email: 'fallback@example.com',
+                customClaims: {},
+            });
+
+            mockRepartidoresGet.mockResolvedValue({ empty: true, docs: [] });
+            mockRepartidoresAdd.mockResolvedValue({ id: 'new-repartidor-id' });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({ role: 'repartidor' });
+
+            expect(res.statusCode).toBe(200);
+
+            // Verificar que se usó el email como fallback
+            expect(mockRepartidoresAdd).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    name: 'fallback',
+                })
+            );
+        });
+
+        it('should NOT auto-create if role was already "repartidor"', async () => {
+            // Mock: Usuario ya tenía role 'repartidor'
+            mockUserDocGet.mockResolvedValue({
+                exists: true,
+                data: () => ({ role: 'repartidor' }),
+            });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({ active: true }); // Solo cambiar otro campo, no role
+
+            expect(res.statusCode).toBe(200);
+
+            // Verificar que NO se intentó crear documento
+            expect(mockRepartidoresAdd).not.toHaveBeenCalled();
+        });
+
+        it('should return 403 if admin tries to modify super_admin', async () => {
+            mockGetUser.mockResolvedValue({
+                uid: targetUserId,
+                email: 'superadmin@example.com',
+                customClaims: { super_admin: true },
+            });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({ role: 'repartidor' });
+
+            expect(res.statusCode).toBe(403);
+            expect(res.body.message).toContain('Admin cannot modify Super Admin');
+        });
+
+        it('should return 404 if user does not exist', async () => {
+            mockGetUser.mockRejectedValue(new Error('User not found'));
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/non-existent-user`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({ role: 'repartidor' });
+
+            expect(res.statusCode).toBe(404);
+            expect(res.body.message).toBe('User not found');
         });
     });
 });

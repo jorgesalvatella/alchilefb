@@ -61,6 +61,10 @@ jest.mock('firebase-admin', () => {
         uid: 'test-admin-uid',
         admin: true,
       }),
+      getUser: jest.fn().mockResolvedValue({
+        uid: 'test-admin-uid',
+        customClaims: { admin: true },
+      }),
     }),
   };
 });
@@ -679,6 +683,7 @@ describe('Orders Hub Backend Endpoints', () => {
       name: 'Nuevo Repartidor',
       phone: '123456789',
       vehicle: 'Moto XYZ',
+      userId: 'new-driver-user-id', // Add userId
     };
 
     it('should create a driver successfully', async () => {
@@ -697,6 +702,7 @@ describe('Orders Hub Backend Endpoints', () => {
         name: newDriverData.name,
         phone: newDriverData.phone,
         vehicle: newDriverData.vehicle,
+        userId: newDriverData.userId, // Add userId
         status: 'available',
       }));
     });
@@ -709,7 +715,7 @@ describe('Orders Hub Backend Endpoints', () => {
         .send(invalidData);
 
       expect(res.statusCode).toBe(400);
-      expect(res.body.message).toContain('El campo "name" es requerido.');
+      expect(res.body.message).toContain('Los campos "name" y "userId" son requeridos.');
     });
 
     it('should return 403 if user is not an admin', async () => {

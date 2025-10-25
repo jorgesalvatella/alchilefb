@@ -91,8 +91,7 @@ body {
   }
   body {
     @apply bg-background text-foreground;
-  }
-}
+  }}
 
 @layer utilities {
   @keyframes fade-in-up {
@@ -108,7 +107,7 @@ body {
   .fade-in-up {
     animation: fade-in-up 0.8s ease-out forwards;
   }
-  
+
   @keyframes float-animation {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-20px); }
@@ -148,5 +147,14 @@ body {
 
   .animate-tilt {
     animation: tilt 10s infinite linear;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

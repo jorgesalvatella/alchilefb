@@ -113,15 +113,9 @@ export const userMenuNavigation: NavItem[] = [
 
 export const repartidorNavigation: NavItem[] = [
   {
-    href: '/repartidor',
+    href: '/repartidor/dashboard',
     label: 'Panel Repartidor',
     icon: Truck,
-    roles: ['repartidor'],
-  },
-  {
-    href: '/repartidor/pedidos',
-    label: 'Mis Entregas',
-    icon: ShoppingCart,
     roles: ['repartidor'],
   },
 ];

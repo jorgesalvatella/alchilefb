@@ -126,31 +126,31 @@ export function OrderDetailMap({
 
   if (loadError) {
     return (
-      <Card className="p-4 bg-red-50 border-red-200">
-        <p className="text-sm text-red-600">Error al cargar el mapa</p>
+      <Card className="p-4 bg-red-900/20 border-red-700">
+        <p className="text-sm text-red-400">Error al cargar el mapa</p>
       </Card>
     );
   }
 
   if (!isLoaded || isGeocoding) {
     return (
-      <Card className="p-8 flex items-center justify-center bg-gray-50">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-        <span className="ml-2 text-sm text-gray-600">Cargando mapa...</span>
+      <Card className="p-8 flex items-center justify-center bg-gray-900/50 border-gray-700">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-400" />
+        <span className="ml-2 text-sm text-gray-300">Cargando mapa...</span>
       </Card>
     );
   }
 
   if (error || !customerLocation) {
     return (
-      <Card className="p-4 bg-yellow-50 border-yellow-200">
+      <Card className="p-4 bg-yellow-900/20 border-yellow-700">
         <div className="flex items-center gap-2 mb-3">
-          <MapPin className="w-5 h-5 text-yellow-600" />
-          <p className="text-sm font-medium text-yellow-800">
+          <MapPin className="w-5 h-5 text-yellow-400" />
+          <p className="text-sm font-medium text-yellow-300">
             {error || 'Ubicación no disponible'}
           </p>
         </div>
-        <p className="text-xs text-yellow-700 mb-3">
+        <p className="text-xs text-yellow-400 mb-3">
           Dirección: {typeof address === 'string' ? address : `${address.street}, ${address.city}`}
         </p>
         {customerLocation && (
@@ -158,7 +158,7 @@ export function OrderDetailMap({
             <Button
               size="sm"
               variant="outline"
-              className="flex-1"
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white border-blue-500"
               onClick={openInGoogleMaps}
             >
               <Navigation className="w-4 h-4 mr-1" />
@@ -167,7 +167,7 @@ export function OrderDetailMap({
             <Button
               size="sm"
               variant="outline"
-              className="flex-1"
+              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white border-purple-500"
               onClick={openInWaze}
             >
               <Navigation className="w-4 h-4 mr-1" />
@@ -180,7 +180,7 @@ export function OrderDetailMap({
   }
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border-gray-700 bg-gray-900/50">
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={center}
@@ -190,6 +190,13 @@ export function OrderDetailMap({
           streetViewControl: false,
           mapTypeControl: false,
           fullscreenControl: true,
+          styles: [
+            {
+              featureType: 'all',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#ffffff' }],
+            },
+          ],
         }}
       >
         {/* Customer Location Marker (Red) */}
@@ -218,10 +225,10 @@ export function OrderDetailMap({
       </GoogleMap>
 
       {/* Navigation Buttons */}
-      <div className="p-3 bg-white border-t flex gap-2">
+      <div className="p-3 bg-gray-900 border-t border-gray-700 flex gap-2">
         <Button
           size="sm"
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-md"
           onClick={openInGoogleMaps}
         >
           <Navigation className="w-4 h-4 mr-1" />
@@ -229,8 +236,7 @@ export function OrderDetailMap({
         </Button>
         <Button
           size="sm"
-          variant="outline"
-          className="flex-1"
+          className="flex-1 bg-purple-600 hover:bg-purple-700 text-white shadow-md"
           onClick={openInWaze}
         >
           <ExternalLink className="w-4 h-4 mr-1" />
@@ -239,25 +245,25 @@ export function OrderDetailMap({
       </div>
 
       {/* Location Info */}
-      <div className="p-3 bg-gray-50 border-t">
-        <div className="flex items-start gap-2 text-xs text-gray-600">
-          <MapPin className="w-4 h-4 mt-0.5 text-red-600 flex-shrink-0" />
+      <div className="p-3 bg-gray-900 border-t border-gray-700">
+        <div className="flex items-start gap-2 text-xs text-gray-300">
+          <MapPin className="w-4 h-4 mt-0.5 text-red-400 flex-shrink-0" />
           <div>
-            <p className="font-medium text-gray-900">Dirección del cliente:</p>
+            <p className="font-medium text-white">Dirección del cliente:</p>
             <p className="mt-1">
               {typeof address === 'string'
                 ? address
                 : `${address.street}, ${address.city}, ${address.state} ${address.postalCode}`}
             </p>
             {typeof address === 'object' && address.name && (
-              <p className="mt-1 text-gray-700">
-                <span className="font-medium">Contacto:</span> {address.name}
+              <p className="mt-1 text-gray-300">
+                <span className="font-medium text-white">Contacto:</span> {address.name}
               </p>
             )}
             {typeof address === 'object' && address.phone && (
               <p className="mt-1">
-                <span className="font-medium">Teléfono:</span>{' '}
-                <a href={`tel:${address.phone}`} className="text-blue-600 hover:underline">
+                <span className="font-medium text-white">Teléfono:</span>{' '}
+                <a href={`tel:${address.phone}`} className="text-blue-400 hover:underline">
                   {address.phone}
                 </a>
               </p>
@@ -266,15 +272,15 @@ export function OrderDetailMap({
         </div>
 
         {driverLocation && showDriverMarker && (
-          <div className="flex items-start gap-2 text-xs text-gray-600 mt-3 pt-3 border-t">
-            <Navigation className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+          <div className="flex items-start gap-2 text-xs text-gray-300 mt-3 pt-3 border-t border-gray-700">
+            <Navigation className="w-4 h-4 mt-0.5 text-blue-400 flex-shrink-0" />
             <div>
-              <p className="font-medium text-gray-900">Tu ubicación actual:</p>
+              <p className="font-medium text-white">Tu ubicación actual:</p>
               <p className="mt-1">
                 {driverLocation.lat.toFixed(5)}, {driverLocation.lng.toFixed(5)}
               </p>
               {driverLocation.timestamp && (
-                <p className="mt-1 text-gray-500">
+                <p className="mt-1 text-gray-400">
                   Actualizado:{' '}
                   {new Date(
                     driverLocation.timestamp.toDate

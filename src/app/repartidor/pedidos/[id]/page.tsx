@@ -30,32 +30,32 @@ function OrderDetailPage({ params, user, claims }: PageProps & WithAuthProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Preparando':
-        return 'bg-orange-100 text-orange-800 border-orange-300';
+        return 'bg-blue-600 text-white border-blue-500';
       case 'En Reparto':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-green-600 text-white border-green-500';
       case 'Entregado':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-gray-600 text-white border-gray-500';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-gray-700 text-white border-gray-600';
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-black">
         {/* Header Skeleton */}
-        <header className="bg-blue-600 text-white p-4 flex items-center gap-4 shadow">
+        <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center gap-4 shadow">
           <Skeleton className="w-8 h-8 bg-white/20 rounded" />
           <Skeleton className="h-6 w-48 bg-white/20" />
         </header>
 
         {/* Content Skeleton */}
         <div className="p-4 space-y-6">
-          <Skeleton className="h-10 w-32" />
-          <Skeleton className="h-32 w-full rounded-lg" />
-          <Skeleton className="h-64 w-full rounded-lg" />
-          <Skeleton className="h-48 w-full rounded-lg" />
-          <Skeleton className="h-16 w-full rounded-lg" />
+          <Skeleton className="h-10 w-32 bg-gray-800" />
+          <Skeleton className="h-32 w-full rounded-lg bg-gray-800" />
+          <Skeleton className="h-64 w-full rounded-lg bg-gray-800" />
+          <Skeleton className="h-48 w-full rounded-lg bg-gray-800" />
+          <Skeleton className="h-16 w-full rounded-lg bg-gray-800" />
         </div>
       </div>
     );
@@ -63,12 +63,12 @@ function OrderDetailPage({ params, user, claims }: PageProps & WithAuthProps) {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-600" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error al cargar pedido</h2>
-          <p className="text-gray-600 mb-6">{error || 'Pedido no encontrado'}</p>
-          <Button onClick={() => router.back()} variant="outline">
+          <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-500" />
+          <h2 className="text-2xl font-bold text-white mb-2">Error al cargar pedido</h2>
+          <p className="text-gray-400 mb-6">{error || 'Pedido no encontrado'}</p>
+          <Button onClick={() => router.back()} className="bg-blue-600 hover:bg-blue-700 text-white">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Volver
           </Button>
@@ -78,7 +78,7 @@ function OrderDetailPage({ params, user, claims }: PageProps & WithAuthProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-black">
       {/* Header */}
       <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center gap-4 shadow-lg sticky top-0 z-10">
         <button
@@ -132,7 +132,7 @@ function OrderDetailPage({ params, user, claims }: PageProps & WithAuthProps) {
         />
 
         {/* Delivery Actions */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900 border-t border-gray-700 shadow-lg">
           <DeliveryActions order={order} />
         </div>
       </div>

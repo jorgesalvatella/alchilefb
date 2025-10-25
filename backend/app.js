@@ -2478,6 +2478,66 @@ app.delete('/api/control/gastos/:expenseId', authMiddleware, async (req, res) =>
 
 /**
  * @swagger
+ * /api/control/unlinked-repartidor-users:
+ *   get:
+ *     summary: Obtiene usuarios de Firebase Auth con rol 'repartidor' que no tienen un perfil de repartidor en Firestore
+ *     tags: [Repartidores]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Lista de usuarios repartidores sin perfil de repartidor
+ *       '403':
+ *         description: No autorizado
+ *       '500':
+ *         description: Error del servidor
+ */
+app.get('/api/control/unlinked-repartidor-users', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    // 1. Obtener todos los usuarios de Firebase Auth
+    let listUsersResult = await admin.auth().listUsers();
+    let allAuthUsers = listUsersResult.users;
+
+    // Continuar paginando si hay más usuarios
+    while (listUsersResult.pageToken) {
+      listUsersResult = await admin.auth().listUsers(1000, listUsersResult.pageToken);
+      allAuthUsers = allAuthUsers.concat(listUsersResult.users);
+    }
+
+    // 2. Filtrar usuarios que tienen el custom claim 'repartidor'
+    const repartidorAuthUsers = allAuthUsers.filter(userRecord =>
+      userRecord.customClaims && userRecord.customClaims.repartidor === true
+    );
+
+    // 3. Obtener todos los userId de la colección 'repartidores' en Firestore
+    const existingRepartidoresSnapshot = await db.collection('repartidores').select('userId').get();
+    const existingRepartidorUserIds = new Set();
+    existingRepartidoresSnapshot.forEach(doc => {
+      const userId = doc.data().userId;
+      if (userId) {
+        existingRepartidorUserIds.add(userId);
+      }
+    });
+
+    // 4. Filtrar los usuarios de Auth que tienen el claim 'repartidor' pero no tienen un perfil en Firestore
+    const unlinkedRepartidorUsers = repartidorAuthUsers.filter(userRecord =>
+      !existingRepartidorUserIds.has(userRecord.uid)
+    ).map(userRecord => ({
+      uid: userRecord.uid,
+      email: userRecord.email,
+      displayName: userRecord.displayName || userRecord.email,
+    }));
+
+    res.status(200).json(unlinkedRepartidorUsers);
+
+  } catch (error) {
+    console.error('Error fetching unlinked repartidor users:', error);
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+/**
+ * @swagger
  * /api/control/drivers:
  *   get:
  *     summary: Obtiene una lista de repartidores
@@ -2500,7 +2560,7 @@ app.delete('/api/control/gastos/:expenseId', authMiddleware, async (req, res) =>
 app.get('/api/control/drivers', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { status } = req.query;
-    let driversQuery = db.collection('drivers');
+    let driversQuery = db.collection('repartidores');
 
     if (status) {
       driversQuery = driversQuery.where('status', '==', status);
@@ -2552,22 +2612,37 @@ app.get('/api/control/drivers', authMiddleware, requireAdmin, async (req, res) =
  */
 app.post('/api/control/drivers', authMiddleware, requireAdmin, async (req, res) => {
   try {
-    const { name, phone, vehicle } = req.body;
+    const { name, phone, vehicle, userId } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ message: 'El campo "name" es requerido.' });
+    if (!name || !userId) {
+      return res.status(400).json({ message: 'Los campos "name" y "userId" son requeridos.' });
+    }
+
+    // Verificar que el userId corresponde a un usuario de Firebase Auth con claim repartidor
+    const firebaseUser = await admin.auth().getUser(userId);
+    if (!firebaseUser || !firebaseUser.customClaims || !firebaseUser.customClaims.repartidor) {
+      return res.status(400).json({ message: 'El userId proporcionado no corresponde a un usuario repartidor válido.' });
+    }
+
+    // Verificar que el userId no esté ya asociado a un repartidor existente
+    const existingDriverSnapshot = await db.collection('repartidores').where('userId', '==', userId).limit(1).get();
+    if (!existingDriverSnapshot.empty) {
+      return res.status(409).json({ message: 'Este usuario ya está asociado a un repartidor existente.' });
     }
 
     const newDriver = {
+      userId,
       name,
       phone: phone || '',
       vehicle: vehicle || '',
       status: 'available', // Default status
       currentOrderId: null,
-      createdAt: new Date(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      deleted: false,
     };
 
-    const docRef = await db.collection('drivers').add(newDriver);
+    const docRef = await db.collection('repartidores').add(newDriver);
 
     res.status(201).json({ id: docRef.id, ...newDriver });
 
@@ -4600,6 +4675,8 @@ app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (
       updatedAt: new Date().toISOString(),
     };
 
+    if (role !== undefined) updateData.role = role;
+    if (active !== undefined) updateData.active = active;
     if (sucursalIds !== undefined) updateData.sucursalIds = sucursalIds;
     if (area !== undefined) updateData.area = area;
     if (displayName !== undefined) updateData.displayName = displayName;
@@ -4607,12 +4684,76 @@ app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (
 
     // Verificar si el documento existe, si no, crearlo
     const userDoc = await userRef.get();
+    const previousRole = userDoc.exists ? userDoc.data().role : null;
+
     if (!userDoc.exists) {
       updateData.createdAt = new Date().toISOString();
       updateData.deleted = false;
       await userRef.set(updateData);
     } else {
       await userRef.update(updateData);
+    }
+
+    // --- AUTO-GESTIÓN DE DOCUMENTO EN COLECCIÓN 'repartidores' ---
+
+    // Caso 1: Se asigna role 'repartidor' → Auto-crear documento si no existe
+    if (role === 'repartidor' && previousRole !== 'repartidor') {
+      console.log(`[PATCH /api/control/usuarios/${userId}] Asignando role 'repartidor', verificando documento en colección 'repartidores'...`);
+
+      // Verificar si ya existe un documento de repartidor para este userId
+      const existingDriverSnapshot = await db.collection('repartidores')
+        .where('userId', '==', userId)
+        .limit(1)
+        .get();
+
+      if (existingDriverSnapshot.empty) {
+        // No existe → Crear nuevo documento
+        const newDriverData = {
+          userId: userId,
+          name: displayName || targetUser.displayName || targetUser.email?.split('@')[0] || 'Repartidor',
+          phone: phoneNumber || targetUser.phoneNumber || '',
+          vehicle: '',
+          status: 'offline',
+          currentOrderId: null,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          deleted: false,
+        };
+
+        const newDriverRef = await db.collection('repartidores').add(newDriverData);
+        console.log(`[PATCH /api/control/usuarios/${userId}] ✅ Documento de repartidor auto-creado con ID: ${newDriverRef.id}`);
+      } else {
+        // Ya existe → Verificar si está soft-deleted y reactivarlo
+        const existingDriverDoc = existingDriverSnapshot.docs[0];
+        const existingDriverData = existingDriverDoc.data();
+
+        if (existingDriverData.deleted === true) {
+          await existingDriverDoc.ref.update({
+            deleted: false,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          });
+          console.log(`[PATCH /api/control/usuarios/${userId}] ✅ Documento de repartidor reactivado (deleted: false)`);
+        } else {
+          console.log(`[PATCH /api/control/usuarios/${userId}] ℹ️ Documento de repartidor ya existe, no se realizan cambios.`);
+        }
+      }
+    }
+
+    // Caso 2: Se QUITA role 'repartidor' → Soft-delete del documento
+    if (previousRole === 'repartidor' && role && role !== 'repartidor') {
+      console.log(`[PATCH /api/control/usuarios/${userId}] Quitando role 'repartidor', soft-deleting documento en colección 'repartidores'...`);
+
+      const driverDocsSnapshot = await db.collection('repartidores')
+        .where('userId', '==', userId)
+        .get();
+
+      for (const driverDoc of driverDocsSnapshot.docs) {
+        await driverDoc.ref.update({
+          deleted: true,
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        console.log(`[PATCH /api/control/usuarios/${userId}] ✅ Documento de repartidor ${driverDoc.id} marcado como deleted: true`);
+      }
     }
 
     res.status(200).json({

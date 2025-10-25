@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,8 +49,20 @@ const getPasswordStrengthText = (password: string) => {
   return "Fuerte";
 };
 
+// Helper function to determine redirect path based on user role
+const getRedirectPathByRole = (claims: any) => {
+  if (claims?.super_admin || claims?.admin) {
+    return '/control';
+  }
+  if (claims?.repartidor) {
+    return '/repartidor/dashboard';
+  }
+  // Default for regular users (customer)
+  return '/menu';
+};
+
 export default function ChangePasswordPage() {
-  const { user } = useUser();
+  const { user, userData, claims, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +77,18 @@ export default function ChangePasswordPage() {
   });
 
   const newPasswordValue = form.watch('newPassword');
+
+  // Protect this page: only authenticated users can access
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      toast({
+        title: 'Acceso denegado',
+        description: 'Debes iniciar sesión para cambiar tu contraseña.',
+        variant: 'destructive',
+      });
+      router.replace('/ingresar');
+    }
+  }, [user, isUserLoading, router, toast]);
 
   const onSubmit = async (values: z.infer<typeof changePasswordSchema>) => {
     if (!user || !user.email) {
@@ -96,13 +120,19 @@ export default function ChangePasswordPage() {
         throw new Error('No se pudo finalizar el proceso de cambio de clave. Intente de nuevo.');
       }
 
-      // Step 4: Force a refresh of the user token to get the latest state
+      // Step 5: Force a refresh of the user token to get the latest state
       await user.getIdToken(true);
 
       toast({ title: 'Éxito', description: 'Tu contraseña ha sido cambiada. Serás redirigido.' });
-      
-      // Step 5: Redirect AFTER everything is confirmed
-      router.push('/control');
+
+      // Step 6: Redirect based on user role
+      // Reload userData to get updated forcePasswordChange status
+      const redirectPath = getRedirectPathByRole(claims);
+
+      setTimeout(() => {
+        router.push(redirectPath);
+        window.location.reload(); // Force reload to update userData
+      }, 1000);
 
     } catch (error: any) {
       let errorMessage = 'Ocurrió un error inesperado.';

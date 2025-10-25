@@ -1,14 +1,34 @@
-const authMiddleware = require('./authMiddleware');
-const admin = require('firebase-admin');
-
 // Mock de firebase-admin
-const mockVerifyIdToken = jest.fn();
+const mockFirestore = {
+  collection: jest.fn(() => mockFirestore),
+  doc: jest.fn(() => mockFirestore),
+  get: jest.fn(() => ({ exists: false, data: jest.fn(() => ({})) })),
+  update: jest.fn(),
+  set: jest.fn(),
+  where: jest.fn(() => mockFirestore),
+  limit: jest.fn(() => mockFirestore),
+  FieldValue: {
+    serverTimestamp: jest.fn(),
+    arrayUnion: jest.fn(),
+  },
+  Timestamp: {
+    now: jest.fn(() => ({ toDate: () => new Date() })),
+    fromDate: jest.fn(() => ({ toDate: () => new Date() })),
+  },
+};
+
+const mockAuth = {
+  verifyIdToken: jest.fn(() => Promise.resolve({ uid: 'test-user-uid', repartidor: true })),
+  getUser: jest.fn(() => Promise.resolve({ uid: 'test-user-id', customClaims: { admin: true } })),
+};
 
 jest.mock('firebase-admin', () => ({
-  auth: jest.fn(() => ({
-    verifyIdToken: mockVerifyIdToken,
-  })),
+  initializeApp: jest.fn(),
+  firestore: jest.fn(() => mockFirestore),
+  auth: jest.fn(() => mockAuth),
 }));
+
+const authMiddleware = require('./authMiddleware');
 
 describe('authMiddleware - Security Critical', () => {
   let req, res, next;

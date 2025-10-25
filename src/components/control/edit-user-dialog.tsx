@@ -118,7 +118,23 @@ export function EditUserDialog({
         throw new Error(errorData.message || 'Error al actualizar el usuario.');
       }
 
-      toast({ title: 'Éxito', description: 'Usuario actualizado correctamente.' });
+      // Check if role or active status changed (which affects permissions)
+      const roleChanged = userData.role !== role;
+      const activeChanged = userData.active !== active;
+
+      if (roleChanged || activeChanged) {
+        toast({
+          title: 'Éxito',
+          description: 'Usuario actualizado correctamente. Los cambios en permisos se aplicarán cuando el usuario inicie sesión nuevamente.',
+          duration: 5000,
+        });
+      } else {
+        toast({
+          title: 'Éxito',
+          description: 'Usuario actualizado correctamente.',
+        });
+      }
+
       onOpenChange(false);
       window.location.reload();
 

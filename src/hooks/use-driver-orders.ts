@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useUser } from '@/firebase/provider';
 import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '@/firebase/config';
@@ -21,67 +21,76 @@ export function useDriverOrders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchDriverIdAndSubscribe = useCallback(async () => {
     if (!user) {
       setLoading(false);
       return;
     }
 
-    const fetchDriverIdAndSubscribe = async () => {
-      try {
-        const token = await user.getIdToken();
-        const response = await fetch('/api/repartidores/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
+    setLoading(true); // Set loading true at the start of fetch
+    setError(null);
 
-        if (!response.ok) {
-          throw new Error('No se pudo obtener información del repartidor');
-        }
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch('/api/repartidores/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-        const driver = await response.json();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'No se pudo obtener información del repartidor');
+      }
 
-        // Suscribirse a los pedidos en tiempo real
-        const ordersRef = collection(db, 'orders');
-        const q = query(
-          ordersRef,
-          where('driverId', '==', driver.id),
-          where('status', 'in', ['Preparando', 'En Reparto']),
-          orderBy('createdAt', 'desc')
-        );
+      const driver = await response.json();
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          const ordersData = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as Order[];
+      // Suscribirse a los pedidos en tiempo real
+      const ordersRef = collection(db, 'orders');
+      const q = query(
+        ordersRef,
+        where('driverId', '==', driver.id),
+        where('status', 'in', ['Preparando', 'En Reparto']),
+        orderBy('createdAt', 'desc')
+      );
 
-          setOrders(ordersData);
-          setLoading(false);
-        }, (err) => {
-          setError(err.message);
-          setLoading(false);
-        });
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const ordersData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Order[];
 
-        return unsubscribe;
-      } catch (err: any) {
+        setOrders(ordersData);
+        setLoading(false);
+      }, (err) => {
         setError(err.message);
         setLoading(false);
-      }
-    };
+      });
 
-    const unsubscribePromise = fetchDriverIdAndSubscribe();
+      return unsubscribe;
+    } catch (err: any) {
+      setError(err.message);
+      setLoading(false);
+      return undefined; // Return undefined for unsubscribe in case of error
+    }
+  }, [user]); // Dependency on user
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    fetchDriverIdAndSubscribe().then(unsub => {
+      unsubscribe = unsub;
+    });
 
     return () => {
-      unsubscribePromise.then(unsub => unsub?.());
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
-  }, [user]);
+  }, [fetchDriverIdAndSubscribe]);
 
-  const refetch = async () => {
-    setLoading(true);
-    setError(null);
-  };
+  const refetch = useCallback(() => {
+    fetchDriverIdAndSubscribe();
+  }, [fetchDriverIdAndSubscribe]);
 
   return { orders, loading, error, refetch };
 }
