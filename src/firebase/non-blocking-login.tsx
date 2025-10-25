@@ -33,11 +33,34 @@ export function initiateEmailSignUp(
   profileData: Omit<UserProfile, 'id'>
 ): void {
   createUserWithEmailAndPassword(authInstance, email, password)
-    .then((userCredential: UserCredential) => {
+    .then(async (userCredential: UserCredential) => {
       // User created, now create their profile document
       const user = userCredential.user;
+
+      // Si se proporcionó phoneNumber, actualizar Firebase Auth
+      if (profileData.phoneNumber) {
+        try {
+          // Formatear a E.164 (+52XXXXXXXXXX)
+          const formattedPhone = `+52${profileData.phoneNumber.replace(/\D/g, '')}`;
+
+          // Actualizar el usuario en Firebase Auth con el phoneNumber
+          // Nota: updateProfile no soporta phoneNumber, necesitamos llamar al backend
+          // Por ahora, solo lo guardamos en Firestore y el admin puede actualizarlo
+          // En el futuro, se puede hacer una llamada al backend para actualizar Auth
+        } catch (error) {
+          console.error("Error updating phone in Auth:", error);
+        }
+      }
+
       const userProfileRef = doc(firestoreInstance, 'users', user.uid);
-      const dataToSet = { ...profileData, id: user.uid };
+      const dataToSet = {
+        ...profileData,
+        id: user.uid,
+        phoneNumber: profileData.phoneNumber ? `+52${profileData.phoneNumber.replace(/\D/g, '')}` : '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        deleted: false,
+      };
 
       // Set the document, but don't block the UI thread
       setDoc(userProfileRef, dataToSet)

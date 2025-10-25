@@ -36,6 +36,7 @@ interface UnlinkedRepartidorUser {
   uid: string;
   email: string;
   displayName: string;
+  phoneNumber?: string | null;
 }
 
 interface AddEditDriverDialogProps {
@@ -92,6 +93,27 @@ export function AddEditDriverDialog({ driver, isOpen, onOpenChange, onSuccess }:
       }
     }
   }, [driver, isOpen, fetchUnlinkedUsers]);
+
+  // Auto-cargar datos cuando se selecciona un usuario
+  useEffect(() => {
+    if (selectedUserId && !isEditing) {
+      // Buscar el usuario seleccionado en unlinkedUsers
+      const selectedUser = unlinkedUsers.find(u => u.uid === selectedUserId);
+
+      if (selectedUser) {
+        // Auto-llenar nombre desde el usuario
+        setName(selectedUser.displayName || selectedUser.email?.split('@')[0] || '');
+
+        // Auto-llenar teléfono (quitar +52 para mostrarlo limpio)
+        if (selectedUser.phoneNumber) {
+          const cleanPhone = selectedUser.phoneNumber.replace(/^\+52/, '');
+          setPhone(cleanPhone);
+        } else {
+          setPhone('');
+        }
+      }
+    }
+  }, [selectedUserId, unlinkedUsers, isEditing]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,7 +226,10 @@ export function AddEditDriverDialog({ driver, isOpen, onOpenChange, onSuccess }:
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Teléfono</Label>
-            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Ej: +56 9 1234 5678" className="bg-gray-800 border-gray-700" />
+            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Ej: 9981234567" className="bg-gray-800 border-gray-700" />
+            {!isEditing && selectedUserId && phone && (
+              <p className="text-xs text-green-400">✓ Auto-cargado del perfil del usuario (puedes editarlo si es necesario)</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="vehicle">Vehículo</Label>

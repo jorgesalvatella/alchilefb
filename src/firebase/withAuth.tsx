@@ -58,6 +58,18 @@ export function withAuth<P extends object>(WrappedComponent: ComponentType<P & W
         return;
       }
 
+      // Check for missing phone number
+      if (userData && !userData.phoneNumber && pathname !== '/completar-perfil') {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('📞 [withAuth] Detected missing phoneNumber');
+          console.log('📞 [withAuth] userData:', userData);
+          console.log('📞 [withAuth] pathname:', pathname);
+          console.log('📞 [withAuth] Redirecting to /completar-perfil...');
+        }
+        router.replace('/completar-perfil');
+        return;
+      }
+
       if (!hasPermission()) {
         router.replace('/menu');
       }
@@ -68,6 +80,14 @@ export function withAuth<P extends object>(WrappedComponent: ComponentType<P & W
     if (userData?.forcePasswordChange === true && pathname !== '/cambiar-clave') {
       if (process.env.NODE_ENV === 'development') {
         console.log('🔐 [withAuth] Blocking component render due to forcePasswordChange');
+      }
+      return <LoadingScreen />;
+    }
+
+    // Block component rendering if phoneNumber is missing
+    if (userData && !userData.phoneNumber && pathname !== '/completar-perfil') {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📞 [withAuth] Blocking component render due to missing phoneNumber');
       }
       return <LoadingScreen />;
     }

@@ -16,6 +16,8 @@ const mockRepartidoresLimit = jest.fn();
 const mockRepartidoresGet = jest.fn();
 const mockDocUpdate = jest.fn();
 
+const mockGetUserByPhoneNumber = jest.fn();
+
 jest.mock('firebase-admin', () => {
     const mockFieldValue = {
         serverTimestamp: jest.fn(() => 'MOCK_TIMESTAMP'),
@@ -50,6 +52,7 @@ jest.mock('firebase-admin', () => {
             updateUser: mockUpdateUser,
             getUser: mockGetUser,
             setCustomUserClaims: mockSetCustomUserClaims,
+            getUserByPhoneNumber: mockGetUserByPhoneNumber,
         }),
         firestore: mockFirestore,
     };
@@ -422,6 +425,147 @@ describe('User Management API', () => {
 
             expect(res.statusCode).toBe(404);
             expect(res.body.message).toBe('User not found');
+        });
+    });
+
+    describe('PATCH /api/control/usuarios/:userId - Phone Number Validation', () => {
+        const targetUserId = 'test-user-phone';
+
+        beforeEach(() => {
+            // Mock default para getUser
+            mockGetUser.mockResolvedValue({
+                uid: targetUserId,
+                email: 'test@example.com',
+                displayName: 'Test User',
+                customClaims: {},
+            });
+
+            // Mock defaults
+            mockSetCustomUserClaims.mockResolvedValue();
+            mockUpdateUser.mockResolvedValue();
+            mockUserDocGet.mockResolvedValue({
+                exists: true,
+                data: () => ({ role: 'usuario' }),
+            });
+            mockUserDocUpdate.mockResolvedValue();
+        });
+
+        it('should reject phoneNumber with less than 10 digits', async () => {
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({
+                    phoneNumber: '123456789', // 9 dígitos
+                });
+
+            expect(res.statusCode).toBe(400);
+            expect(res.body.message).toContain('10 dígitos');
+        });
+
+        it('should reject phoneNumber with more than 10 digits', async () => {
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({
+                    phoneNumber: '12345678901', // 11 dígitos
+                });
+
+            expect(res.statusCode).toBe(400);
+            expect(res.body.message).toContain('10 dígitos');
+        });
+
+        it('should accept valid 10-digit phone number', async () => {
+            // Mock: Teléfono no existe (disponible)
+            mockGetUserByPhoneNumber.mockRejectedValue({ code: 'auth/user-not-found' });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({
+                    phoneNumber: '9981234567',
+                });
+
+            expect(res.statusCode).toBe(200);
+            expect(mockUpdateUser).toHaveBeenCalledWith(targetUserId, expect.objectContaining({
+                phoneNumber: '+529981234567',
+            }));
+        });
+
+        it('should format phone to E.164 format (+52XXXXXXXXXX)', async () => {
+            mockGetUserByPhoneNumber.mockRejectedValue({ code: 'auth/user-not-found' });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({
+                    phoneNumber: '9981234567',
+                });
+
+            expect(res.statusCode).toBe(200);
+
+            // Verificar que Firebase Auth recibió formato E.164
+            expect(mockUpdateUser).toHaveBeenCalledWith(targetUserId, expect.objectContaining({
+                phoneNumber: '+529981234567',
+            }));
+
+            // Verificar que Firestore también recibió formato E.164
+            expect(mockUserDocUpdate).toHaveBeenCalledWith(expect.objectContaining({
+                phoneNumber: '+529981234567',
+            }));
+        });
+
+        it('should reject duplicate phone number (different user)', async () => {
+            // Mock: Teléfono ya existe para otro usuario
+            mockGetUserByPhoneNumber.mockResolvedValue({
+                uid: 'other-user-uid', // UID diferente
+                phoneNumber: '+529981234567',
+            });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({
+                    phoneNumber: '9981234567',
+                });
+
+            expect(res.statusCode).toBe(400);
+            expect(res.body.message).toContain('ya está registrado');
+        });
+
+        it('should allow updating to same phone number (same user)', async () => {
+            // Mock: Teléfono existe pero es del MISMO usuario
+            mockGetUserByPhoneNumber.mockResolvedValue({
+                uid: targetUserId, // MISMO uid
+                phoneNumber: '+529981234567',
+            });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({
+                    phoneNumber: '9981234567',
+                });
+
+            expect(res.statusCode).toBe(200);
+            expect(res.body.message).toBe('User updated successfully');
+        });
+
+        it('should clean non-numeric characters from phone', async () => {
+            mockGetUserByPhoneNumber.mockRejectedValue({ code: 'auth/user-not-found' });
+
+            const res = await request(app)
+                .patch(`/api/control/usuarios/${targetUserId}`)
+                .set('Authorization', 'Bearer test-admin-token')
+                .send({
+                    phoneNumber: '(998) 123-4567', // Con formato visual
+                });
+
+            expect(res.statusCode).toBe(200);
+
+            // Verificar que se limpió y formateó correctamente
+            expect(mockUpdateUser).toHaveBeenCalledWith(targetUserId, expect.objectContaining({
+                phoneNumber: '+529981234567',
+            }));
         });
     });
 });

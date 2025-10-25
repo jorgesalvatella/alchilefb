@@ -19,7 +19,22 @@ const signupSchema = z.object({
   fullName: z.string().min(2, 'El nombre completo es requerido.'),
   email: z.string().email('Por favor, introduce un correo electrónico válido.'),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres.'),
+  phoneNumber: z.string()
+    .min(1, 'El número de teléfono es requerido.')
+    .regex(/^\d{10}$/, 'El teléfono debe tener exactamente 10 dígitos.'),
 });
+
+// Helper para formatear teléfono con espacios visuales
+const formatPhoneNumber = (value: string): string => {
+  // Limpiar todo excepto dígitos
+  const cleaned = value.replace(/\D/g, '');
+  // Limitar a 10 dígitos
+  const limited = cleaned.slice(0, 10);
+  // Formatear: "9981234567" -> "998 123 4567"
+  if (limited.length <= 3) return limited;
+  if (limited.length <= 6) return `${limited.slice(0, 3)} ${limited.slice(3)}`;
+  return `${limited.slice(0, 3)} ${limited.slice(3, 6)} ${limited.slice(6)}`;
+};
 
 export default function SignupPage() {
   const auth = useAuth();
@@ -34,6 +49,7 @@ export default function SignupPage() {
       fullName: '',
       email: '',
       password: '',
+      phoneNumber: '',
     },
   });
 
@@ -50,6 +66,7 @@ export default function SignupPage() {
       firstName: values.fullName.split(' ')[0] || '',
       lastName: values.fullName.split(' ').slice(1).join(' ') || '',
       role: 'customer' as const,
+      phoneNumber: values.phoneNumber,
     };
 
     initiateEmailSignUp(auth, firestore, values.email, values.password, userProfileData);
@@ -115,6 +132,29 @@ export default function SignupPage() {
                       <Input type="password" placeholder="Contraseña" {...field} className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:ring-orange-500 focus:border-orange-500" />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={signupForm.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="tel"
+                        placeholder="998 123 4567"
+                        value={formatPhoneNumber(field.value)}
+                        onChange={(e) => {
+                          // Guardar solo dígitos sin formato
+                          const cleaned = e.target.value.replace(/\D/g, '');
+                          field.onChange(cleaned);
+                        }}
+                        className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:ring-orange-500 focus:border-orange-500"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-xs text-white/50 mt-1">Teléfono móvil (10 dígitos). Se usará para verificación vía WhatsApp.</p>
                   </FormItem>
                 )}
               />

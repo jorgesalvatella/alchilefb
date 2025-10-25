@@ -2526,6 +2526,7 @@ app.get('/api/control/unlinked-repartidor-users', authMiddleware, requireAdmin, 
       uid: userRecord.uid,
       email: userRecord.email,
       displayName: userRecord.displayName || userRecord.email,
+      phoneNumber: userRecord.phoneNumber || null,
     }));
 
     res.status(200).json(unlinkedRepartidorUsers);
@@ -4601,6 +4602,39 @@ app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (
     const { userId } = req.params;
     const { role, active, sucursalIds, area, displayName, phoneNumber } = req.body;
 
+    // Validación de phoneNumber si se proporciona
+    if (phoneNumber !== undefined) {
+      // Limpiar el teléfono de caracteres no numéricos
+      const cleaned = phoneNumber.replace(/\D/g, '');
+
+      // Validar formato: exactamente 10 dígitos
+      if (cleaned.length !== 10) {
+        return res.status(400).json({
+          message: 'El teléfono debe tener exactamente 10 dígitos'
+        });
+      }
+
+      // Validar unicidad: verificar que no exista otro usuario con este teléfono
+      const formattedPhone = `+52${cleaned}`;
+
+      // Buscar en Firebase Auth
+      try {
+        const existingUserByPhone = await admin.auth().getUserByPhoneNumber(formattedPhone);
+        // Si encontramos un usuario y NO es el que estamos actualizando
+        if (existingUserByPhone && existingUserByPhone.uid !== userId) {
+          return res.status(400).json({
+            message: 'Este número de teléfono ya está registrado por otro usuario'
+          });
+        }
+      } catch (error) {
+        // Si el error es "user not found", significa que el teléfono está disponible (OK)
+        if (error.code !== 'auth/user-not-found') {
+          // Si es otro tipo de error, lanzarlo
+          throw error;
+        }
+      }
+    }
+
     // Verificar que el usuario existe
     let targetUser;
     try {
@@ -4662,11 +4696,17 @@ app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (
       await admin.auth().setCustomUserClaims(userId, newClaims);
     }
 
-    // Actualizar estado activo/inactivo en Firebase Auth
+    // Actualizar Firebase Auth (phoneNumber y/o estado activo)
+    const authUpdateData = {};
     if (active !== undefined) {
-      await admin.auth().updateUser(userId, {
-        disabled: !active,
-      });
+      authUpdateData.disabled = !active;
+    }
+    if (phoneNumber !== undefined) {
+      const cleaned = phoneNumber.replace(/\D/g, '');
+      authUpdateData.phoneNumber = `+52${cleaned}`;
+    }
+    if (Object.keys(authUpdateData).length > 0) {
+      await admin.auth().updateUser(userId, authUpdateData);
     }
 
     // Actualizar información en Firestore
@@ -4680,7 +4720,10 @@ app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (
     if (sucursalIds !== undefined) updateData.sucursalIds = sucursalIds;
     if (area !== undefined) updateData.area = area;
     if (displayName !== undefined) updateData.displayName = displayName;
-    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+    if (phoneNumber !== undefined) {
+      const cleaned = phoneNumber.replace(/\D/g, '');
+      updateData.phoneNumber = `+52${cleaned}`;
+    }
 
     // Verificar si el documento existe, si no, crearlo
     const userDoc = await userRef.get();
