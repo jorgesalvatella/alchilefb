@@ -4933,5 +4933,9 @@ app.post('/api/control/usuarios/:uid/generar-clave', authMiddleware, requireAdmi
     }
 });
 
+// === WhatsApp Verification Routes ===
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
+
 module.exports = app;
 
