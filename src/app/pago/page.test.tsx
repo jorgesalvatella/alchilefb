@@ -38,6 +38,21 @@ jest.mock('@/hooks/use-toast', () => ({
   }),
 }));
 
+// Mock useUser to return userData with phoneVerified: true
+jest.mock('@/firebase/provider', () => ({
+  useUser: jest.fn(() => ({
+    user: {
+      uid: 'test-user-123',
+      email: 'test@test.com',
+      getIdToken: jest.fn(() => Promise.resolve('fake-token')),
+    },
+    userData: {
+      phoneVerified: true, // Usuario ya verificado
+    },
+    isUserLoading: false,
+  })),
+}));
+
 // Mock GooglePlacesAutocompleteWithMap to prevent API errors in JSDOM
 jest.mock('@/components/GooglePlacesAutocompleteWithMap', () => {
   return jest.fn(({ onAddressSelect }) => (

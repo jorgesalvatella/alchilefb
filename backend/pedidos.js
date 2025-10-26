@@ -68,6 +68,20 @@ router.post('/', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Faltan campos requeridos: items, shippingAddress, paymentMethod' });
     }
 
+    // Validar que el usuario haya verificado su teléfono
+    const userDoc = await db.collection('users').doc(userId).get();
+    if (!userDoc.exists) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    const userData = userDoc.data();
+    if (!userData.phoneVerified) {
+      return res.status(403).json({
+        error: 'phone_not_verified',
+        message: 'Debes verificar tu teléfono antes de realizar un pedido'
+      });
+    }
+
     // 1. Re-verificar totales (usando la lógica real)
     const itemsToVerify = items.map(item => {
       if (item.isPackage) {

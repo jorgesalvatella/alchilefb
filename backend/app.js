@@ -4443,6 +4443,10 @@ app.use('/api/repartidores', repartidoresRouter);
 // pero se montan en /api/pedidos para mantener consistencia
 app.use('/api/pedidos', repartidoresRouter);
 
+// --- Phone Verification Module ---
+const verificationRouter = require('./verification/phone-verification-routes');
+app.use('/api/verification', verificationRouter);
+
 // ==========================================
 // MÓDULO DE GESTIÓN DE USUARIOS
 // ==========================================
@@ -4934,8 +4938,9 @@ app.post('/api/control/usuarios/:uid/generar-clave', authMiddleware, requireAdmi
 });
 
 // === WhatsApp Verification Routes ===
-const authRoutes = require('./routes/auth');
-app.use('/api/auth', authRoutes);
+// COMMENTED OUT: This was part of archived WhatsApp verification module
+// const authRoutes = require('./routes/auth');
+// app.use('/api/auth', authRoutes);
 
 module.exports = app;
 

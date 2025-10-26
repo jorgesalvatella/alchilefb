@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import GooglePlacesAutocompleteWithMap from '@/components/GooglePlacesAutocompleteWithMap';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
+import { useUser } from '@/firebase/provider';
 
 interface AddressComponents {
   street: string;
@@ -27,6 +28,7 @@ function CheckoutPage({ user }: WithAuthProps) {
   const { cartItems, clearCart, itemCount } = useCart();
   const router = useRouter();
   const { toast } = useToast();
+  const { userData, isUserLoading } = useUser();
 
   // Estado para la UI
   const [paymentMethod, setPaymentMethod] = useState<'Efectivo' | 'Tarjeta a la entrega' | 'Transferencia bancaria' | ''>('');
@@ -38,6 +40,29 @@ function CheckoutPage({ user }: WithAuthProps) {
   const [deliveryLocation, setDeliveryLocation] = useState<AddressComponents | null>(null);
   const [verifiedTotal, setVerifiedTotal] = useState<number | null>(null);
   const [isVerifyingTotal, setIsVerifyingTotal] = useState(false);
+  const [userDataRefreshed, setUserDataRefreshed] = useState(false);
+
+  // Forzar refresh de userData al montar (importante después de verificar teléfono)
+  useEffect(() => {
+    const shouldRefresh = sessionStorage.getItem('phoneJustVerified');
+
+    if (shouldRefresh === 'true' && user && !isUserLoading) {
+      const refreshUserData = async () => {
+        try {
+          // Forzar refresh del token para obtener datos actualizados
+          await user.getIdTokenResult(true);
+          // Marcar como refrescado
+          sessionStorage.removeItem('phoneJustVerified');
+          // Recargar la página para obtener el nuevo userData
+          window.location.reload();
+        } catch (error) {
+          console.error('Error refreshing user data:', error);
+        }
+      };
+
+      refreshUserData();
+    }
+  }, [user, isUserLoading]);
 
   // Verificar el total del carrito con el backend
   useEffect(() => {
@@ -143,6 +168,18 @@ function CheckoutPage({ user }: WithAuthProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
+
+        // Decisión 4C: Capturar error 403 phone_not_verified
+        if (response.status === 403 && errorData.error === 'phone_not_verified') {
+          toast({
+            title: 'Verificación requerida',
+            description: 'Debes verificar tu teléfono antes de hacer un pedido',
+            variant: 'destructive',
+          });
+          router.push('/verificar-telefono?returnTo=/pago');
+          return;
+        }
+
         throw new Error(errorData.message || 'Hubo un problema al crear tu pedido.');
       }
 
@@ -240,14 +277,30 @@ function CheckoutPage({ user }: WithAuthProps) {
                   )}
                 </span>
               </div>
-              <Button
-                onClick={handlePlaceOrder}
-                disabled={isSubmitting || !paymentMethod || !deliveryLocation || verifiedTotal === null || isVerifyingTotal}
-                className="w-full mt-6 bg-orange-500 text-white hover:bg-orange-600 font-bold text-lg py-6 disabled:opacity-50 disabled:cursor-not-allowed"
-                size="lg"
-              >
-                {isSubmitting ? 'Confirmando...' : isVerifyingTotal ? 'Verificando totales...' : 'Confirmar Pedido'}
-              </Button>
+              {/* Decisión 4C: Verificar phoneVerified en frontend */}
+              {!userData?.phoneVerified ? (
+                <>
+                  <Button
+                    onClick={() => router.push('/verificar-telefono?returnTo=/pago')}
+                    className="w-full mt-6 bg-yellow-500 text-black hover:bg-yellow-600 font-bold text-lg py-6"
+                    size="lg"
+                  >
+                    Verificar Teléfono para Continuar
+                  </Button>
+                  <p className="text-yellow-400 text-sm mt-2 text-center">
+                    Debes verificar tu teléfono antes de hacer un pedido
+                  </p>
+                </>
+              ) : (
+                <Button
+                  onClick={handlePlaceOrder}
+                  disabled={isSubmitting || !paymentMethod || !deliveryLocation || verifiedTotal === null || isVerifyingTotal}
+                  className="w-full mt-6 bg-orange-500 text-white hover:bg-orange-600 font-bold text-lg py-6 disabled:opacity-50 disabled:cursor-not-allowed"
+                  size="lg"
+                >
+                  {isSubmitting ? 'Confirmando...' : isVerifyingTotal ? 'Verificando totales...' : 'Confirmar Pedido'}
+                </Button>
+              )}
               {error && <p className="text-red-500 text-sm mt-4 text-center">{error}</p>}
             </CardContent>
           </Card>
