@@ -424,5 +424,69 @@ service cloud.firestore {
                        request.resource.data.diff(resource.data).affectedKeys()
                          .hasOnly(['currentLocation', 'lastLocationUpdate', 'isTrackingActive']);
     }
+
+    match /deviceTokens/{tokenId} {
+      /**
+       * @description Manages FCM device tokens for push notifications.
+       * @path /deviceTokens/{tokenId}
+       * @allow (read) User can read only their own tokens. Admins can read all tokens.
+       * @allow (create) User can create tokens only with their own userId.
+       * @allow (delete) User can delete only their own tokens. Admins can delete any token.
+       * @deny (update) Tokens should not be updated, only created or deleted.
+       * @principle Enforces ownership-based access control for device tokens with strict validation.
+       * @security Prevents token hijacking by validating userId matches authenticated user.
+       */
+      // User can read their own tokens, admins can read all
+      allow get, list: if isSignedIn() &&
+                          (resource.data.userId == request.auth.uid || isAdmin() || isSuperAdmin());
+
+      // User can create token only with their own userId
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['userId', 'token', 'platform', 'isActive', 'createdAt', 'lastUsed']) &&
+                       request.resource.data.userId is string &&
+                       request.resource.data.token is string &&
+                       request.resource.data.platform in ['web', 'android', 'ios'] &&
+                       request.resource.data.isActive is bool &&
+                       request.resource.data.createdAt is timestamp &&
+                       request.resource.data.lastUsed is timestamp;
+
+      // User can delete only their own tokens, admins can delete any
+      allow delete: if isSignedIn() &&
+                       (resource.data.userId == request.auth.uid || isAdmin() || isSuperAdmin());
+
+      // Updates are not allowed from client side - tokens should be recreated, not updated
+      // Backend can update via Admin SDK (bypasses Security Rules)
+      allow update: if false;
+    }
+
+    match /notificationStats/{statId} {
+      /**
+       * @description Manages statistics for push notifications (sent, delivered, clicked).
+       * @path /notificationStats/{statId}
+       * @allow (read) Only admins and super-admins can read notification statistics.
+       * @deny (write) Client-side writes are disabled. Only backend (Firebase Admin SDK) can write stats.
+       * @principle Restricts access to notification analytics to authorized personnel only.
+       * @security Prevents stat manipulation by disabling all client writes.
+       */
+      // Only admins can read notification statistics
+      allow read: if isAdmin() || isSuperAdmin();
+
+      // No client-side writes allowed - only backend via Admin SDK
+      allow write: if false;
+    }
+
+    match /verificationCodes/{codeId} {
+      /**
+       * @description Manages phone verification codes for user authentication.
+       * @path /verificationCodes/{codeId}
+       * @allow (read) Only backend can read verification codes (for validation).
+       * @deny (write) Client-side writes are disabled. Only backend creates/updates codes.
+       * @principle Prevents code enumeration attacks and ensures secure phone verification.
+       * @security All operations must go through authenticated backend endpoints.
+       */
+      // No client access - all operations via backend only
+      allow read, write: if false;
+    }
   }
 }

@@ -52,15 +52,24 @@ Implementar un sistema **simple y seguro** de verificación de número de teléf
    → Agrega productos → Click "Finalizar Pedido"
 
 3. CHECKOUT (Requiere verificación)
-   POST /api/pedidos → ¿phoneVerified? → NO
-   → 403 phone_not_verified
-   → Redirige a /verificar-telefono
+   Página /pago carga → Verifica userData.phoneVerified
+
+   SI NO VERIFICADO:
+   → Muestra botón amarillo: "Verificar Teléfono para Continuar"
+   → Click → Redirige a /verificar-telefono?returnTo=/pago
+
+   SI VERIFICADO:
+   → Muestra botón naranja: "Finalizar Pedido"
+   → Click → POST /api/pedidos (validación backend adicional)
 
 4. VERIFICACIÓN (Código visual)
-   /verificar-telefono → Muestra código 6 dígitos
+   /verificar-telefono → Auto-genera código 6 dígitos
    Usuario ingresa código → POST /api/verification/verify-code
    → Código correcto → phoneVerified = true
-   → Redirige a /pago → Pedido permitido ✅
+   → Guarda flag en sessionStorage
+   → Redirige a /pago
+   → Refresh automático de userData
+   → Botón cambia a naranja "Finalizar Pedido" ✅
 ```
 
 ---
@@ -97,7 +106,7 @@ Implementar un sistema **simple y seguro** de verificación de número de teléf
 **Modificados:**
 - `backend/pedidos.js` (validación phoneVerified)
 - `backend/app.js` (registro de rutas)
-- `src/app/pago/page.tsx` (redirección a verificación)
+- `src/app/pago/page.tsx` (botón condicional + refresh automático + redirección)
 
 ---
 

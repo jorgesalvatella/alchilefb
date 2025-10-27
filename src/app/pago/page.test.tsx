@@ -45,11 +45,13 @@ jest.mock('@/firebase/provider', () => ({
       uid: 'test-user-123',
       email: 'test@test.com',
       getIdToken: jest.fn(() => Promise.resolve('fake-token')),
+      getIdTokenResult: jest.fn(() => Promise.resolve({ claims: {} })),
     },
     userData: {
       phoneVerified: true, // Usuario ya verificado
     },
     isUserLoading: false,
+    refreshUserData: jest.fn(() => Promise.resolve()),
   })),
 }));
 

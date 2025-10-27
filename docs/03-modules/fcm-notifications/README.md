@@ -4,8 +4,8 @@
 
 **Agente responsable**: Sentinel (Coordinador) + Pyra (Firebase) + Nexus (Backend) + Aether (Frontend)
 **Fecha de creación**: 2025-10-26
-**Versión**: 1.0
-**Estado**: 📝 En Planificación
+**Versión**: 1.1
+**Estado**: 🔧 FASE 1 COMPLETA - En Implementación
 
 ---
 
@@ -302,34 +302,43 @@ alchilefb/
 
 ## 🚀 Plan de Implementación (6 Fases)
 
-### **FASE 1: Arquitectura y Configuración Base** ⚙️
+### **FASE 1: Arquitectura y Configuración Base** ✅ COMPLETA
 
 **Tiempo estimado:** 2-3 horas
 **Agente responsable:** Aire (DevOps) + Pyra (Firebase)
+**Estado:** ✅ COMPLETADO (2025-10-26)
 
 **Tareas:**
-1. Configurar Firebase Cloud Messaging en Firebase Console
-   - Habilitar Cloud Messaging API
-   - Generar VAPID key para Web Push
-   - Configurar certificados APNs (iOS)
-2. Crear colección `deviceTokens` en Firestore
-3. Crear colección `notificationStats` en Firestore
-4. Configurar Security Rules para nuevas colecciones
-5. Configurar variables de entorno
-6. Actualizar documentación
+1. ✅ Configurar Firebase Cloud Messaging en Firebase Console
+   - ✅ Habilitar Cloud Messaging API
+   - ✅ Generar VAPID key para Web Push
+   - ⏳ Configurar certificados APNs (iOS) - PENDIENTE (FASE 6)
+2. ✅ Crear colección `deviceTokens` en Firestore (lazy creation)
+3. ✅ Crear colección `notificationStats` en Firestore (lazy creation)
+4. ✅ Configurar Security Rules para nuevas colecciones
+5. ✅ Configurar variables de entorno
+6. ✅ Actualizar documentación
 
 **Entregables:**
-- ✅ FCM habilitado en Firebase Console
-- ✅ VAPID key generada
-- ✅ Colecciones creadas en Firestore
-- ✅ Security Rules configuradas
-- ✅ Documento `01-firebase-console-setup.md`
+- ✅ Documento `01-firebase-console-setup.md` creado
+- ✅ Security Rules implementadas en `firestore.rules`
+- ✅ Índices configurados en `firestore.indexes.json`
+- ✅ Variables documentadas en `backend/.env.example`
+- ✅ Script de validación `backend/scripts/validate-fcm-config.js`
 
 **Criterios de aceptación:**
-- [ ] FCM habilitado en proyecto Firebase
-- [ ] VAPID key generada y guardada en `.env.local`
-- [ ] Colecciones `deviceTokens` y `notificationStats` existen
-- [ ] Security Rules protegen las colecciones correctamente
+- ✅ Documento de configuración Firebase Console completo
+- ✅ Security Rules completas para `deviceTokens` y `notificationStats`
+- ✅ Índices compuestos configurados para queries eficientes
+- ✅ Variables de entorno documentadas
+- ✅ Script de validación funcional
+
+**Archivos creados/modificados:**
+- `docs/03-modules/fcm-notifications/01-firebase-console-setup.md` (NUEVO)
+- `firestore.rules` (MODIFICADO - agregadas reglas FCM)
+- `firestore.indexes.json` (MODIFICADO - agregados índices FCM)
+- `backend/.env.example` (MODIFICADO - agregadas variables FCM)
+- `backend/scripts/validate-fcm-config.js` (NUEVO)
 
 ---
 
@@ -812,27 +821,41 @@ match /notificationStats/{statId} {
 
 ## 📝 Changelog del Módulo
 
+### Versión 1.1 (2025-10-26)
+- ✅ **FASE 1 COMPLETA**: Arquitectura y Configuración Base
+- ✅ Documento `01-firebase-console-setup.md` creado
+- ✅ Security Rules implementadas para `deviceTokens` y `notificationStats`
+- ✅ Índices de Firestore configurados
+- ✅ Variables de entorno documentadas
+- ✅ Script de validación creado
+- 📝 Pendiente: FASE 2 - Backend Core Infrastructure
+
 ### Versión 1.0 (2025-10-26)
 - ✅ Documento de arquitectura creado
 - ✅ Decisiones técnicas documentadas
 - ✅ Modelo de datos diseñado
 - ✅ Plan de implementación en 6 fases
 - ✅ Catálogo de eventos completo
-- 📝 Pendiente: Implementación de código
 
 ---
 
 ## 🎯 Próximos Pasos
 
-1. **Revisar y aprobar** este documento con el equipo
-2. **Comenzar FASE 1**: Configuración de Firebase Console
-3. **Crear documento** `01-firebase-console-setup.md` con guía paso a paso
-4. **Implementar** según las fases definidas
+**FASE 1:** ✅ COMPLETA
+
+**FASE 2:** Backend - Infraestructura Core (SIGUIENTE)
+1. **Implementar** `backend/fcm/fcm-service.js`
+2. **Implementar** `backend/fcm/token-manager.js`
+3. **Implementar** `backend/fcm/notification-builder.js`
+4. **Implementar** `backend/fcm/stats-tracker.js`
+5. **Crear** endpoints API en `backend/routes/fcm.js`
+6. **Escribir** tests unitarios con Jest
 
 ---
 
 **Mantenido por**: Equipo de Desarrollo Al Chile FB
 **Última actualización**: 2025-10-26
-**Versión**: 1.0
+**Versión**: 1.1
 
-**Siguiente paso**: Crear documento `01-firebase-console-setup.md` con la guía de configuración de Firebase Cloud Messaging en Firebase Console.
+**Estado actual**: ✅ FASE 1 COMPLETA
+**Siguiente paso**: Implementar FASE 2 - Backend Core Infrastructure

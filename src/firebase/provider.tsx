@@ -29,6 +29,7 @@ export interface FirebaseContextState {
   claims: any | null; // Added claims
   isUserLoading: boolean;
   userError: Error | null;
+  refreshUserData: () => Promise<void>; // Nueva función para refrescar userData
 }
 
 // Return type for useFirebase()
@@ -51,6 +52,7 @@ export interface UserHookResult {
   claims: any | null; // Added claims
   isUserLoading: boolean;
   userError: Error | null;
+  refreshUserData: () => Promise<void>; // Nueva función para refrescar userData
 }
 
 // React Context
@@ -68,6 +70,26 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   const [claims, setClaims] = useState<any>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [userError, setUserError] = useState<Error | null>(null);
+
+  // Función para refrescar manualmente userData desde Firestore
+  const refreshUserData = async () => {
+    if (!user || !firestore) {
+      console.warn('Cannot refresh user data: user or firestore not available');
+      return;
+    }
+
+    try {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (userDoc.exists()) {
+        setUserData(userDoc.data() as AppUser);
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+      setUserError(error as Error);
+    }
+  };
 
   useEffect(() => {
     if (!auth || !firestore) {
@@ -134,8 +156,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       claims,
       isUserLoading,
       userError,
+      refreshUserData,
     };
-  }, [firebaseApp, firestore, auth, storage, user, userData, claims, isUserLoading, userError]);
+  }, [firebaseApp, firestore, auth, storage, user, userData, claims, isUserLoading, userError, refreshUserData]);
 
   return (
     <FirebaseContext.Provider value={contextValue}>
@@ -200,6 +223,12 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
 }
 
 export const useUser = (): UserHookResult => {
-  const { user, userData, claims, isUserLoading, userError } = useFirebase();
-  return { user, userData, claims, isUserLoading, userError };
+  const context = useContext(FirebaseContext);
+
+  if (context === undefined) {
+    throw new Error('useUser must be used within a FirebaseProvider.');
+  }
+
+  const { user, userData, claims, isUserLoading, userError, refreshUserData } = context;
+  return { user, userData, claims, isUserLoading, userError, refreshUserData };
 };

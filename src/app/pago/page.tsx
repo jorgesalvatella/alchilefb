@@ -28,7 +28,7 @@ function CheckoutPage({ user }: WithAuthProps) {
   const { cartItems, clearCart, itemCount } = useCart();
   const router = useRouter();
   const { toast } = useToast();
-  const { userData, isUserLoading } = useUser();
+  const { userData, isUserLoading, refreshUserData } = useUser();
 
   // Estado para la UI
   const [paymentMethod, setPaymentMethod] = useState<'Efectivo' | 'Tarjeta a la entrega' | 'Transferencia bancaria' | ''>('');
@@ -46,23 +46,31 @@ function CheckoutPage({ user }: WithAuthProps) {
   useEffect(() => {
     const shouldRefresh = sessionStorage.getItem('phoneJustVerified');
 
-    if (shouldRefresh === 'true' && user && !isUserLoading) {
-      const refreshUserData = async () => {
+    if (shouldRefresh === 'true' && user && !isUserLoading && refreshUserData) {
+      const doRefresh = async () => {
         try {
           // Forzar refresh del token para obtener datos actualizados
           await user.getIdTokenResult(true);
+
+          // Refrescar userData desde Firestore
+          await refreshUserData();
+
           // Marcar como refrescado
           sessionStorage.removeItem('phoneJustVerified');
-          // Recargar la página para obtener el nuevo userData
-          window.location.reload();
+
+          // Mostrar mensaje de éxito
+          toast({
+            title: 'Teléfono verificado',
+            description: 'Ya puedes proceder con tu pedido',
+          });
         } catch (error) {
           console.error('Error refreshing user data:', error);
         }
       };
 
-      refreshUserData();
+      doRefresh();
     }
-  }, [user, isUserLoading]);
+  }, [user, isUserLoading, refreshUserData, toast]);
 
   // Verificar el total del carrito con el backend
   useEffect(() => {
