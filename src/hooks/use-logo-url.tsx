@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/firebase';
+import { FirebaseContext } from '@/firebase/provider';
 import useSignedUrl from './use-signed-url';
 
 /**
@@ -16,6 +16,9 @@ export function useLogoUrl() {
   const [configError, setConfigError] = useState<Error | null>(null);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
+  // Obtener el contexto de Firebase de forma segura
+  const firebaseContext = useContext(FirebaseContext);
+
   // Consultar Firestore para obtener el path del logo
   useEffect(() => {
     const fetchLogoPath = async () => {
@@ -23,7 +26,12 @@ export function useLogoUrl() {
         setIsLoadingConfig(true);
         setConfigError(null);
 
-        const configRef = doc(db, 'config', 'site');
+        // Verificar que Firestore esté disponible
+        if (!firebaseContext?.firestore) {
+          throw new Error('Firestore not available');
+        }
+
+        const configRef = doc(firebaseContext.firestore, 'config', 'site');
         const configSnap = await getDoc(configRef);
 
         if (configSnap.exists()) {
@@ -44,7 +52,7 @@ export function useLogoUrl() {
     };
 
     fetchLogoPath();
-  }, []);
+  }, [firebaseContext]);
 
   // Obtener la signed URL usando el path obtenido
   const { signedUrl, isLoading: isLoadingUrl, error: urlError } = useSignedUrl(logoPath);

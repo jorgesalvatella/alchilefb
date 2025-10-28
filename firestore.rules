@@ -488,5 +488,21 @@ service cloud.firestore {
       // No client access - all operations via backend only
       allow read, write: if false;
     }
+
+    match /config/{configId} {
+      /**
+       * @description Manages site configuration data (e.g., logo path, theme settings).
+       * @path /config/{configId}
+       * @allow (get, list) All users can read site configuration (public data like logo path).
+       * @deny (create, update, delete) Only admins and super-admins can modify configuration.
+       * @principle Public read access for UI configuration with restricted write access.
+       * @security Config data is public (logos, theme) but only admins can change it.
+       */
+      // Public read access for configuration data
+      allow get, list: if true;
+
+      // Only admins can modify configuration
+      allow create, update, delete: if isAdmin() || isSuperAdmin();
+    }
   }
 }

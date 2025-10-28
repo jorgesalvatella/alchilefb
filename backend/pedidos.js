@@ -2,6 +2,7 @@ const express = require('express');
 const admin = require('firebase-admin');
 const authMiddleware = require('./authMiddleware');
 const { verifyCartTotals } = require('./cart');
+const triggerDispatcher = require('./triggers/trigger-dispatcher');
 
 const router = express.Router();
 const db = admin.firestore();
@@ -137,7 +138,19 @@ router.post('/', authMiddleware, async (req, res) => {
     const savedDoc = await docRef.get();
     console.log('4. Documento REAL guardado en Firestore:', savedDoc.data());
 
-    // 5. Devolver respuesta
+    // 5. Disparar notificaciones (fire-and-forget)
+    triggerDispatcher.dispatch('order.created', {
+      orderId: docRef.id,
+      userId,
+      orderData: cleanOrder
+    }).catch(err => console.error('[Pedidos] order.created trigger failed:', err));
+
+    triggerDispatcher.dispatch('admin.new_order', {
+      orderId: docRef.id,
+      orderData: cleanOrder
+    }).catch(err => console.error('[Pedidos] admin.new_order trigger failed:', err));
+
+    // 6. Devolver respuesta
     res.status(201).json({ id: docRef.id, ...cleanOrder });
 
   } catch (error) {
@@ -502,6 +515,39 @@ router.put('/control/:orderId/status', authMiddleware, async (req, res) => {
     const updatedDoc = await orderRef.get();
     const updatedOrder = { id: updatedDoc.id, ...updatedDoc.data() };
 
+    // Disparar notificaciones según el nuevo estado (fire-and-forget)
+    let eventType = null;
+    switch (status) {
+      case 'Preparando':
+        eventType = 'order.preparing';
+        // También notificar al repartidor si ya está asignado
+        if (currentOrder.driverId) {
+          triggerDispatcher.dispatch('driver.order_ready', {
+            orderId,
+            driverId: currentOrder.driverId,
+            orderData: updatedOrder
+          }).catch(err => console.error('[Pedidos] driver.order_ready trigger failed:', err));
+        }
+        break;
+      case 'En Reparto':
+        eventType = 'order.in_delivery';
+        break;
+      case 'Entregado':
+        eventType = 'order.delivered';
+        break;
+      case 'Cancelado':
+        eventType = 'order.cancelled';
+        break;
+    }
+
+    if (eventType) {
+      triggerDispatcher.dispatch(eventType, {
+        orderId,
+        userId: currentOrder.userId,
+        orderData: updatedOrder
+      }).catch(err => console.error(`[Pedidos] ${eventType} trigger failed:`, err));
+    }
+
     res.status(200).json({
       message: 'Estado actualizado exitosamente',
       order: updatedOrder
@@ -654,6 +700,29 @@ router.delete('/control/:orderId/cancel', authMiddleware, async (req, res) => {
     const updatedDoc = await orderRef.get();
     const updatedOrder = { id: updatedDoc.id, ...updatedDoc.data() };
 
+    // Disparar notificaciones de cancelación (fire-and-forget)
+    // Notificar al cliente
+    triggerDispatcher.dispatch('order.cancelled', {
+      orderId,
+      userId: currentOrder.userId,
+      orderData: updatedOrder
+    }).catch(err => console.error('[Pedidos] order.cancelled trigger failed:', err));
+
+    // Notificar al repartidor si tenía uno asignado
+    if (currentOrder.driverId) {
+      triggerDispatcher.dispatch('driver.order_cancelled', {
+        orderId,
+        driverId: currentOrder.driverId,
+        orderData: updatedOrder
+      }).catch(err => console.error('[Pedidos] driver.order_cancelled trigger failed:', err));
+    }
+
+    // Notificar a admins
+    triggerDispatcher.dispatch('admin.order_cancelled', {
+      orderId,
+      orderData: updatedOrder
+    }).catch(err => console.error('[Pedidos] admin.order_cancelled trigger failed:', err));
+
     res.status(200).json({
       message: 'Pedido cancelado exitosamente',
       order: updatedOrder
@@ -762,6 +831,25 @@ router.put('/control/:orderId/asignar-repartidor', authMiddleware, async (req, r
         currentOrderId: orderId
       });
     });
+
+    // Disparar notificaciones de asignación (fire-and-forget)
+    // Obtener datos actualizados del pedido
+    const updatedOrderDoc = await db.collection('pedidos').doc(orderId).get();
+    const updatedOrderData = updatedOrderDoc.data();
+
+    // Notificar al cliente que se asignó repartidor
+    triggerDispatcher.dispatch('order.driver_assigned', {
+      orderId,
+      userId: updatedOrderData.userId,
+      orderData: updatedOrderData
+    }).catch(err => console.error('[Pedidos] order.driver_assigned trigger failed:', err));
+
+    // Notificar al repartidor que se le asignó un pedido
+    triggerDispatcher.dispatch('driver.order_assigned', {
+      orderId,
+      driverId,
+      orderData: updatedOrderData
+    }).catch(err => console.error('[Pedidos] driver.order_assigned trigger failed:', err));
 
     res.status(200).json({ message: 'Repartidor asignado exitosamente.' });
 

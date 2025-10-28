@@ -478,3 +478,325 @@ Sentinel DEBE verificar que todo está guardado:
 - El estado del proyecto (git, tests) estará disponible
 - La documentación sirve como memoria permanente del proyecto
 
+---
+
+## 🚨 ESTADO ACTUAL DEL PROYECTO - PRÓXIMA SESIÓN
+
+### 📦 Módulo FCM Notifications - FASE 3 EN PROGRESO
+
+**Fecha de última actualización:** 2025-10-27
+**Estado:** 🔧 EN DESARROLLO - Triggers implementados, falta testing
+
+---
+
+### ✅ LO QUE ESTÁ COMPLETO (6/14 tareas)
+
+1. ✅ **Documentación del plan de FASE 3**
+   - Archivo: `docs/03-modules/fcm-notifications/03-triggers-implementation-plan.md`
+   - Incluye: Decisiones técnicas, arquitectura, plan de testing (~120 tests)
+   - Decisiones clave: Dispatcher híbrido, eventos por rol, fallar silenciosamente, sin cron jobs
+
+2. ✅ **trigger-dispatcher.js implementado**
+   - Archivo: `backend/triggers/trigger-dispatcher.js`
+   - Funcionalidad: Despacha eventos a triggers apropiados (order, driver, admin)
+   - API: `dispatch()`, `dispatchBatch()`, `isEventSupported()`, `getSupportedEvents()`
+   - Patrón: Fire-and-forget (no bloquea endpoints)
+
+3. ✅ **order-notifications.js implementado**
+   - Archivo: `backend/triggers/order-notifications.js`
+   - 6 handlers: created, preparing, driver_assigned, in_delivery, delivered, cancelled
+   - Notifica a: CLIENTES (usuarios que hicieron el pedido)
+
+4. ✅ **driver-notifications.js implementado**
+   - Archivo: `backend/triggers/driver-notifications.js`
+   - 4 handlers: order_assigned, order_ready, order_cancelled, order_updated
+   - Notifica a: REPARTIDORES (usuarios con claim repartidor)
+
+5. ✅ **admin-notifications.js implementado**
+   - Archivo: `backend/triggers/admin-notifications.js`
+   - 2 handlers: new_order, order_cancelled
+   - Helper: `getAdminUserIds()` - obtiene lista de admins desde Firestore
+   - Notifica a: ADMINS (usuarios con isAdmin o isSuperAdmin en Firestore)
+
+6. ✅ **Integración completa con backend**
+   - Archivos modificados:
+     - `backend/pedidos.js` - 4 puntos de integración
+     - `backend/repartidores.js` - 1 punto de integración
+   - Eventos integrados:
+     - POST /api/pedidos → `order.created` + `admin.new_order`
+     - PUT /api/pedidos/control/:id/status → `order.preparing/in_delivery/delivered`
+     - PUT /api/pedidos/control/:id/asignar-repartidor → `order.driver_assigned` + `driver.order_assigned`
+     - Cancelar pedido → `order.cancelled` + `driver.order_cancelled` + `admin.order_cancelled`
+     - Repartidor marca entregado → `order.delivered`
+
+7. ✅ **Bug del Header arreglado**
+   - Archivo: `src/hooks/use-logo-url.tsx`
+   - Problema: Usaba `db` importado directamente (causaba error de Firebase)
+   - Solución: Ahora usa `useContext(FirebaseContext)` de forma segura
+   - Security Rules: Agregadas para colección `config` (lectura pública)
+
+---
+
+### 🔜 LO QUE FALTA POR HACER (8/14 tareas)
+
+#### **SIGUIENTE PASO INMEDIATO: TESTING (100% cobertura)**
+
+**8. Tests unitarios para trigger-dispatcher (~20 tests)**
+   - Archivo a crear: `backend/__tests__/triggers/trigger-dispatcher.test.js`
+   - Qué testear:
+     - ✅ Despacha eventos correctamente a cada categoría
+     - ✅ Valida formato de eventos
+     - ✅ Maneja eventos desconocidos
+     - ✅ Fire-and-forget: no lanza errores por defecto
+     - ✅ `skipErrorHandling: true` lanza errores en tests
+     - ✅ `dispatchBatch()` funciona correctamente
+     - ✅ `isEventSupported()` valida correctamente
+     - ✅ `getSupportedEvents()` retorna lista correcta
+
+**9. Tests unitarios para order-notifications (~30 tests)**
+   - Archivo a crear: `backend/__tests__/triggers/order-notifications.test.js`
+   - Qué testear:
+     - Cada handler (created, preparing, driver_assigned, etc.)
+     - Usuario sin tokens activos
+     - Actualización de estadísticas
+     - Manejo de errores de FCM
+     - Validación de campos requeridos
+
+**10. Tests unitarios para driver-notifications (~25 tests)**
+   - Archivo a crear: `backend/__tests__/triggers/driver-notifications.test.js`
+   - Similar estructura a order-notifications
+
+**11. Tests unitarios para admin-notifications (~20 tests)**
+   - Archivo a crear: `backend/__tests__/triggers/admin-notifications.test.js`
+   - Incluir tests para `getAdminUserIds()`
+   - Testear notificación a múltiples admins
+
+**12. Tests de integración completos (~25 tests)**
+   - Archivo a crear: `backend/__tests__/integration/triggers-pedidos.test.js`
+   - Tests end-to-end:
+     - POST /api/pedidos → dispara eventos correctos
+     - Cambios de estado → disparan eventos correctos
+     - Verificar que endpoints retornan 200/201 aunque falle notificación
+
+**13. Verificar 100% cobertura de tests**
+   - Comando: `npm test -- --coverage`
+   - Verificar: Todos los módulos de triggers tienen 100% cobertura
+   - Tiempo estimado ejecución: <3 segundos
+
+**14. Actualizar README.md del módulo FCM**
+   - Archivo: `docs/03-modules/fcm-notifications/README.md`
+   - Actualizar: Estado de FASE 3 como completada
+   - Agregar: Ejemplos de uso de los triggers
+
+---
+
+### 📋 INSTRUCCIONES PARA LA PRÓXIMA SESIÓN
+
+**1. PRIORIDAD 1: Implementar Tests (Nexus + Vanguard)**
+
+```bash
+# PASO 1: Leer el plan de testing
+cat docs/03-modules/fcm-notifications/03-triggers-implementation-plan.md
+
+# PASO 2: Leer el código implementado para entender qué testear
+cat backend/triggers/trigger-dispatcher.js
+cat backend/triggers/order-notifications.js
+cat backend/triggers/driver-notifications.js
+cat backend/triggers/admin-notifications.js
+
+# PASO 3: Implementar tests siguiendo la estructura de FASE 2
+# Referencia: backend/__tests__/fcm/*.test.js (74 tests existentes)
+
+# PASO 4: Ejecutar tests mientras se implementan
+npm test -- backend/__tests__/triggers/
+
+# PASO 5: Verificar cobertura completa
+npm test -- --coverage
+```
+
+**2. Estructura recomendada de tests:**
+
+Cada archivo de test debe seguir este patrón:
+
+```javascript
+// backend/__tests__/triggers/trigger-dispatcher.test.js
+
+const triggerDispatcher = require('../../triggers/trigger-dispatcher');
+const orderNotifications = require('../../triggers/order-notifications');
+const driverNotifications = require('../../triggers/driver-notifications');
+const adminNotifications = require('../../triggers/admin-notifications');
+
+jest.mock('../../triggers/order-notifications');
+jest.mock('../../triggers/driver-notifications');
+jest.mock('../../triggers/admin-notifications');
+
+describe('TriggerDispatcher', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('dispatch()', () => {
+    test('should dispatch order events to orderNotifications', async () => {
+      orderNotifications.handleEvent.mockResolvedValue({ success: true });
+
+      const result = await triggerDispatcher.dispatch('order.created', {
+        orderId: 'test123',
+        userId: 'user123'
+      });
+
+      expect(result.success).toBe(true);
+      expect(orderNotifications.handleEvent).toHaveBeenCalledWith(
+        'order.created',
+        { orderId: 'test123', userId: 'user123' },
+        {}
+      );
+    });
+
+    // ... más tests
+  });
+
+  describe('dispatchBatch()', () => {
+    // ... tests
+  });
+
+  describe('isEventSupported()', () => {
+    // ... tests
+  });
+});
+```
+
+**3. Mocks necesarios para los tests:**
+
+Los triggers dependen de estos módulos que deben mockearse:
+
+```javascript
+// En cada test file
+jest.mock('../../fcm/fcm-service');
+jest.mock('../../fcm/notification-builder');
+jest.mock('../../fcm/stats-tracker');
+jest.mock('../../fcm/token-manager');
+```
+
+**4. Datos de prueba (fixtures):**
+
+```javascript
+const mockOrderData = {
+  userId: 'user123',
+  total: 350,
+  orderNumber: 'ORD-12345',
+  items: [{ name: 'Taco', quantity: 3 }],
+  status: 'Pedido Realizado'
+};
+
+const mockToken = {
+  token: 'fcm-token-123',
+  userId: 'user123',
+  platform: 'web',
+  isActive: true
+};
+```
+
+**5. Verificación antes de completar FASE 3:**
+
+```bash
+# Todos los tests deben pasar
+npm test
+
+# Cobertura debe ser 100% en módulos de triggers
+npm test -- --coverage --collectCoverageFrom='backend/triggers/**/*.js'
+
+# Verificar integración manual (opcional)
+# 1. Crear un pedido y verificar que lleguen notificaciones
+# 2. Cambiar estado de un pedido
+# 3. Revisar logs del backend para ver dispatchers funcionando
+```
+
+---
+
+### 🎯 CRITERIOS DE ÉXITO PARA COMPLETAR FASE 3
+
+FASE 3 está completa SOLO cuando:
+
+1. ✅ Todos los módulos de triggers implementados (COMPLETO)
+2. ✅ Integración con endpoints de backend (COMPLETO)
+3. ⏳ ~120 tests escritos y pasando (PENDIENTE)
+4. ⏳ 100% cobertura en módulos de triggers (PENDIENTE)
+5. ⏳ Documentación actualizada (PENDIENTE)
+6. ⏳ Tests de integración end-to-end (PENDIENTE)
+
+**Tiempo estimado para completar:** 3-4 horas (solo testing)
+
+---
+
+### 💡 NOTAS IMPORTANTES PARA PRÓXIMA SESIÓN
+
+**Contexto que NO se debe perder:**
+
+1. **Patrón fire-and-forget es CRÍTICO**
+   - Las notificaciones NUNCA deben bloquear operaciones principales
+   - Si falla notificación, se loguea pero no se lanza error
+   - En tests usar `skipErrorHandling: true` para verificar errores
+
+2. **Eventos que NO se implementan en FASE 3**
+   - `admin.order_unassigned` - Requiere cron job (FASE 5)
+   - `admin.driver_inactive` - Requiere cron job (FASE 5)
+   - `admin.low_stock` - Requiere monitoreo (FASE 5)
+
+3. **Admin notifications busca en Firestore**
+   - `getAdminUserIds()` consulta collection `users`
+   - Busca `isAdmin: true` o `isSuperAdmin: true`
+   - NO usa custom claims (esos son solo para autenticación)
+
+4. **Arquitectura de FASE 2 (ya completa, no tocar):**
+   - `fcm-service.js` - Envío a FCM
+   - `notification-builder.js` - Construcción de payloads
+   - `token-manager.js` - Gestión de tokens
+   - `stats-tracker.js` - Estadísticas de notificaciones
+   - ✅ 74 tests al 100% de cobertura
+
+**Comandos útiles para debugging:**
+
+```bash
+# Ver logs del backend en tiempo real
+npm run dev | grep "\[.*Notifications\]"
+
+# Ver estructura de triggers
+tree backend/triggers/
+
+# Ver tests de FASE 2 como referencia
+cat backend/__tests__/fcm/fcm-service.test.js
+cat backend/__tests__/fcm/notification-builder.test.js
+
+# Ejecutar solo tests de triggers
+npm test -- backend/__tests__/triggers/
+```
+
+---
+
+### 🔗 ARCHIVOS CLAVE DE FASE 3
+
+**Código implementado:**
+- `backend/triggers/trigger-dispatcher.js`
+- `backend/triggers/order-notifications.js`
+- `backend/triggers/driver-notifications.js`
+- `backend/triggers/admin-notifications.js`
+- `backend/pedidos.js` (modificado - líneas con triggerDispatcher)
+- `backend/repartidores.js` (modificado - línea 548-553)
+
+**Documentación:**
+- `docs/03-modules/fcm-notifications/03-triggers-implementation-plan.md`
+- `docs/03-modules/fcm-notifications/README.md`
+
+**Tests a crear:**
+- `backend/__tests__/triggers/trigger-dispatcher.test.js`
+- `backend/__tests__/triggers/order-notifications.test.js`
+- `backend/__tests__/triggers/driver-notifications.test.js`
+- `backend/__tests__/triggers/admin-notifications.test.js`
+- `backend/__tests__/integration/triggers-pedidos.test.js`
+
+---
+
+**Última actualización:** 2025-10-27
+**Próximo agente responsable:** Nexus (Backend) + Vanguard (Testing)
+**Tiempo estimado restante:** 3-4 horas (solo testing)
+

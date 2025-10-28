@@ -1,6 +1,7 @@
 const express = require('express');
 const admin = require('firebase-admin');
 const authMiddleware = require('./authMiddleware');
+const triggerDispatcher = require('./triggers/trigger-dispatcher');
 
 const router = express.Router();
 const db = admin.firestore();
@@ -542,6 +543,14 @@ router.put('/:orderId/marcar-entregado', authMiddleware, requireRepartidor, asyn
     }
 
     await repartidorRef.update(repartidorUpdate);
+
+    // Disparar notificación de entrega (fire-and-forget)
+    const orderData = orderDoc.data();
+    triggerDispatcher.dispatch('order.delivered', {
+      orderId,
+      userId: orderData.userId,
+      orderData: { ...orderData, status: 'Entregado', deliveredAt }
+    }).catch(err => console.error('[Repartidores] order.delivered trigger failed:', err));
 
     res.status(200).json({
       success: true,
