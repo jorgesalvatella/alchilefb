@@ -164,7 +164,7 @@ export default function LoginPage() {
                 )}
               />
               <div className="text-right -mt-4">
-                <Link href="/forgot-password" className="text-sm text-white/50 hover:text-white transition-colors">
+                <Link href="/recuperar-clave" className="text-sm text-white/50 hover:text-white transition-colors">
                     ¿Olvidaste tu contraseña?
                 </Link>
               </div>

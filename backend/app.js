@@ -4447,6 +4447,10 @@ app.use('/api/pedidos', repartidoresRouter);
 const verificationRouter = require('./verification/phone-verification-routes');
 app.use('/api/verification', verificationRouter);
 
+// --- FCM Push Notifications Module ---
+const fcmRouter = require('./routes/fcm');
+app.use('/api/fcm', fcmRouter);
+
 // ==========================================
 // MÓDULO DE GESTIÓN DE USUARIOS
 // ==========================================
@@ -4941,6 +4945,47 @@ app.post('/api/control/usuarios/:uid/generar-clave', authMiddleware, requireAdmi
 // COMMENTED OUT: This was part of archived WhatsApp verification module
 // const authRoutes = require('./routes/auth');
 // app.use('/api/auth', authRoutes);
+
+/**
+ * @swagger
+ * /api/config/init-logo:
+ *   post:
+ *     summary: Inicializar configuración del logo en Firestore
+ *     description: Crea el documento de configuración inicial con el path del logo. Solo accesible por admin/super_admin.
+ *     tags: [Config]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuración inicializada correctamente
+ *       403:
+ *         description: Acceso denegado
+ *       500:
+ *         description: Error interno del servidor
+ */
+app.post('/api/config/init-logo', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const configRef = db.collection('config').doc('site');
+
+    // Crear o actualizar la configuración del logo
+    await configRef.set({
+      logoPath: 'logos/header-logo.png',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedBy: req.user.uid || 'system'
+    }, { merge: true });
+
+    res.status(200).json({
+      message: 'Configuración del logo inicializada correctamente',
+      logoPath: 'logos/header-logo.png'
+    });
+  } catch (error) {
+    console.error('Error al inicializar configuración del logo:', error);
+    res.status(500).json({
+      message: 'Error al inicializar configuración',
+      error: error.message
+    });
+  }
+});
 
 module.exports = app;
 

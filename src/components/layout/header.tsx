@@ -8,6 +8,7 @@ import { LogOut, Menu as MenuIcon, ShoppingCart, User, Truck } from 'lucide-reac
 
 import { useAuth, useUser } from '@/firebase';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLogoUrl } from '@/hooks/use-logo-url';
 import { cn } from '@/lib/utils';
 import { adminNavigation, baseNavigation, userMenuNavigation, repartidorNavigation } from '@/lib/navigation';
 
@@ -150,6 +151,7 @@ export function Header() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const { logoUrl, isLoading: isLogoLoading } = useLogoUrl();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -270,9 +272,14 @@ export function Header() {
           <div className="md:hidden">
             <MobileNav />
           </div>
-          <Link href="/" className="flex items-center gap-3">
-            <Image src="https://imagenes.nobbora.com/Dise%C3%B1o%20sin%20t%C3%ADtulo%20(3)%20(2).png" alt="Achille Logo" width={48} height={48} className="transition-transform duration-300 hover:scale-110" />
-            <span className="hidden md:inline font-black text-3xl tracking-tighter text-white">Al Chile</span>
+          <Link href="/" className="flex items-center">
+            {isLogoLoading ? (
+              <div className="w-12 h-12 rounded-full bg-white/20 animate-pulse" />
+            ) : logoUrl ? (
+              <Image src={logoUrl} alt="Al Chile Logo" width={48} height={48} className="transition-transform duration-300 hover:scale-110" />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-xs">AC</div>
+            )}
           </Link>
         </div>
 

@@ -4,8 +4,8 @@
 
 **Agente responsable**: Sentinel (Coordinador) + Pyra (Firebase) + Nexus (Backend) + Aether (Frontend)
 **Fecha de creación**: 2025-10-26
-**Versión**: 1.1
-**Estado**: 🔧 FASE 1 COMPLETA - En Implementación
+**Versión**: 1.2
+**Estado**: 🔧 FASE 2 COMPLETA - Backend Core Funcional
 
 ---
 
@@ -342,42 +342,52 @@ alchilefb/
 
 ---
 
-### **FASE 2: Backend - Infraestructura Core** 🔧
+### **FASE 2: Backend - Infraestructura Core** ✅ COMPLETA
 
 **Tiempo estimado:** 4-5 horas
 **Agente responsable:** Nexus (Backend)
+**Estado:** ✅ COMPLETADO (2025-10-27)
 
 **Tareas:**
-1. Implementar `backend/fcm/fcm-service.js`
+1. ✅ Implementar `backend/fcm/fcm-service.js`
    - Métodos: `sendToDevice()`, `sendMulticast()`, `sendToTopic()`
    - Manejo de errores y tokens inválidos
-2. Implementar `backend/fcm/token-manager.js`
+2. ✅ Implementar `backend/fcm/token-manager.js`
    - Registrar/eliminar tokens
    - Validar tokens duplicados
    - Limpiar tokens expirados
-3. Implementar `backend/fcm/notification-builder.js`
+3. ✅ Implementar `backend/fcm/notification-builder.js`
    - Constructor de payloads FCM
    - Templates de notificaciones
-4. Implementar `backend/fcm/stats-tracker.js`
+4. ✅ Implementar `backend/fcm/stats-tracker.js`
    - Incrementar contadores
    - Actualizar estadísticas
-5. Crear endpoints API en `backend/routes/fcm.js`
+5. ✅ Crear endpoints API en `backend/routes/fcm.js`
    - `POST /api/fcm/register-token`
    - `DELETE /api/fcm/unregister-token`
    - `GET /api/fcm/stats` (solo admins)
-6. Escribir tests unitarios (Jest)
+6. ✅ Escribir tests unitarios (Jest)
 
 **Entregables:**
 - ✅ Servicios FCM funcionales
 - ✅ Endpoints API documentados
-- ✅ Tests unitarios pasando (>90% cobertura)
+- ✅ Tests unitarios pasando (100% cobertura)
 - ✅ Documento `02-backend-implementation.md`
 
 **Criterios de aceptación:**
-- [ ] `fcm-service.js` puede enviar notificaciones a dispositivos
-- [ ] `token-manager.js` registra y elimina tokens correctamente
-- [ ] Endpoints API funcionan con autenticación
-- [ ] Tests backend: 100% pasando
+- ✅ `fcm-service.js` puede enviar notificaciones a dispositivos
+- ✅ `token-manager.js` registra y elimina tokens correctamente
+- ✅ Endpoints API funcionan con autenticación
+- ✅ Tests backend: 74/74 pasando (100%)
+
+**Archivos creados/modificados:**
+- `backend/fcm/token-manager.js` (NUEVO - 17 tests)
+- `backend/fcm/fcm-service.js` (NUEVO - 14 tests)
+- `backend/fcm/notification-builder.js` (NUEVO - 20 tests)
+- `backend/fcm/stats-tracker.js` (NUEVO - 10 tests)
+- `backend/routes/fcm.js` (NUEVO - 13 tests)
+- `backend/app.js` (MODIFICADO - líneas 4450-4452)
+- `docs/03-modules/fcm-notifications/02-backend-implementation.md` (NUEVO)
 
 ---
 
@@ -821,6 +831,15 @@ match /notificationStats/{statId} {
 
 ## 📝 Changelog del Módulo
 
+### Versión 1.2 (2025-10-27)
+- ✅ **FASE 2 COMPLETA**: Backend - Infraestructura Core
+- ✅ Implementados 4 servicios core (token-manager, fcm-service, notification-builder, stats-tracker)
+- ✅ Implementados 3 endpoints API (/register-token, /unregister-token, /stats)
+- ✅ 74 tests implementados y pasando al 100%
+- ✅ Documento `02-backend-implementation.md` creado
+- ✅ Cobertura de tests: 100% en todos los módulos
+- 📝 Pendiente: FASE 3 - Triggers de Notificaciones
+
 ### Versión 1.1 (2025-10-26)
 - ✅ **FASE 1 COMPLETA**: Arquitectura y Configuración Base
 - ✅ Documento `01-firebase-console-setup.md` creado
@@ -828,7 +847,6 @@ match /notificationStats/{statId} {
 - ✅ Índices de Firestore configurados
 - ✅ Variables de entorno documentadas
 - ✅ Script de validación creado
-- 📝 Pendiente: FASE 2 - Backend Core Infrastructure
 
 ### Versión 1.0 (2025-10-26)
 - ✅ Documento de arquitectura creado
@@ -842,20 +860,27 @@ match /notificationStats/{statId} {
 ## 🎯 Próximos Pasos
 
 **FASE 1:** ✅ COMPLETA
+**FASE 2:** ✅ COMPLETA
 
-**FASE 2:** Backend - Infraestructura Core (SIGUIENTE)
-1. **Implementar** `backend/fcm/fcm-service.js`
-2. **Implementar** `backend/fcm/token-manager.js`
-3. **Implementar** `backend/fcm/notification-builder.js`
-4. **Implementar** `backend/fcm/stats-tracker.js`
-5. **Crear** endpoints API en `backend/routes/fcm.js`
-6. **Escribir** tests unitarios con Jest
+**FASE 3:** Backend - Triggers de Notificaciones (SIGUIENTE)
+1. **Implementar** `backend/triggers/order-notifications.js`
+   - Nuevo pedido → Notificar cliente + admins
+   - Cambio de estado → Notificar cliente
+   - Pedido cancelado → Notificar todos
+2. **Implementar** `backend/triggers/driver-notifications.js`
+   - Repartidor asignado → Notificar repartidor
+   - Pedido listo → Notificar repartidor
+3. **Implementar** `backend/triggers/admin-notifications.js`
+   - Nuevo pedido → Notificar admins
+   - Alertas importantes → Notificar admins
+4. **Integrar** triggers con `backend/pedidos.js` y `backend/repartidores.js`
+5. **Escribir** tests de integración completos
 
 ---
 
 **Mantenido por**: Equipo de Desarrollo Al Chile FB
-**Última actualización**: 2025-10-26
-**Versión**: 1.1
+**Última actualización**: 2025-10-27
+**Versión**: 1.2
 
-**Estado actual**: ✅ FASE 1 COMPLETA
-**Siguiente paso**: Implementar FASE 2 - Backend Core Infrastructure
+**Estado actual**: ✅ FASE 2 COMPLETA - Backend Core Funcional (74 tests)
+**Siguiente paso**: Implementar FASE 3 - Triggers de Notificaciones
