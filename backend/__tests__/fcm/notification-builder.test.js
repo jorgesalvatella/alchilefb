@@ -275,6 +275,23 @@ describe('Notification Builder', () => {
     });
   });
 
+  describe('buildPhoneVerificationNotification()', () => {
+    it('should build phone verification notification with code', () => {
+      const code = '123456';
+
+      const result = notificationBuilder.buildPhoneVerificationNotification(code);
+
+      expect(result).toHaveProperty('notification');
+      expect(result).toHaveProperty('data');
+      expect(result.notification.title).toBe('Código de Verificación - Al Chile FB');
+      expect(result.notification.body).toContain('123456');
+      expect(result.notification.body).toContain('Expira en 10 minutos');
+      expect(result.data.type).toBe('phone_verification');
+      expect(result.data.code).toBe('123456');
+      expect(result.data.clickAction).toBe('/verificar-telefono');
+    });
+  });
+
   describe('buildCustomNotification()', () => {
     it('should build custom notification with provided data', () => {
       const title = 'Custom Title';

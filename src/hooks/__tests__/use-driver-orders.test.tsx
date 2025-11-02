@@ -1,14 +1,32 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { useDriverOrders } from '../use-driver-orders';
-import { useUser } from '@/firebase/provider';
+import { useUser, useFirestore } from '@/firebase/provider';
 import { Timestamp } from 'firebase/firestore';
+
+// Mock de Firestore
+const mockOnSnapshot = jest.fn();
+const mockCollection = jest.fn();
+const mockQuery = jest.fn();
+const mockWhere = jest.fn();
+const mockOrderBy = jest.fn();
+
+jest.mock('firebase/firestore', () => ({
+  collection: (...args: any[]) => mockCollection(...args),
+  query: (...args: any[]) => mockQuery(...args),
+  where: (...args: any[]) => mockWhere(...args),
+  orderBy: (...args: any[]) => mockOrderBy(...args),
+  onSnapshot: (...args: any[]) => mockOnSnapshot(...args),
+  Timestamp: jest.requireActual('firebase/firestore').Timestamp,
+}));
 
 // Mock de Firebase provider
 jest.mock('@/firebase/provider', () => ({
   useUser: jest.fn(),
+  useFirestore: jest.fn(),
 }));
 
 const mockUseUser = useUser as jest.Mock;
+const mockUseFirestore = useFirestore as jest.Mock;
 
 describe('useDriverOrders', () => {
   const mockUser = {
@@ -17,84 +35,89 @@ describe('useDriverOrders', () => {
     getIdToken: jest.fn(() => Promise.resolve('test-token')),
   };
 
-  const mockApiOrders = {
-    pedidos: [
-      {
-        id: 'order-1',
-        driverId: 'driver-123',
-        status: 'Pendiente',
-        userId: 'user-1',
-        items: [{ name: 'Taco', quantity: 2, price: 50 }],
-        totalVerified: 100,
-        shippingAddress: { street: 'Calle 1' },
-        createdAt: {
-          _seconds: 1704067200,
-          _nanoseconds: 0,
-        },
-      },
-      {
-        id: 'order-2',
-        driverId: 'driver-123',
-        status: 'En Reparto',
-        userId: 'user-2',
-        items: [{ name: 'Burrito', quantity: 1, price: 75 }],
-        totalVerified: 75,
-        shippingAddress: { street: 'Calle 2' },
-        createdAt: {
-          _seconds: 1704153600,
-          _nanoseconds: 500000000,
-        },
-      },
-    ],
-  };
+  const mockFirestore = { collection: mockCollection };
+
+  const mockFirestoreOrders = [
+    {
+      id: 'order-1',
+      driverId: 'driver-123',
+      status: 'Pendiente',
+      userId: 'user-1',
+      items: [{ name: 'Taco', quantity: 2, price: 50 }],
+      totalVerified: 100,
+      shippingAddress: { street: 'Calle 1' },
+      createdAt: new Timestamp(1704067200, 0),
+    },
+    {
+      id: 'order-2',
+      driverId: 'driver-123',
+      status: 'En Reparto',
+      userId: 'user-2',
+      items: [{ name: 'Burrito', quantity: 1, price: 75 }],
+      totalVerified: 75,
+      shippingAddress: { street: 'Calle 2' },
+      createdAt: new Timestamp(1704153600, 500000000),
+    },
+  ];
 
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.useFakeTimers();
 
     mockUseUser.mockReturnValue({ user: mockUser, isUserLoading: false });
+    mockUseFirestore.mockReturnValue(mockFirestore);
 
-    // Mock de fetch
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockApiOrders),
-      })
-    ) as jest.Mock;
+    // Setup default onSnapshot behavior - returns orders
+    mockOnSnapshot.mockImplementation((query, successCallback) => {
+      const mockQuerySnapshot = {
+        forEach: (callback: any) => {
+          mockFirestoreOrders.forEach(order => {
+            callback({
+              data: () => order,
+              id: order.id,
+            });
+          });
+        },
+      };
+      successCallback(mockQuerySnapshot);
+      return jest.fn(); // unsubscribe function
+    });
 
     // Mock de console methods
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    jest.useRealTimers();
     jest.restoreAllMocks();
   });
 
-  it('should not fetch orders when user is not authenticated', () => {
+  it('should not subscribe to orders when user is not authenticated', () => {
     mockUseUser.mockReturnValue({ user: null, isUserLoading: false });
 
     const { result } = renderHook(() => useDriverOrders());
 
     expect(result.current.loading).toBe(false);
     expect(result.current.orders).toEqual([]);
-    expect(global.fetch).not.toHaveBeenCalled();
+    expect(mockOnSnapshot).not.toHaveBeenCalled();
   });
 
-  it('should fetch orders on mount when user is authenticated', async () => {
+  it('should not subscribe to orders when firestore is not available', () => {
+    mockUseFirestore.mockReturnValue(null);
+
     const { result } = renderHook(() => useDriverOrders());
 
-    expect(result.current.loading).toBe(true);
+    expect(result.current.loading).toBe(false);
+    expect(result.current.orders).toEqual([]);
+    expect(mockOnSnapshot).not.toHaveBeenCalled();
+  });
+
+  it('should subscribe to orders on mount when user is authenticated', async () => {
+    const { result } = renderHook(() => useDriverOrders());
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/repartidores/me/pedidos',
-        expect.objectContaining({
-          headers: {
-            Authorization: 'Bearer test-token',
-          },
-        })
-      );
+      expect(mockOnSnapshot).toHaveBeenCalled();
+      expect(mockWhere).toHaveBeenCalledWith('driverId', '==', 'driver-123');
+      expect(mockOrderBy).toHaveBeenCalledWith('createdAt', 'desc');
     });
 
     await waitFor(() => {
@@ -103,7 +126,7 @@ describe('useDriverOrders', () => {
     });
   });
 
-  it('should convert API timestamps to Firestore Timestamp objects', async () => {
+  it('should have Firestore Timestamp objects in orders', async () => {
     const { result } = renderHook(() => useDriverOrders());
 
     await waitFor(() => {
@@ -138,74 +161,46 @@ describe('useDriverOrders', () => {
     expect(order.shippingAddress).toEqual({ street: 'Calle 1' });
   });
 
-  it('should setup auto-refresh interval every 15 seconds', async () => {
-    renderHook(() => useDriverOrders());
-
-    // Initial fetch
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+  it('should cleanup subscription on unmount', async () => {
+    const mockUnsubscribe = jest.fn();
+    mockOnSnapshot.mockImplementation((query, successCallback) => {
+      const mockQuerySnapshot = {
+        forEach: (callback: any) => {
+          mockFirestoreOrders.forEach(order => {
+            callback({
+              data: () => order,
+              id: order.id,
+            });
+          });
+        },
+      };
+      successCallback(mockQuerySnapshot);
+      return mockUnsubscribe;
     });
 
-    // Clear the mock to count only interval calls
-    (global.fetch as jest.Mock).mockClear();
-
-    // Advance time by 15 seconds
-    jest.advanceTimersByTime(15000);
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-    });
-
-    // Advance another 15 seconds
-    jest.advanceTimersByTime(15000);
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  it('should cleanup interval on unmount', async () => {
     const { unmount } = renderHook(() => useDriverOrders());
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalled();
+      expect(mockOnSnapshot).toHaveBeenCalled();
     });
-
-    const initialCallCount = (global.fetch as jest.Mock).mock.calls.length;
 
     unmount();
 
-    // Advance time - should NOT trigger more fetches
-    jest.advanceTimersByTime(15000);
-
-    expect(global.fetch).toHaveBeenCalledTimes(initialCallCount);
+    expect(mockUnsubscribe).toHaveBeenCalled();
   });
 
-  it('should handle API error', async () => {
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: false,
-        json: () => Promise.resolve({ message: 'Unauthorized' }),
-      })
-    ) as jest.Mock;
-
-    const { result } = renderHook(() => useDriverOrders());
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-      expect(result.current.error).toBe('Unauthorized');
-      expect(result.current.orders).toEqual([]);
+  it('should handle Firestore error', async () => {
+    mockOnSnapshot.mockImplementation((query, successCallback, errorCallback) => {
+      errorCallback(new Error('Permission denied'));
+      return jest.fn();
     });
-  });
-
-  it('should handle network error', async () => {
-    global.fetch = jest.fn(() => Promise.reject(new Error('Network error'))) as jest.Mock;
 
     const { result } = renderHook(() => useDriverOrders());
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
-      expect(result.current.error).toBe('Network error');
+      expect(result.current.error).toBe('Permission denied');
+      expect(result.current.orders).toEqual([]);
       expect(console.error).toHaveBeenCalledWith(
         'Error fetching driver orders:',
         expect.any(Error)
@@ -213,13 +208,16 @@ describe('useDriverOrders', () => {
     });
   });
 
-  it('should handle empty response', async () => {
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ pedidos: [] }),
-      })
-    ) as jest.Mock;
+  it('should handle empty result from Firestore', async () => {
+    mockOnSnapshot.mockImplementation((query, successCallback) => {
+      const emptyQuerySnapshot = {
+        forEach: (callback: any) => {
+          // No orders
+        },
+      };
+      successCallback(emptyQuerySnapshot);
+      return jest.fn();
+    });
 
     const { result } = renderHook(() => useDriverOrders());
 
@@ -230,24 +228,7 @@ describe('useDriverOrders', () => {
     });
   });
 
-  it('should handle response without pedidos property', async () => {
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({}),
-      })
-    ) as jest.Mock;
-
-    const { result } = renderHook(() => useDriverOrders());
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-      expect(result.current.orders).toEqual([]);
-      expect(result.current.error).toBeNull();
-    });
-  });
-
-  it('should refetch orders when refetch is called', async () => {
+  it('should handle refetch call (no-op with real-time)', async () => {
     const { result } = renderHook(() => useDriverOrders());
 
     await waitFor(() => {
@@ -255,51 +236,13 @@ describe('useDriverOrders', () => {
       expect(result.current.orders).toHaveLength(2);
     });
 
-    // Clear fetch calls
-    (global.fetch as jest.Mock).mockClear();
-
-    // Call refetch
+    // Call refetch - should just log a message
     result.current.refetch();
 
-    // Wait for loading to become true, then false
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
-    });
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-  });
-
-  it('should clear error on successful refetch', async () => {
-    // First call fails
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: false,
-        json: () => Promise.resolve({ message: 'Server error' }),
-      })
-    ) as jest.Mock;
-
-    const { result } = renderHook(() => useDriverOrders());
-
-    await waitFor(() => {
-      expect(result.current.error).toBe('Server error');
-    });
-
-    // Now make it succeed
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(mockApiOrders),
-      })
-    ) as jest.Mock;
-
-    result.current.refetch();
-
-    await waitFor(() => {
-      expect(result.current.error).toBeNull();
-      expect(result.current.orders).toHaveLength(2);
-    });
+    // Verify console.log was called
+    expect(console.log).toHaveBeenCalledWith(
+      '[useDriverOrders] Refetch called - data is already real-time'
+    );
   });
 
   it('should reset orders when user logs out', async () => {
@@ -319,45 +262,33 @@ describe('useDriverOrders', () => {
     });
   });
 
-  it('should handle orders without createdAt timestamp', async () => {
-    const ordersWithoutTimestamp = {
-      pedidos: [
-        {
-          id: 'order-3',
-          driverId: 'driver-123',
-          status: 'Pendiente',
-          userId: 'user-3',
-          items: [],
-          totalVerified: 50,
-          shippingAddress: {},
-          // No createdAt
+  it('should cleanup and resubscribe when user changes', async () => {
+    const mockUnsubscribe1 = jest.fn();
+    const mockUnsubscribe2 = jest.fn();
+
+    let callCount = 0;
+    mockOnSnapshot.mockImplementation((query, successCallback) => {
+      const mockQuerySnapshot = {
+        forEach: (callback: any) => {
+          mockFirestoreOrders.forEach(order => {
+            callback({
+              data: () => order,
+              id: order.id,
+            });
+          });
         },
-      ],
-    };
+      };
+      successCallback(mockQuerySnapshot);
 
-    global.fetch = jest.fn(() =>
-      Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(ordersWithoutTimestamp),
-      })
-    ) as jest.Mock;
-
-    const { result } = renderHook(() => useDriverOrders());
-
-    await waitFor(() => {
-      expect(result.current.orders).toHaveLength(1);
-      expect(result.current.orders[0].createdAt).toBeNull();
+      callCount++;
+      return callCount === 1 ? mockUnsubscribe1 : mockUnsubscribe2;
     });
-  });
 
-  it('should cleanup and restart interval when user changes', async () => {
     const { rerender } = renderHook(() => useDriverOrders());
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalled();
+      expect(mockOnSnapshot).toHaveBeenCalledTimes(1);
     });
-
-    const initialCallCount = (global.fetch as jest.Mock).mock.calls.length;
 
     // Change user
     const newUser = {
@@ -370,17 +301,67 @@ describe('useDriverOrders', () => {
     rerender();
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/repartidores/me/pedidos',
-        expect.objectContaining({
-          headers: {
-            Authorization: 'Bearer new-token',
-          },
-        })
-      );
+      // Should have unsubscribed from old subscription
+      expect(mockUnsubscribe1).toHaveBeenCalled();
+      // Should have created new subscription
+      expect(mockOnSnapshot).toHaveBeenCalledTimes(2);
+      expect(mockWhere).toHaveBeenCalledWith('driverId', '==', 'driver-456');
+    });
+  });
+
+  it('should update orders in real-time when data changes', async () => {
+    let updateCallback: any;
+
+    mockOnSnapshot.mockImplementation((query, successCallback) => {
+      updateCallback = successCallback;
+
+      // Initial data
+      const mockQuerySnapshot = {
+        forEach: (callback: any) => {
+          mockFirestoreOrders.forEach(order => {
+            callback({
+              data: () => order,
+              id: order.id,
+            });
+          });
+        },
+      };
+      successCallback(mockQuerySnapshot);
+      return jest.fn();
     });
 
-    // Should have made a new initial fetch
-    expect((global.fetch as jest.Mock).mock.calls.length).toBeGreaterThan(initialCallCount);
+    const { result } = renderHook(() => useDriverOrders());
+
+    await waitFor(() => {
+      expect(result.current.orders).toHaveLength(2);
+    });
+
+    // Simulate real-time update with new order
+    const newOrder = {
+      id: 'order-3',
+      driverId: 'driver-123',
+      status: 'Preparando',
+      userId: 'user-3',
+      items: [{ name: 'Quesadilla', quantity: 1, price: 60 }],
+      totalVerified: 60,
+      shippingAddress: { street: 'Calle 3' },
+      createdAt: new Timestamp(1704240000, 0),
+    };
+
+    updateCallback({
+      forEach: (callback: any) => {
+        [...mockFirestoreOrders, newOrder].forEach(order => {
+          callback({
+            data: () => order,
+            id: order.id,
+          });
+        });
+      },
+    });
+
+    await waitFor(() => {
+      expect(result.current.orders).toHaveLength(3);
+      expect(result.current.orders[2].id).toBe('order-3');
+    });
   });
 });

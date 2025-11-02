@@ -162,17 +162,24 @@ const SUPPORTED_EVENTS = {
  * @returns {boolean}
  */
 function isEventSupported(eventType) {
+  if (!eventType || typeof eventType !== 'string') {
+    return false;
+  }
   const [category, action] = eventType.split('.');
   return SUPPORTED_EVENTS[category]?.includes(eventType) || false;
 }
 
 /**
- * Obtiene la lista de eventos soportados
+ * Obtiene la lista de eventos soportados (copia profunda)
  *
  * @returns {object}
  */
 function getSupportedEvents() {
-  return { ...SUPPORTED_EVENTS };
+  return {
+    order: [...SUPPORTED_EVENTS.order],
+    driver: [...SUPPORTED_EVENTS.driver],
+    admin: [...SUPPORTED_EVENTS.admin]
+  };
 }
 
 module.exports = {

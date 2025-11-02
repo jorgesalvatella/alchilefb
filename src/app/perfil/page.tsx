@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
 import { useToast } from '@/hooks/use-toast';
+import { NotificationSettings } from '@/components/notifications/NotificationSettings';
 
 interface UserProfile {
   firstName?: string;
@@ -323,6 +324,12 @@ function ProfilePage({ user }: WithAuthProps) {
                         <Pen className="mr-2 h-4 w-4" /> Editar Perfil
                     </Button>
                 )}
+
+                <Separator className="bg-white/20" />
+
+                <div className="mt-6">
+                    <NotificationSettings />
+                </div>
 
                 <Separator className="bg-white/20" />
 

@@ -77,6 +77,14 @@ jest.mock('./authMiddleware', () => jest.fn((req, res, next) => {
   next();
 }));
 
+// Mock del trigger dispatcher
+jest.mock('./triggers/trigger-dispatcher', () => ({
+  dispatch: jest.fn().mockResolvedValue({ success: true, results: {} }),
+  dispatchBatch: jest.fn().mockResolvedValue({ success: true, results: [], failedCount: 0 }),
+  isEventSupported: jest.fn().mockReturnValue(true),
+  getSupportedEvents: jest.fn().mockReturnValue({ order: [], driver: [], admin: [] })
+}));
+
 describe('POST /api/pedidos', () => {
   const { mockDocGet, mockAdd } = admin;
 

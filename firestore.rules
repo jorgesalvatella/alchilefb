@@ -189,10 +189,11 @@ service cloud.firestore {
        * @description Manages new orders ('pedidos'). Users can create them and only read their own.
        * @path /pedidos/{pedidoId}
        * @allow (list, get) A user can read an order if their UID matches the order's userId field.
+       * @allow (list, get) A driver can read an order if their UID matches the order's driverId field.
        * @allow (create) Any signed-in user can create an order.
        * @principle Enforces ownership for reads, allows creation for authenticated users.
        */
-      allow list, get: if request.auth.uid == resource.data.userId;
+      allow list, get: if request.auth.uid == resource.data.userId || request.auth.uid == resource.data.driverId;
       allow create: if isSignedIn();
       // Admins/SuperAdmins can manage all orders
       allow read, write: if isAdmin() || isSuperAdmin();

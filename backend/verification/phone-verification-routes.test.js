@@ -13,6 +13,26 @@ jest.mock('./code-service', () => ({
   cleanupExpiredCodes: jest.fn(),
 }));
 
+// Mock del FCM service
+jest.mock('../fcm/fcm-service', () => ({
+  sendMulticast: jest.fn().mockResolvedValue({ successCount: 1, failureCount: 0 }),
+}));
+
+// Mock del notification builder
+jest.mock('../fcm/notification-builder', () => ({
+  buildPhoneVerificationNotification: jest.fn((code) => ({
+    notification: {
+      title: 'Código de Verificación - Al Chile FB',
+      body: `Tu código de verificación es: ${code}\n\nExpira en 10 minutos`,
+    },
+    data: {
+      type: 'phone_verification',
+      code,
+      clickAction: '/verificar-telefono',
+    },
+  })),
+}));
+
 // Mock de firebase-admin
 jest.mock('firebase-admin', () => {
   const mockUserDoc = {
@@ -26,24 +46,43 @@ jest.mock('firebase-admin', () => {
   const mockUpdate = jest.fn().mockResolvedValue();
   const mockGet = jest.fn().mockResolvedValue(mockUserDoc);
 
+  // Mock para tokens móviles (puede ser modificado en tests)
+  const mockTokensSnapshot = { empty: true, docs: [] };
+
   const firestore = jest.fn(() => ({
-    collection: jest.fn((collectionName) => ({
-      doc: jest.fn(() => ({
-        get: mockGet,
-        update: mockUpdate,
-      })),
-      where: jest.fn(() => ({
+    collection: jest.fn((collectionName) => {
+      if (collectionName === 'deviceTokens') {
+        // Mock específico para deviceTokens
+        return {
+          where: jest.fn(() => ({
+            where: jest.fn(() => ({
+              where: jest.fn(() => ({
+                get: jest.fn().mockResolvedValue(mockTokensSnapshot),
+              })),
+            })),
+          })),
+        };
+      }
+
+      // Mock por defecto para otras colecciones
+      return {
+        doc: jest.fn(() => ({
+          get: mockGet,
+          update: mockUpdate,
+        })),
         where: jest.fn(() => ({
           where: jest.fn(() => ({
-            orderBy: jest.fn(() => ({
-              limit: jest.fn(() => ({
-                get: jest.fn().mockResolvedValue({ empty: true, docs: [] }),
+            where: jest.fn(() => ({
+              orderBy: jest.fn(() => ({
+                limit: jest.fn(() => ({
+                  get: jest.fn().mockResolvedValue({ empty: true, docs: [] }),
+                })),
               })),
             })),
           })),
         })),
-      })),
-    })),
+      };
+    }),
   }));
 
   function MockFieldValue() {}
@@ -56,6 +95,7 @@ jest.mock('firebase-admin', () => {
     mockUpdate,
     mockGet,
     mockUserDoc,
+    mockTokensSnapshot,
   };
 });
 
@@ -71,7 +111,7 @@ describe('Phone Verification Routes', () => {
   });
 
   describe('POST /api/verification/generate-code', () => {
-    it('should generate a verification code successfully', async () => {
+    it('should generate code with display strategy when no mobile tokens', async () => {
       const mockExpiresAt = new Date('2025-10-26T12:00:00Z');
 
       codeService.createVerificationCode.mockResolvedValue({
@@ -80,6 +120,8 @@ describe('Phone Verification Routes', () => {
         codeId: 'code-id-123',
       });
 
+      // Por defecto, mockTokensSnapshot.empty = true (sin tokens móviles)
+
       const res = await request(app)
         .post('/api/verification/generate-code')
         .set('Authorization', 'Bearer valid-token');
@@ -87,8 +129,10 @@ describe('Phone Verification Routes', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual({
         success: true,
+        strategy: 'display',
         code: '123456',
         expiresAt: mockExpiresAt.toISOString(),
+        message: 'Ingresa el código que ves abajo',
       });
 
       expect(codeService.createVerificationCode).toHaveBeenCalledWith(

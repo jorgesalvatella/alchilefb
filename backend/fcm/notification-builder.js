@@ -251,6 +251,25 @@ function buildPromotionNotification(promotionData) {
 }
 
 /**
+ * Construye una notificación de verificación de teléfono
+ * @param {string} code - Código de verificación de 6 dígitos
+ * @returns {{notification: {title: string, body: string}, data: Object}}
+ */
+function buildPhoneVerificationNotification(code) {
+  return {
+    notification: {
+      title: 'Código de Verificación - Al Chile FB',
+      body: `Tu código de verificación es: ${code}\n\nExpira en 10 minutos`,
+    },
+    data: {
+      type: 'phone_verification',
+      code,
+      clickAction: '/verificar-telefono',
+    },
+  };
+}
+
+/**
  * Construye una notificación personalizada
  * @param {string} title - Título de la notificación
  * @param {string} body - Cuerpo de la notificación
@@ -272,5 +291,6 @@ module.exports = {
   buildDriverNotification,
   buildAdminNotification,
   buildPromotionNotification,
+  buildPhoneVerificationNotification,
   buildCustomNotification,
 };

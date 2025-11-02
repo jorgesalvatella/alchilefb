@@ -6,6 +6,8 @@ import { Header } from '@/components/layout/header';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from 'sonner';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { FCMProvider } from '@/components/notifications/FCMProvider';
+import { NotificationPermissionBanner } from '@/components/notifications/NotificationPermissionBanner';
 
 const roboto = Roboto({
   subsets: ['latin'],
@@ -25,6 +27,8 @@ export default function RootLayout({
       >
         <FirebaseClientProvider>
           <CartProvider>
+            <FCMProvider />
+            <NotificationPermissionBanner />
             <Header />
             <main className="min-h-screen">{children}</main>
             <Footer />

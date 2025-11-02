@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useUser } from '@/firebase/provider';
-import { Timestamp } from 'firebase/firestore';
+import { useState, useEffect, useCallback } from 'react';
+import { useUser, useFirestore } from '@/firebase/provider';
+import { collection, query, where, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
 
 interface Order {
   id: string;
@@ -14,100 +14,59 @@ interface Order {
   [key: string]: any;
 }
 
-interface ApiOrder {
-  id: string;
-  driverId: string;
-  status: string;
-  userId: string;
-  items: any[];
-  totalVerified: number;
-  shippingAddress: any;
-  createdAt: {
-    _seconds: number;
-    _nanoseconds: number;
-  };
-  [key: string]: any;
-}
-
-const AUTO_REFRESH_INTERVAL = 15000; // 15 segundos
-
 export function useDriverOrders() {
   const { user } = useUser();
+  const firestore = useFirestore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchOrders = useCallback(async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch('/api/repartidores/me/pedidos', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'No se pudieron cargar los pedidos');
-      }
-
-      const data = await response.json();
-
-      // Convertir los pedidos de la API al formato esperado
-      const ordersData: Order[] = (data.pedidos || []).map((order: ApiOrder) => ({
-        ...order,
-        createdAt: order.createdAt && order.createdAt._seconds
-          ? new Timestamp(order.createdAt._seconds, order.createdAt._nanoseconds || 0)
-          : null,
-      }));
-
-      setOrders(ordersData);
-      setError(null);
-      setLoading(false);
-    } catch (err: any) {
-      console.error('Error fetching driver orders:', err);
-      setError(err.message);
-      setLoading(false);
-    }
-  }, [user]);
-
-  // Fetch inicial y configurar auto-refresh
+  // Establecer subscripción en tiempo real
   useEffect(() => {
-    if (!user) {
+    if (!user || !firestore) {
       setLoading(false);
       setOrders([]);
       return;
     }
 
-    // Fetch inicial
-    setLoading(true);
-    fetchOrders();
+    // Consultar pedidos del repartidor actual
+    const ordersRef = collection(firestore, 'pedidos');
+    const q = query(
+      ordersRef,
+      where('driverId', '==', user.uid),
+      orderBy('createdAt', 'desc')
+    );
 
-    // Configurar auto-refresh cada 15 segundos
-    intervalRef.current = setInterval(() => {
-      fetchOrders();
-    }, AUTO_REFRESH_INTERVAL);
-
-    // Cleanup: limpiar interval al desmontar
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+    // Establecer subscripción en tiempo real
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const ordersData: Order[] = [];
+        querySnapshot.forEach((doc) => {
+          ordersData.push({ ...doc.data(), id: doc.id } as Order);
+        });
+        setOrders(ordersData);
+        setError(null);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Error fetching driver orders:', err);
+        setError(err.message);
+        setOrders([]);
+        setLoading(false);
       }
-    };
-  }, [user, fetchOrders]);
+    );
 
-  // Función para refetch manual (ej: cuando el usuario pulsa "Actualizar")
+    // Cleanup: desuscribirse cuando el componente se desmonte
+    return () => unsubscribe();
+  }, [user, firestore]);
+
+  // Función para refetch manual (realmente ya no es necesaria con tiempo real, pero la mantenemos por compatibilidad)
   const refetch = useCallback(() => {
-    setLoading(true);
-    fetchOrders();
-  }, [fetchOrders]);
+    // Con onSnapshot, los datos ya están actualizados en tiempo real
+    // Esta función ahora es un no-op pero la mantenemos para no romper el código existente
+    console.log('[useDriverOrders] Refetch called - data is already real-time');
+  }, []);
 
   return { orders, loading, error, refetch };
 }

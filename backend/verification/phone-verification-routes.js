@@ -6,6 +6,8 @@ const {
   verifyCode,
   getActiveCode
 } = require('./code-service');
+const { sendMulticast } = require('../fcm/fcm-service');
+const { buildPhoneVerificationNotification } = require('../fcm/notification-builder');
 
 const router = express.Router();
 const db = admin.firestore();
@@ -70,11 +72,59 @@ router.post('/generate-code', authMiddleware, async (req, res) => {
       userData.phoneNumber
     );
 
-    // Retornar el código en la response para mostrarlo en la UI
+    // ============================================================================
+    // ESTRATEGIA: Detectar tokens móviles y decidir método de envío
+    // ============================================================================
+
+    // Buscar tokens FCM SOLO de dispositivos móviles (android, ios)
+    const mobileTokensSnapshot = await db.collection('deviceTokens')
+      .where('userId', '==', userId)
+      .where('isActive', '==', true)
+      .where('platform', 'in', ['android', 'ios'])
+      .get();
+
+    let strategy = 'display'; // Default: mostrar en pantalla
+    let message = 'Ingresa el código que ves abajo';
+
+    // Si tiene tokens móviles, enviar notificación FCM
+    if (!mobileTokensSnapshot.empty) {
+      strategy = 'fcm_mobile';
+
+      // Extraer tokens
+      const tokens = mobileTokensSnapshot.docs.map(doc => doc.data().token);
+
+      console.log(`[Phone Verification] Enviando código a ${tokens.length} dispositivo(s) móvil(es) del usuario ${userId}`);
+
+      // Construir notificación
+      const { notification, data } = buildPhoneVerificationNotification(code);
+
+      // Enviar notificación a todos los dispositivos móviles
+      try {
+        await sendMulticast({
+          tokens,
+          notification,
+          data
+        });
+
+        message = 'Código enviado a tu dispositivo móvil';
+        console.log('[Phone Verification] Notificación FCM enviada exitosamente');
+      } catch (fcmError) {
+        console.error('[Phone Verification] Error enviando notificación FCM:', fcmError);
+        // Si falla FCM, hacer fallback a mostrar en pantalla
+        strategy = 'display';
+        message = 'No se pudo enviar notificación. Usa el código de abajo';
+      }
+    } else {
+      console.log(`[Phone Verification] Usuario ${userId} no tiene dispositivos móviles registrados. Mostrando código en pantalla.`);
+    }
+
+    // Retornar response según estrategia
     res.status(200).json({
       success: true,
-      code,
-      expiresAt: expiresAt.toISOString()
+      strategy, // 'fcm_mobile' o 'display'
+      code: strategy === 'display' ? code : undefined, // Solo enviar código si es display
+      expiresAt: expiresAt.toISOString(),
+      message
     });
 
   } catch (error) {

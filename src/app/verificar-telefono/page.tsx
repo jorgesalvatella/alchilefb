@@ -22,6 +22,7 @@ export default function VerificarTelefonoPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [attemptsRemaining, setAttemptsRemaining] = useState<number>(3);
+  const [strategy, setStrategy] = useState<'fcm_mobile' | 'display' | null>(null);
 
   // Generar código al montar (Decisión 2A: generar nuevo automáticamente)
   useEffect(() => {
@@ -58,13 +59,26 @@ export default function VerificarTelefonoPage() {
       }
 
       const data = await response.json();
-      setGeneratedCode(data.code);
+
+      // Manejar estrategia de envío
+      setStrategy(data.strategy);
       setExpiresAt(new Date(data.expiresAt));
 
-      toast({
-        title: 'Código generado',
-        description: 'Ingresa el código que ves arriba',
-      });
+      if (data.strategy === 'fcm_mobile') {
+        // Código enviado a móvil - NO mostrarlo en pantalla
+        setGeneratedCode('');
+        toast({
+          title: '📱 Código enviado a tu móvil',
+          description: data.message || 'Revisa tu dispositivo móvil para el código de verificación',
+        });
+      } else {
+        // Mostrar código en pantalla (display)
+        setGeneratedCode(data.code || '');
+        toast({
+          title: 'Código generado',
+          description: data.message || 'Ingresa el código que ves abajo',
+        });
+      }
 
     } catch (error: any) {
       console.error('Error generating code:', error);
@@ -202,12 +216,15 @@ export default function VerificarTelefonoPage() {
               Verifica tu Teléfono
             </h1>
             <p className="text-white/60">
-              Para realizar pedidos, ingresa el código que ves abajo
+              {strategy === 'fcm_mobile'
+                ? 'Revisa tu dispositivo móvil para el código de verificación'
+                : 'Para realizar pedidos, ingresa el código que ves abajo'
+              }
             </p>
           </div>
 
-          {/* Código Visual */}
-          {generatedCode && (
+          {/* Código Visual (solo si strategy = display) */}
+          {strategy === 'display' && generatedCode && (
             <>
               <VerificationCodeDisplay code={generatedCode} />
 
@@ -218,6 +235,27 @@ export default function VerificarTelefonoPage() {
                   onExpire={handleExpire}
                 />
               )}
+            </>
+          )}
+
+          {/* Timer independiente (si strategy = fcm_mobile) */}
+          {strategy === 'fcm_mobile' && expiresAt && !generatedCode && (
+            <>
+              {/* Mensaje visual para FCM */}
+              <div className="mb-6 p-4 bg-blue-500/20 border border-blue-500/50 rounded-xl">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-3xl">📱</span>
+                  <div>
+                    <p className="text-white font-semibold">Código enviado a tu móvil</p>
+                    <p className="text-white/70 text-sm">Revisa las notificaciones de tu dispositivo</p>
+                  </div>
+                </div>
+              </div>
+
+              <VerificationTimer
+                expiresAt={expiresAt}
+                onExpire={handleExpire}
+              />
             </>
           )}
 
