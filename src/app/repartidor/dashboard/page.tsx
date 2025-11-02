@@ -1,14 +1,18 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useDriverOrders } from '@/hooks/use-driver-orders';
 import { useETACalculator } from '@/hooks/use-eta-calculator';
+import { useNewOrderDetector } from '@/hooks/use-new-order-detector';
 import { OrderCard } from '@/components/repartidor/OrderCard';
 import { DriverStats } from '@/components/repartidor/DriverStats';
+import { RealtimeStatusBadge } from '@/components/repartidor/RealtimeStatusBadge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Package, RefreshCw, AlertCircle, ArrowUpDown, Calendar, MapPin, ListOrdered } from 'lucide-react';
 import { withAuth, WithAuthProps } from '@/firebase/withAuth';
+import { toast } from '@/hooks/use-toast';
+import { playCashRegisterSound } from '@/utils/cash-register-sound';
 
 type SortOption = 'date' | 'distance' | 'status';
 
@@ -17,6 +21,54 @@ function DriverDashboard({ user, claims }: WithAuthProps) {
   const [filter, setFilter] = useState<'all' | 'pending' | 'in-progress'>('pending');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('date');
+
+  // Refs para manejar el scroll a pedidos específicos
+  const orderRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Función para hacer scroll a un pedido específico
+  const scrollToOrder = useCallback((orderId: string) => {
+    const orderElement = orderRefs.current[orderId];
+    if (orderElement) {
+      orderElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Efecto visual: highlight temporal
+      orderElement.style.transition = 'all 0.3s ease';
+      orderElement.style.transform = 'scale(1.02)';
+      orderElement.style.boxShadow = '0 0 20px rgba(251, 146, 60, 0.5)';
+      setTimeout(() => {
+        orderElement.style.transform = 'scale(1)';
+        orderElement.style.boxShadow = '';
+      }, 1000);
+    }
+  }, []);
+
+  // Handler para nuevo pedido: muestra toast + reproduce sonido
+  const handleNewOrder = useCallback((order: any) => {
+    // Reproducir sonido de caja registradora
+    playCashRegisterSound();
+
+    // Mostrar toast con información del pedido
+    toast({
+      title: '🔔 Nuevo Pedido Asignado',
+      description: `Pedido #${order.id}`,
+      duration: 5000,
+      action: (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => scrollToOrder(order.id)}
+          className="border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white"
+        >
+          Ver Pedido
+        </Button>
+      ),
+    });
+  }, [scrollToOrder]);
+
+  // Detectar nuevos pedidos en tiempo real
+  useNewOrderDetector({
+    orders,
+    onNewOrder: handleNewOrder,
+  });
 
   // Prepare destinations for ETA calculation
   const destinations = useMemo(() => {
@@ -153,11 +205,16 @@ function DriverDashboard({ user, claims }: WithAuthProps) {
     <main className="min-h-screen overflow-x-hidden">
       {/* Page Title and Subtitle */}
       <div className="text-center mb-8 pt-32 px-4">
-        <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white mb-4 break-words">
-          <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
-            Mis Pedidos
-          </span>
-        </h1>
+        <div className="flex items-center justify-center gap-3 mb-4 flex-wrap">
+          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white break-words">
+            <span className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+              Mis Pedidos
+            </span>
+          </h1>
+          <div className="mt-2 md:mt-4">
+            <RealtimeStatusBadge loading={loading} error={error} />
+          </div>
+        </div>
         <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto px-4">Panel de entregas</p>
       </div>
 
@@ -292,11 +349,17 @@ function DriverDashboard({ user, claims }: WithAuthProps) {
                 : null;
 
               return (
-                <OrderCard
+                <div
                   key={order.id}
-                  order={order}
-                  eta={eta?.duration || null}
-                />
+                  ref={(el) => {
+                    orderRefs.current[order.id] = el;
+                  }}
+                >
+                  <OrderCard
+                    order={order}
+                    eta={eta?.duration || null}
+                  />
+                </div>
               );
             })}
           </>
