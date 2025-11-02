@@ -1,6 +1,4 @@
 const request = require('supertest');
-const app = require('./app');
-const admin = require('firebase-admin');
 
 // Mock completo de firebase-admin
 jest.mock('firebase-admin', () => {
@@ -40,6 +38,20 @@ jest.mock('firebase-admin', () => {
         return {
           doc: (docId) => ({
             get: () => mockDocGet(docId),
+          }),
+        };
+      }
+      if (collectionName === 'users') {
+        return {
+          doc: (docId) => ({
+            get: () => Promise.resolve({
+              exists: docId === 'test-user-id',
+              data: () => ({
+                phoneVerified: true,
+                email: 'test@example.com'
+              })
+            }),
+            update: jest.fn()
           }),
         };
       }
@@ -85,6 +97,36 @@ jest.mock('./triggers/trigger-dispatcher', () => ({
   getSupportedEvents: jest.fn().mockReturnValue({ order: [], driver: [], admin: [] })
 }));
 
+// Mock del módulo cart
+jest.mock('./cart', () => ({
+  router: require('express').Router(),
+  verifyCartTotals: jest.fn().mockResolvedValue({
+    valid: true,
+    items: [
+      { id: 'prod1', name: 'Taco', price: 10, quantity: 2, subtotalItem: 20 },
+      { id: 'prod2', name: 'Agua', price: 5, quantity: 1, subtotalItem: 5 }
+    ],
+    summary: {
+      subtotal: 25,
+      tax: 0,
+      totalFinal: 25
+    }
+  })
+}));
+
+// Mock del módulo repartidores
+jest.mock('./repartidores', () => require('express').Router());
+
+// Mock del módulo verification
+jest.mock('./verification/phone-verification-routes', () => require('express').Router());
+
+// Mock del módulo fcm
+jest.mock('./routes/fcm', () => require('express').Router());
+
+// Importar después de los mocks
+const app = require('./app');
+const admin = require('firebase-admin');
+
 describe('POST /api/pedidos', () => {
   const { mockDocGet, mockAdd } = admin;
 
@@ -126,6 +168,13 @@ describe('POST /api/pedidos', () => {
       .post('/api/pedidos')
       .set('Authorization', 'Bearer valid-token')
       .send(clientPayload);
+
+    // Debug: log response if not 201
+    if (res.statusCode !== 201) {
+      console.log('Response status:', res.statusCode);
+      console.log('Response body:', res.body);
+      console.log('Response text:', res.text);
+    }
 
     // Verificaciones
     expect(res.statusCode).toBe(201);

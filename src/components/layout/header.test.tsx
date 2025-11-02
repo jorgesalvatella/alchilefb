@@ -16,6 +16,14 @@ jest.mock('@/hooks/use-mobile', () => ({
   useIsMobile: jest.fn(),
 }));
 
+jest.mock('@/hooks/use-logo-url', () => ({
+  useLogoUrl: () => ({
+    logoUrl: '/default-logo.png',
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 jest.mock('@/context/cart-context', () => ({
   useCart: jest.fn(),
 }));

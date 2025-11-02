@@ -584,6 +584,12 @@ describe('Orders Hub Backend Endpoints', () => {
         .mockResolvedValueOnce({ exists: true, data: () => mockOrder }) // First get is order
         .mockResolvedValueOnce({ exists: true, data: () => mockDriver }); // Second get is driver
 
+      // Mock the .get() after transaction (for notifications)
+      mockGet.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ ...mockOrder, driverId: 'driver456', userId: 'user1' })
+      });
+
       const res = await request(app)
         .put('/api/pedidos/control/order123/asignar-repartidor')
         .set('Authorization', 'Bearer admin-token')
@@ -640,6 +646,12 @@ describe('Orders Hub Backend Endpoints', () => {
       mockTransactionGet
         .mockResolvedValueOnce({ exists: true, data: () => mockOrder })
         .mockResolvedValueOnce({ exists: true, data: () => busyDriver });
+
+      // Mock the .get() after transaction (for notifications)
+      mockGet.mockResolvedValueOnce({
+        exists: true,
+        data: () => ({ ...mockOrder, driverId: 'driver456', userId: 'user1' })
+      });
 
       const res = await request(app)
         .put('/api/pedidos/control/order123/asignar-repartidor')

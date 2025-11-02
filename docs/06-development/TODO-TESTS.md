@@ -2,6 +2,8 @@
 
 - [x] Fix critical failure in the entire backend test suite.
 - [x] **Feature: Manual Featured Products** - Add tests for backend endpoints (`/api/productos-venta/latest` and `/api/control/productos-venta/:id/toggle-featured`).
+- [x] **Fix pedidos.test.js** - ✅ Arreglado (2025-11-02): Agregados mocks de `cart`, `repartidores`, `verification`, `fcm` y colección `users` con `phoneVerified: true`
+- [x] **Fix pedidos-control.test.js** - ✅ Arreglado (2025-11-02): Agregado `mockGet` para obtener documento después de transacción en tests de asignación de repartidor
 
 ---
 
@@ -27,4 +29,4 @@
 - [ ] Add tests for `src/components/control/add-edit-product-dialog.tsx`
 - [ ] Add tests for `src/components/control/products-table.tsx`
 - [ ] Add tests for `src/components/layout/footer.tsx`
-- [ ] Add tests for `src/components/layout/header.tsx`
+- [x] Add tests for `src/components/layout/header.tsx` - ✅ Tests arreglados (2025-11-02): Agregado mock de `useLogoUrl` para evitar error de FirebaseContext
