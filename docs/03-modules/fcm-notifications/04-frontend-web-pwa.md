@@ -142,10 +142,14 @@ Se agregó el componente `NotificationSettings`:
 - Se puede cerrar con botón X
 - No interfiere con la navegación del header
 
-### 3. **Foreground: Toast (Sonner)**
+### 3. **Foreground: Toast (Sonner) + Sonidos Diferenciados**
 - Notificaciones en foreground se muestran como toast
 - Usa Sonner (ya configurado en el proyecto)
-- Incluye sonido de notificación (beep simple)
+- **Sonidos diferenciados según tipo de evento:**
+  - 🔔 **Caja registradora**: SOLO para admins (`admin.new_order`) - indica dinero/ingresos
+  - ✅ **Campana de éxito**: Pedido entregado (`order.delivered`) - suave y celebratorio
+  - ⚠️ **Alerta (2 beeps)**: Cancelaciones y problemas (`order.cancelled`, `admin.order_cancelled`, etc.)
+  - 🔊 **Beep genérico suave**: Para clientes (order.created, order.preparing, etc.) - menos intrusivo
 - Botón "Ver" para navegar a la URL
 
 ### 4. **Navegación: Focus pestaña existente**
@@ -196,7 +200,12 @@ Se agregó el componente `NotificationSettings`:
 2. Backend envía notificación push
 3. `FCMProvider` recibe el mensaje
 4. `notification-handlers.ts` muestra toast con Sonner
-5. Reproduce beep de audio
+5. Reproduce sonido diferenciado según tipo:
+   - **Admin recibe nuevo pedido** → 🔔 Caja registradora (cha-ching) - indica dinero
+   - **Cliente recibe confirmación de pedido** → 🔊 Beep genérico suave - menos intrusivo
+   - **Cliente recibe notificación de entrega** → ✅ Campana de éxito suave
+   - **Cancelación de pedido** → ⚠️ Alerta (2 beeps)
+   - **Otros eventos de cliente** → 🔊 Beep genérico suave
 6. Usuario puede hacer click en "Ver" para navegar
 
 ### Escenario 5: Notificación llega (background)
@@ -392,6 +401,61 @@ npm run build
 
 ---
 
+---
+
+## 🔊 Sonidos Diferenciados (Mejora Post-FASE 4)
+
+**Fecha de implementación**: 2025-11-02
+**Mejora por**: Aether + Sentinel
+
+Se implementaron sonidos diferenciados para mejorar la experiencia del usuario:
+
+### Tipos de Sonidos
+
+| Tipo de Evento | Sonido | Descripción |
+|----------------|--------|-------------|
+| **Pedido nuevo ADMIN** (`admin.new_order`) | 🔔 Caja registradora | Sonido "cha-ching" con 3 osciladores (1200Hz, 2000Hz, 3000Hz) ~500ms |
+| **Pedido entregado** (`order.delivered`) | ✅ Campana de éxito | Tono agudo (1200Hz) con decay suave ~400ms |
+| **Cancelación** (`order.cancelled`, `admin.order_cancelled`, `driver.order_cancelled`) | ⚠️ Alerta | 2 beeps cortos (600Hz, square wave) ~300ms |
+| **Problemas admin** (`admin.order_unassigned`, `admin.driver_inactive`, `admin.low_stock`) | ⚠️ Alerta | 2 beeps cortos (600Hz) |
+| **Eventos cliente** (`order.created`, `order.preparing`, etc.) | 🔊 Beep genérico suave | Beep simple (800Hz) ~200ms - menos intrusivo |
+
+### Implementación
+
+**Archivo**: `src/lib/fcm/notification-handlers.ts`
+
+```typescript
+const playNotificationSound = (type?: string) => {
+  // Caja registradora SOLO para admins (nuevo pedido = dinero)
+  if (type === 'admin.new_order') {
+    playCashRegisterSound(); // Reutiliza utilidad del dashboard de repartidor
+  }
+  // Campana de éxito para entregas (clientes)
+  else if (type === 'order.delivered') {
+    playSuccessSound();
+  }
+  // Alerta para cancelaciones y problemas
+  else if (/* cancelaciones y problemas */) {
+    playAlertSound();
+  }
+  // Beep genérico suave para clientes (menos intrusivo)
+  else {
+    playGenericBeep(); // order.created, order.preparing, etc.
+  }
+};
+```
+
+### Beneficios
+
+- ✅ **Admins saben inmediatamente** cuando hay un pedido nuevo ($$$ feeling con caja registradora)
+- ✅ **Clientes: experiencia menos intrusiva** - beeps suaves para eventos normales
+- ✅ **Clientes celebran suavemente** cuando su pedido llega (campana de éxito)
+- ✅ **Alertas claras** para cancelaciones y problemas (todos los roles)
+- ✅ **Diferenciación auditiva** sin necesidad de mirar la pantalla
+- ✅ **Reutilización** del sonido de caja registradora del dashboard de repartidor
+
+---
+
 ## 📊 Métricas de Éxito
 
 ### Criterios de Aceptación (FASE 4)
@@ -404,10 +468,11 @@ npm run build
 - [x] Banner solo aparece primera vez
 - [x] Opción manual en settings
 - [x] Build pasa sin errores
+- [x] **Sonidos diferenciados por tipo de evento** ✅ NUEVO
 - [ ] Tests frontend: 100% pasando (PENDIENTE)
 
 ---
 
 **Mantenido por**: Equipo de Desarrollo Al Chile FB
-**Última actualización**: 2025-11-01
-**Versión**: 1.0
+**Última actualización**: 2025-11-02
+**Versión**: 1.1 (agregados sonidos diferenciados)

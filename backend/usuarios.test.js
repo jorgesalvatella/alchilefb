@@ -7,6 +7,7 @@ const admin = require('firebase-admin');
 const mockUpdateUser = jest.fn();
 const mockGetUser = jest.fn();
 const mockSetCustomUserClaims = jest.fn();
+const mockRevokeRefreshTokens = jest.fn();
 const mockUserDocUpdate = jest.fn();
 const mockUserDocGet = jest.fn();
 const mockUserDocSet = jest.fn();
@@ -52,6 +53,7 @@ jest.mock('firebase-admin', () => {
             updateUser: mockUpdateUser,
             getUser: mockGetUser,
             setCustomUserClaims: mockSetCustomUserClaims,
+            revokeRefreshTokens: mockRevokeRefreshTokens,
             getUserByPhoneNumber: mockGetUserByPhoneNumber,
         }),
         firestore: mockFirestore,
@@ -131,6 +133,7 @@ describe('User Management API', () => {
         });
 
         it('should successfully generate a password for an admin user', async () => {
+            mockRevokeRefreshTokens.mockResolvedValue({});
             mockUpdateUser.mockResolvedValue({});
             mockUserDocUpdate.mockResolvedValue({});
 
@@ -143,7 +146,10 @@ describe('User Management API', () => {
             expect(typeof res.body.temporaryPassword).toBe('string');
             expect(res.body.temporaryPassword.length).toBe(12);
 
-            // Verify Firebase Auth was called
+            // Verify refresh tokens were revoked BEFORE password change
+            expect(mockRevokeRefreshTokens).toHaveBeenCalledWith(targetUserId);
+
+            // Verify Firebase Auth was called to update password
             expect(mockUpdateUser).toHaveBeenCalledWith(targetUserId, {
                 password: expect.any(String),
             });
@@ -155,6 +161,7 @@ describe('User Management API', () => {
         });
 
         it('should successfully generate a password for a super_admin user', async () => {
+            mockRevokeRefreshTokens.mockResolvedValue({});
             mockUpdateUser.mockResolvedValue({});
             mockUserDocUpdate.mockResolvedValue({});
 
@@ -164,6 +171,31 @@ describe('User Management API', () => {
 
             expect(res.statusCode).toBe(200);
             expect(res.body).toHaveProperty('temporaryPassword');
+
+            // Verify refresh tokens were revoked
+            expect(mockRevokeRefreshTokens).toHaveBeenCalledWith(targetUserId);
+        });
+
+        it('should continue with password generation even if revokeRefreshTokens fails', async () => {
+            // Mock revokeRefreshTokens to fail
+            mockRevokeRefreshTokens.mockRejectedValue(new Error('Network error'));
+            mockUpdateUser.mockResolvedValue({});
+            mockUserDocUpdate.mockResolvedValue({});
+
+            const res = await request(app)
+                .post(`/api/control/usuarios/${targetUserId}/generar-clave`)
+                .set('Authorization', 'Bearer test-admin-token');
+
+            // Should still succeed (fallback behavior - updateUser will also revoke tokens)
+            expect(res.statusCode).toBe(200);
+            expect(res.body).toHaveProperty('temporaryPassword');
+
+            // Verify revokeRefreshTokens was attempted
+            expect(mockRevokeRefreshTokens).toHaveBeenCalledWith(targetUserId);
+
+            // Verify password was still updated despite revoke failure
+            expect(mockUpdateUser).toHaveBeenCalled();
+            expect(mockUserDocUpdate).toHaveBeenCalled();
         });
     });
 

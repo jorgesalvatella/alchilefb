@@ -4917,9 +4917,31 @@ app.post('/api/control/usuarios/:uid/generar-clave', authMiddleware, requireAdmi
     };
 
     try {
+        // SECURITY FIX: Explicitly revoke all refresh tokens BEFORE changing password
+        // This ensures that any active sessions are terminated immediately,
+        // preventing the auth/invalid-credential error when the user tries to
+        // re-authenticate with the temporary password.
+        //
+        // Background: When admin.auth().updateUser() changes a password, Firebase
+        // automatically invalidates tokens, but there can be a race condition where
+        // the user's client still has a valid token in memory. By explicitly revoking
+        // first, we ensure a clean state.
+
+        try {
+            // Step 1: Revoke all refresh tokens for this user
+            // This immediately invalidates all active sessions
+            await admin.auth().revokeRefreshTokens(uid);
+            console.log(`Revoked all refresh tokens for user ${uid} before password change`);
+        } catch (revokeError) {
+            // If we can't revoke tokens, log but continue
+            // The password update will still revoke them, this is just extra safety
+            console.warn(`Could not revoke refresh tokens for user ${uid}:`, revokeError.message);
+        }
+
         const temporaryPassword = generateSecurePassword();
 
-        // Update password in Firebase Auth
+        // Step 2: Update password in Firebase Auth
+        // This will also revoke tokens, but we already did it above for safety
         await admin.auth().updateUser(uid, {
             password: temporaryPassword,
         });

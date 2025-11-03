@@ -101,11 +101,18 @@ export function AdminUsersPageContent({ user, claims }: WithAuthProps) {
 
       if (!response.ok) {
         const errorData = await response.json();
+
+        // Handle specific error: user has active session
+        if (response.status === 409 && errorData.code === 'USER_HAS_ACTIVE_SESSION') {
+          alert(`⚠️ NO SE PUEDE GENERAR CONTRASEÑA TEMPORAL\n\n${errorData.message}\n\n📋 INSTRUCCIONES:\n1. Solicite al usuario que cierre sesión completamente\n2. Verifique que el usuario no esté usando la aplicación\n3. Intente generar la contraseña nuevamente\n\n💡 RAZÓN: Cuando se genera una contraseña temporal, Firebase revoca la sesión activa del usuario automáticamente por seguridad. Si el usuario está logueado, no podrá usar la contraseña temporal para re-autenticarse.`);
+          return;
+        }
+
         throw new Error(errorData.message || 'No se pudo generar la contraseña.');
       }
 
       const { temporaryPassword } = await response.json();
-      alert(`Contraseña temporal generada para ${item.email}:\n\n${temporaryPassword}\n\n--- IMPORTANTE ---\nEspere al menos 30 segundos antes de usar esta contraseña para dar tiempo a que se actualice en el sistema.`);
+      alert(`✅ Contraseña temporal generada para ${item.email}:\n\n🔑 ${temporaryPassword}\n\n--- IMPORTANTE ---\n⏱️ Espere al menos 30 segundos antes de compartir esta contraseña para dar tiempo a que se actualice en el sistema.\n\n📋 INSTRUCCIONES PARA EL USUARIO:\n1. El usuario debe iniciar sesión con esta contraseña temporal\n2. Será redirigido automáticamente a cambiar su contraseña\n3. Debe establecer una contraseña nueva y segura`);
 
     } catch (err: any) {
       setError(err.message);

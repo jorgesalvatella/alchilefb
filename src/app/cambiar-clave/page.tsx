@@ -8,12 +8,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useUser } from '@/firebase/provider';
+import { useUser, useFirebase } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth';
+import { updatePassword } from 'firebase/auth';
+import { doc, updateDoc } from 'firebase/firestore';
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'La contraseña actual es requerida.'),
   newPassword: z.string()
     .min(8, 'La nueva contraseña debe tener al menos 8 caracteres.')
     .regex(/[A-Z]/, 'La nueva contraseña debe contener al menos una letra mayúscula.')
@@ -62,7 +62,8 @@ const getRedirectPathByRole = (claims: any) => {
 };
 
 export default function ChangePasswordPage() {
-  const { user, userData, claims, isUserLoading } = useUser();
+  const { user, userData, claims, isUserLoading, refreshUserData } = useUser();
+  const { firestore } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -70,7 +71,6 @@ export default function ChangePasswordPage() {
   const form = useForm<z.infer<typeof changePasswordSchema>>({
     resolver: zodResolver(changePasswordSchema),
     defaultValues: {
-      currentPassword: '',
       newPassword: '',
       confirmPassword: '',
     },
@@ -91,55 +91,73 @@ export default function ChangePasswordPage() {
   }, [user, isUserLoading, router, toast]);
 
   const onSubmit = async (values: z.infer<typeof changePasswordSchema>) => {
-    if (!user || !user.email) {
-      toast({ title: 'Error', description: 'Usuario no encontrado o sin email.', variant: 'destructive' });
+    if (!user) {
+      toast({ title: 'Error', description: 'Usuario no encontrado.', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
     try {
-      // Step 1: Re-authenticate the user with their current (temporary) password
-      const credential = EmailAuthProvider.credential(user.email, values.currentPassword);
-      await reauthenticateWithCredential(user, credential);
-
-      // 2. If re-authentication is successful, update to the new password
+      // Step 1: Update to the new password directly (user is already authenticated)
       await updatePassword(user, values.newPassword);
 
-      // 3. Force-refresh the token AFTER password change to get a valid one
+      // Step 2: Get a fresh token
       const token = await user.getIdToken(true);
 
-      // 4. Notify the backend to clear the forcePasswordChange flag
-      const response = await fetch('/api/me/password-changed', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // Step 3: Try to notify backend (best practice), but don't fail if unavailable
+      let backendSuccess = false;
+      try {
+        const response = await fetch('/api/me/password-changed', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+        });
 
-      if (!response.ok) {
-        // This error is not critical for the user, but good to know for the backend.
-        console.error('Failed to clear forcePasswordChange flag.');
-        throw new Error('No se pudo finalizar el proceso de cambio de clave. Intente de nuevo.');
+        if (response.ok) {
+          backendSuccess = true;
+          console.log('Backend cleared forcePasswordChange flag');
+        }
+      } catch (error) {
+        console.warn('Backend not available, using client-side update');
       }
 
-      // Step 5: Force a refresh of the user token to get the latest state
-      await user.getIdToken(true);
+      // Step 4: If backend failed, update Firestore directly (fallback)
+      if (!backendSuccess && firestore) {
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await updateDoc(userDocRef, {
+          forcePasswordChange: false,
+        });
+        console.log('Client cleared forcePasswordChange flag (fallback)');
+      }
+
+      // Step 5: Refresh user data to get updated forcePasswordChange flag
+      await refreshUserData();
 
       toast({ title: 'Éxito', description: 'Tu contraseña ha sido cambiada. Serás redirigido.' });
 
-      // Step 6: Redirect based on user role
-      // Reload userData to get updated forcePasswordChange status
+      // Step 5: Redirect based on user role
       const redirectPath = getRedirectPathByRole(claims);
 
       setTimeout(() => {
         router.push(redirectPath);
-        window.location.reload(); // Force reload to update userData
       }, 1000);
 
     } catch (error: any) {
-      let errorMessage = 'Ocurrió un error inesperado.';
-      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-        errorMessage = 'La contraseña temporal no es correcta. Por favor, verifícala.';
+      let errorMessage = 'Ocurrió un error inesperado al cambiar tu contraseña.';
+      let errorTitle = 'Error al cambiar la contraseña';
+
+      if (error.code === 'auth/requires-recent-login') {
+        errorTitle = 'Sesión expirada';
+        errorMessage = 'Tu sesión ha expirado. Por favor, cierra sesión e inicia sesión nuevamente con tu contraseña temporal.';
       }
-      toast({ title: 'Error al cambiar la contraseña', description: errorMessage, variant: 'destructive' });
+
+      toast({
+        title: errorTitle,
+        description: errorMessage,
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -158,28 +176,11 @@ export default function ChangePasswordPage() {
                 Cambiar Contraseña
               </span>
             </h1>
-            <p className="text-white/60">Debes cambiar tu contraseña temporal antes de continuar.</p>
+            <p className="text-white/60">Establece tu nueva contraseña para continuar.</p>
           </div>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="currentPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Input 
-                        type="password" 
-                        placeholder="Contraseña Temporal" 
-                        {...field} 
-                        className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:ring-orange-500 focus:border-orange-500"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               <FormField
                 control={form.control}
                 name="newPassword"

@@ -105,6 +105,7 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
         code: '123456',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       }),
@@ -137,6 +138,7 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
         code: '123456',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       }),
@@ -157,6 +159,7 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
       }),
     });
 
@@ -197,6 +200,7 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
         code: '123456',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       }),
@@ -256,6 +260,7 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
         code: '123456',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       }),
@@ -286,6 +291,7 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
         code: '789012',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       }),
@@ -323,6 +329,7 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
         code: '123456',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       }),
@@ -339,6 +346,7 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
         code: '789012',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       }),
@@ -391,6 +399,7 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
         code: '123456',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       }),
@@ -411,6 +420,7 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
       }),
     });
 
@@ -431,6 +441,8 @@ describe('VerificarTelefonoPage', () => {
       ok: true,
       json: async () => ({
         success: true,
+        strategy: 'display',
+        strategy: 'display',
         code: '123456',
         expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
       }),

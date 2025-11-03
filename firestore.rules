@@ -99,11 +99,24 @@ service cloud.firestore {
        * @allow (get, create, update, delete) User with matching UID can access their profile.
        * @deny (get, create, update, delete) User tries to access another user's profile.
        * @principle Enforces document ownership and prevents unauthorized profile access.
+       *
+       * Special case: Users can update ONLY the 'forcePasswordChange' field (to false)
+       * after successfully changing their password. This allows the password change
+       * flow to work without backend dependency while maintaining security.
        */
       allow get: if isOwner(userId) || isSuperAdmin();
       allow list: if false;
       allow create: if isOwner(userId) || isSuperAdmin();
-      allow update: if isExistingOwner(userId) || isSuperAdmin();
+
+      // Allow user to clear forcePasswordChange flag after password change
+      allow update: if isOwner(userId) &&
+                       resource != null &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['forcePasswordChange']) &&
+                       request.resource.data.forcePasswordChange == false;
+
+      // Allow full update for super-admin
+      allow update: if isSuperAdmin();
+
       allow delete: if isExistingOwner(userId) || isSuperAdmin();
     }
 

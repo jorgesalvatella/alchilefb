@@ -41,9 +41,15 @@ Se implementó una funcionalidad que permite a los administradores generar una c
 - **Patrón Arquitectónico:** Se reforzó la práctica de centralizar la obtención de datos del usuario en el `FirebaseProvider` y evitar llamadas directas a Firestore desde componentes de interfaz o HOCs como `withAuth`.
 
 ### Estado Actual
-- La funcionalidad de generación de contraseña temporal por parte del administrador funciona correctamente.
-- El usuario puede iniciar sesión con la contraseña temporal generada.
-- **Problema Pendiente:** El usuario *no* es redirigido automáticamente a la página `/cambiar-clave` después de iniciar sesión con una contraseña temporal, a pesar de que la bandera `forcePasswordChange` debería estar activa. El usuario es enviado directamente al índice como autenticado sin ser forzado a cambiar la contraseña.
+- ✅ **RESUELTO (2025-11-02)**: La funcionalidad de generación de contraseña temporal funciona correctamente.
+- ✅ El usuario puede iniciar sesión con la contraseña temporal generada.
+- ✅ El usuario es redirigido correctamente a `/cambiar-clave`.
+- ✅ **Problema del cambio de contraseña RESUELTO**: Ver `session-2025-11-02-password-reset-fix.md`
 
-### Próximos Pasos
-- Diagnosticar por qué la bandera `forcePasswordChange` no está activando la redirección en `withAuth.tsx` o por qué no se está leyendo correctamente.
+### ⚠️ Problema Identificado y Resuelto (2025-11-02)
+
+**Problema**: Cuando un usuario intentaba cambiar su contraseña temporal en `/cambiar-clave`, la re-autenticación fallaba con error `auth/wrong-password`.
+
+**Causa**: Firebase revoca automáticamente todos los tokens de sesión cuando un admin cambia la contraseña de un usuario. Si el usuario estaba logueado cuando se generó la password temporal, su sesión quedaba inválida y no podía re-autenticarse.
+
+**Solución**: Implementada validación en backend para prevenir generación de password temporal si el usuario tiene una sesión activa (< 5 minutos). Ver documentación completa en `session-2025-11-02-password-reset-fix.md`.
