@@ -10,7 +10,7 @@ on:
       - '.dockerignore.backend'
       - '.github/workflows/deploy-backend.yml'
 
-  workflow_dispatch: # Permite ejecutar manualmente desde GitHub UI
+  workflow_dispatch:
 
 env:
   PROJECT_ID: studio-9824031244-700aa
@@ -52,7 +52,7 @@ jobs:
             -f Dockerfile.backend \
             .
 
-      - name: 📤 Push Docker Image to GCR
+      - name: 📤 Push Docker Image
         run: |
           docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
           docker push ${{ env.IMAGE_NAME }}:latest
