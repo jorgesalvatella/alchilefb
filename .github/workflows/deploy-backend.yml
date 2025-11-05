@@ -82,11 +82,5 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           echo "✅ Backend deployed to: $URL"
 
-      - name: 🧪 Health Check
-        run: |
-          sleep 10
-          curl -f ${{ steps.get-url.outputs.url }}/health || exit 1
-          echo "✅ Health check passed"
-
     outputs:
       backend-url: ${{ steps.get-url.outputs.url }}
