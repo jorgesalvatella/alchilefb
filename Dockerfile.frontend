@@ -59,7 +59,7 @@ ENV CI=true
 
 # Build Next.js (genera carpeta .next/standalone)
 # Skip tests during Docker build
-RUN next build
+RUN npx next build
 
 # ================================
 # Stage 3: Runner (Producción)
