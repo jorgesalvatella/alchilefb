@@ -1,0 +1,94 @@
+# ================================
+# Dockerfile para Frontend (Next.js Standalone)
+# Cloud Run Service: alchile-frontend
+# ================================
+
+FROM node:20-alpine AS base
+
+# Instalar dependencias del sistema
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# ================================
+# Stage 1: Dependencies
+# ================================
+FROM base AS deps
+
+# Copiar archivos de dependencias
+COPY package*.json ./
+
+# Instalar dependencias (incluye devDependencies para el build)
+RUN npm ci --ignore-scripts && \
+    npm cache clean --force
+
+# ================================
+# Stage 2: Builder
+# ================================
+FROM base AS builder
+
+WORKDIR /app
+
+# Copiar dependencias del stage anterior
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package*.json ./
+
+# Copiar código fuente
+COPY src ./src
+COPY public ./public
+COPY next.config.ts ./
+COPY tsconfig.json ./
+COPY tailwind.config.ts ./
+COPY postcss.config.mjs ./
+
+# Argumentos de build para variables de entorno públicas
+ARG NEXT_PUBLIC_FIREBASE_API_KEY
+ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID
+ARG NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+ARG NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+ARG NEXT_PUBLIC_FIREBASE_APP_ID
+ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+ARG NEXT_PUBLIC_FCM_VAPID_KEY
+
+# Variables de entorno de build
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+# Build Next.js (genera carpeta .next/standalone)
+RUN npm run build
+
+# ================================
+# Stage 3: Runner (Producción)
+# ================================
+FROM base AS runner
+
+WORKDIR /app
+
+# Crear usuario no-root
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Variables de entorno de producción
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=8080
+
+# Copiar archivos necesarios del builder
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+
+# Exponer puerto (Cloud Run lo asigna dinámicamente)
+EXPOSE 8080
+
+# Cambiar a usuario no-root
+USER nextjs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Comando de inicio (Next.js standalone server)
+CMD ["node", "server.js"]
