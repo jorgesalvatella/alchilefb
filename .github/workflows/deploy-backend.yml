@@ -50,7 +50,6 @@ jobs:
             -t ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             -t ${{ env.IMAGE_NAME }}:latest \
             -f Dockerfile.backend \
-            --file .dockerignore.backend \
             .
 
       - name: 📤 Push Docker Image to GCR
