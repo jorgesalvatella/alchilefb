@@ -39,6 +39,7 @@ COPY --from=deps --chown=expressjs:nodejs /app/node_modules ./node_modules
 # Copiar código del backend
 COPY --chown=expressjs:nodejs backend/package*.json ./
 COPY --chown=expressjs:nodejs backend/*.js ./
+COPY --chown=expressjs:nodejs backend/utils ./utils
 COPY --chown=expressjs:nodejs backend/.env.example ./.env.example
 
 # Variables de entorno
