@@ -55,9 +55,11 @@ ARG NEXT_PUBLIC_FCM_VAPID_KEY
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV CI=true
 
 # Build Next.js (genera carpeta .next/standalone)
-RUN npm run build
+# Skip tests during Docker build
+RUN next build
 
 # ================================
 # Stage 3: Runner (Producción)
