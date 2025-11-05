@@ -1,14 +1,13 @@
 name: Run Tests
 
 on:
-  push:
-    branches:
-      - main
-      - develop
+  # Solo correr tests en Pull Requests, no en push a main
   pull_request:
     branches:
       - main
       - develop
+  # Permitir ejecución manual desde GitHub UI
+  workflow_dispatch:
 
 jobs:
   test-frontend:
