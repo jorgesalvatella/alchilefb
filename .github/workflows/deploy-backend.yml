@@ -16,7 +16,7 @@ env:
   PROJECT_ID: studio-9824031244-700aa
   REGION: us-central1
   SERVICE_NAME: alchile-backend
-  IMAGE_NAME: gcr.io/studio-9824031244-700aa/alchile-backend
+  IMAGE_NAME: us-central1-docker.pkg.dev/studio-9824031244-700aa/alchile-repo/alchile-backend
 
 jobs:
   deploy:
@@ -40,9 +40,9 @@ jobs:
       - name: ☁️ Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: 🔧 Configure Docker for GCR
+      - name: 🔧 Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: 🐳 Build Docker Image
         run: |

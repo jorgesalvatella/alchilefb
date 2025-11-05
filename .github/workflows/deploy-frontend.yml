@@ -19,7 +19,7 @@ env:
   PROJECT_ID: studio-9824031244-700aa
   REGION: us-central1
   SERVICE_NAME: alchile-frontend
-  IMAGE_NAME: gcr.io/studio-9824031244-700aa/alchile-frontend
+  IMAGE_NAME: us-central1-docker.pkg.dev/studio-9824031244-700aa/alchile-repo/alchile-frontend
 
 jobs:
   deploy:
@@ -56,9 +56,9 @@ jobs:
           echo "FCM_VAPID_KEY=$(gcloud secrets versions access latest --secret=fcm-vapid-key)" >> $GITHUB_OUTPUT
           echo "BACKEND_URL=$(gcloud secrets versions access latest --secret=backend-url 2>/dev/null || echo '')" >> $GITHUB_OUTPUT
 
-      - name: 🔧 Configure Docker for GCR
+      - name: 🔧 Configure Docker for Artifact Registry
         run: |
-          gcloud auth configure-docker
+          gcloud auth configure-docker us-central1-docker.pkg.dev
 
       - name: 🐳 Build Docker Image
         run: |
