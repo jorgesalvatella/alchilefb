@@ -71,8 +71,7 @@ jobs:
             --max-instances 10 \
             --timeout 60 \
             --set-env-vars "NODE_ENV=production" \
-            --service-account "${{ env.PROJECT_ID }}@appspot.gserviceaccount.com" \
-            --set-secrets "GOOGLE_APPLICATION_CREDENTIALS=firebase-admin-key:latest"
+            --service-account "${{ env.PROJECT_ID }}@appspot.gserviceaccount.com"
 
       - name: 🌐 Get Backend URL
         id: get-url
