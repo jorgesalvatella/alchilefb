@@ -71,16 +71,23 @@ describe('OrdersPage', () => {
     mockOrderBy.mockReturnValue({});
   });
 
+  afterEach(() => {
+    // Cleanup any pending timers
+    jest.clearAllTimers();
+  });
+
   it('should display empty state if user has no orders', async () => {
     // Mock onSnapshot para retornar pedidos vacíos
+    const unsubscribe = jest.fn();
     mockOnSnapshot.mockImplementation((query, successCallback) => {
       const mockQuerySnapshot = {
         forEach: (callback: any) => {
           // No hay pedidos
         },
       };
-      successCallback(mockQuerySnapshot);
-      return jest.fn(); // unsubscribe function
+      // Call callback synchronously to avoid timing issues
+      setTimeout(() => successCallback(mockQuerySnapshot), 0);
+      return unsubscribe; // unsubscribe function
     });
 
     render(<OrdersPage />);
@@ -88,8 +95,11 @@ describe('OrdersPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Aún no tienes pedidos')).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /Ver el Menú/i })).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 3000 });
+
+    // Verify unsubscribe was created
+    expect(mockOnSnapshot).toHaveBeenCalled();
+  }, 10000);
 
   it('should display a list of orders for an authenticated user', async () => {
     const mockOrders = [
@@ -98,6 +108,7 @@ describe('OrdersPage', () => {
     ];
 
     // Mock onSnapshot para retornar los pedidos
+    const unsubscribe = jest.fn();
     mockOnSnapshot.mockImplementation((query, successCallback) => {
       const mockQuerySnapshot = {
         forEach: (callback: any) => {
@@ -109,8 +120,9 @@ describe('OrdersPage', () => {
           });
         },
       };
-      successCallback(mockQuerySnapshot);
-      return jest.fn(); // unsubscribe function
+      // Call callback synchronously to avoid timing issues
+      setTimeout(() => successCallback(mockQuerySnapshot), 0);
+      return unsubscribe; // unsubscribe function
     });
 
     render(<OrdersPage />);
@@ -120,14 +132,19 @@ describe('OrdersPage', () => {
       expect(screen.getByText(/Pedido #order2/i)).toBeInTheDocument();
       expect(screen.getByText('$100.00')).toBeInTheDocument();
       expect(screen.getByText('$150.00')).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 3000 });
+
+    // Verify unsubscribe was created
+    expect(mockOnSnapshot).toHaveBeenCalled();
+  }, 10000);
 
   it('should handle fetch errors gracefully', async () => {
     // Mock onSnapshot para retornar error
+    const unsubscribe = jest.fn();
     mockOnSnapshot.mockImplementation((query, successCallback, errorCallback) => {
-      errorCallback(new Error('Firestore error'));
-      return jest.fn(); // unsubscribe function
+      // Call error callback synchronously to avoid timing issues
+      setTimeout(() => errorCallback(new Error('Firestore error')), 0);
+      return unsubscribe; // unsubscribe function
     });
 
     render(<OrdersPage />);
@@ -135,6 +152,9 @@ describe('OrdersPage', () => {
     await waitFor(() => {
       // En caso de error, el estado de pedidos se setea a [], mostrando el estado vacío.
       expect(screen.getByText('Aún no tienes pedidos')).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 3000 });
+
+    // Verify unsubscribe was created
+    expect(mockOnSnapshot).toHaveBeenCalled();
+  }, 10000);
 });

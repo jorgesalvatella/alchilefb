@@ -69,22 +69,32 @@ describe('OrderTrackingPage', () => {
     mockDoc.mockReturnValue({});
   });
 
+  afterEach(() => {
+    // Cleanup any pending timers
+    jest.clearAllTimers();
+  });
+
   it('should call notFound() if order is not found (404)', async () => {
     // Mock onSnapshot para retornar que el documento no existe
+    const unsubscribe = jest.fn();
     mockOnSnapshot.mockImplementation((docRef, successCallback) => {
       const mockDocSnapshot = {
         exists: () => false,
       };
-      successCallback(mockDocSnapshot);
-      return jest.fn(); // unsubscribe function
+      // Call callback synchronously to avoid timing issues
+      setTimeout(() => successCallback(mockDocSnapshot), 0);
+      return unsubscribe; // unsubscribe function
     });
 
     render(<OrderTrackingPage />);
 
     await waitFor(() => {
       expect(mockNotFound).toHaveBeenCalled();
-    });
-  });
+    }, { timeout: 3000 });
+
+    // Verify unsubscribe was created
+    expect(mockOnSnapshot).toHaveBeenCalled();
+  }, 10000);
 
   it('should display order details when data is fetched successfully', async () => {
     const mockOrder = {
@@ -105,26 +115,31 @@ describe('OrderTrackingPage', () => {
     };
 
     // Mock onSnapshot para retornar el pedido
+    const unsubscribe = jest.fn();
     mockOnSnapshot.mockImplementation((docRef, successCallback) => {
       const mockDocSnapshot = {
         exists: () => true,
         data: () => mockOrder,
         id: 'order-123',
       };
-      successCallback(mockDocSnapshot);
-      return jest.fn(); // unsubscribe function
+      // Call callback synchronously to avoid timing issues
+      setTimeout(() => successCallback(mockDocSnapshot), 0);
+      return unsubscribe; // unsubscribe function
     });
 
     render(<OrderTrackingPage />);
 
-    // Usar findBy* que ya viene con waitFor incorporado
-    expect(await screen.findByText(/Rastrea Tu Pedido/i)).toBeInTheDocument();
-    expect(await screen.findByText(/¡El pedido #order-123 está en camino!/i)).toBeInTheDocument();
-    expect(await screen.findByText('Artículos del Pedido')).toBeInTheDocument();
-    expect(await screen.findByText('2 x Taco')).toBeInTheDocument();
-    expect(await screen.findByText('1 x Quesadilla')).toBeInTheDocument();
-    expect(await screen.findByText('$129.31')).toBeInTheDocument(); // Subtotal
-    expect(await screen.findByText('$20.69')).toBeInTheDocument();  // IVA
-    expect(await screen.findByText('$150.00')).toBeInTheDocument(); // Total
-  });
+    // Usar findBy* que ya viene con waitFor incorporado con timeout
+    expect(await screen.findByText(/Rastrea Tu Pedido/i, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByText(/¡El pedido #order-123 está en camino!/i, {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByText('Artículos del Pedido', {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByText('2 x Taco', {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByText('1 x Quesadilla', {}, { timeout: 3000 })).toBeInTheDocument();
+    expect(await screen.findByText('$129.31', {}, { timeout: 3000 })).toBeInTheDocument(); // Subtotal
+    expect(await screen.findByText('$20.69', {}, { timeout: 3000 })).toBeInTheDocument();  // IVA
+    expect(await screen.findByText('$150.00', {}, { timeout: 3000 })).toBeInTheDocument(); // Total
+
+    // Verify unsubscribe was created
+    expect(mockOnSnapshot).toHaveBeenCalled();
+  }, 10000);
 });

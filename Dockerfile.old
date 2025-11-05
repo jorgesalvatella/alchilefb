@@ -1,0 +1,104 @@
+# ================================
+# Dockerfile Multi-Stage para Al Chile FB
+# Arquitectura: Next.js + Express en un solo contenedor
+# ================================
+
+# ================================
+# Stage 1: Dependencies
+# ================================
+FROM node:20-alpine AS deps
+
+WORKDIR /app
+
+# Instalar dependencias del sistema necesarias
+RUN apk add --no-cache libc6-compat python3 make g++
+
+# Copiar archivos de dependencias
+COPY package*.json ./
+COPY backend/package*.json ./backend/
+
+# Instalar dependencias de producción (frontend)
+RUN npm ci --only=production --ignore-scripts
+
+# Instalar dependencias de producción (backend)
+RUN cd backend && npm ci --only=production --ignore-scripts
+
+# ================================
+# Stage 2: Builder (Frontend)
+# ================================
+FROM node:20-alpine AS builder-frontend
+
+WORKDIR /app
+
+# Copiar dependencias del stage anterior
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package*.json ./
+
+# Copiar código fuente del frontend
+COPY src ./src
+COPY public ./public
+COPY next.config.ts ./
+COPY tsconfig.json ./
+COPY tailwind.config.ts ./
+COPY postcss.config.mjs ./
+
+# Argumentos de build para variables de entorno públicas
+ARG NEXT_PUBLIC_FIREBASE_API_KEY
+ARG NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+ARG NEXT_PUBLIC_FIREBASE_PROJECT_ID
+ARG NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+ARG NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+ARG NEXT_PUBLIC_FIREBASE_APP_ID
+ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+ARG NEXT_PUBLIC_FCM_VAPID_KEY
+
+# Build Next.js
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN npm run build
+
+# ================================
+# Stage 3: Runner (Producción)
+# ================================
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Crear usuario no-root para seguridad
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Copiar dependencias de producción
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/backend/node_modules ./backend/node_modules
+COPY --from=deps /app/package*.json ./
+
+# Copiar build de Next.js
+COPY --from=builder-frontend --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder-frontend /app/next.config.ts ./
+COPY --from=builder-frontend /app/public ./public
+
+# Copiar código del backend
+COPY --chown=nextjs:nodejs backend ./backend
+
+# Copiar script de arranque
+COPY --chown=nextjs:nodejs start-production.js ./
+
+# Configurar variables de entorno
+ENV NODE_ENV=production
+ENV PORT=8080
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Exponer puerto
+EXPOSE 8080
+
+# Cambiar a usuario no-root
+USER nextjs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Comando de inicio
+CMD ["node", "start-production.js"]

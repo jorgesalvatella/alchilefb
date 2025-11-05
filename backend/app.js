@@ -74,11 +74,45 @@ const checkSuperAdminForSwagger = (req, res, next) => {
 };
 
 const authMiddleware = require('./authMiddleware');
+const { sanitizeInput } = require('./sanitizationMiddleware');
 
 app.use('/api-docs', authMiddleware, checkSuperAdminForSwagger, swaggerUi.serve, swaggerUi.setup(swaggerDocs));
-// Middleware
-app.use(cors());
+// Middleware - CORS Configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Permitir requests sin origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+
+    const allowedOrigins = [
+      'http://localhost:9002', // Desarrollo local
+      'http://localhost:3000', // Desarrollo local alternativo
+      process.env.FRONTEND_URL, // Production frontend URL
+      /\.run\.app$/, // Todos los dominios de Cloud Run
+    ].filter(Boolean); // Eliminar undefined
+
+    // Verificar si el origin está permitido
+    const isAllowed = allowedOrigins.some((allowedOrigin) => {
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return allowedOrigin === origin;
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
+// Sanitización de inputs para prevenir XSS
+app.use(sanitizeInput);
 
 // --- Helper Functions ---
 
@@ -178,6 +212,72 @@ async function getOrCreatePromotionCategory(type) {
 app.get('/', (req, res) => {
   res.status(200).send('Hello from the Al Chile API Backend!');
 });
+
+// ================================
+// Health Checks para Cloud Run
+// ================================
+
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check básico
+ *     description: Verifica que el servidor esté respondiendo
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Servidor healthy
+ */
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0',
+  });
+});
+
+/**
+ * @swagger
+ * /readiness:
+ *   get:
+ *     summary: Readiness check avanzado
+ *     description: Verifica que el servidor esté listo para recibir tráfico (Firebase conectado)
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Servidor listo
+ *       503:
+ *         description: Servidor no listo
+ */
+app.get('/readiness', async (req, res) => {
+  try {
+    // Verificar conexión a Firestore
+    const testDocRef = db.collection('_health_check').doc('test');
+    await testDocRef.set({ timestamp: new Date(), check: 'readiness' }, { merge: true });
+
+    res.status(200).json({
+      status: 'ready',
+      timestamp: new Date().toISOString(),
+      services: {
+        firestore: 'connected',
+        firebase_admin: 'initialized',
+      },
+    });
+  } catch (error) {
+    console.error('Readiness check failed:', error);
+    res.status(503).json({
+      status: 'not_ready',
+      timestamp: new Date().toISOString(),
+      error: error.message,
+    });
+  }
+});
+
+// ================================
+// End Health Checks
+// ================================
 
 app.post('/api/control/productos-venta/upload-image', authMiddleware, requireAdmin, upload.single('file'), async (req, res) => {
   if (!req.file) {
@@ -5004,6 +5104,245 @@ app.post('/api/config/init-logo', authMiddleware, requireAdmin, async (req, res)
     console.error('Error al inicializar configuración del logo:', error);
     res.status(500).json({
       message: 'Error al inicializar configuración',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/control/dashboard/metrics:
+ *   get:
+ *     summary: Obtener métricas del dashboard
+ *     description: Retorna KPIs financieros, datos de gráficas, top productos y alertas
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: range
+ *         schema:
+ *           type: string
+ *           enum: [today, 7days, 30days]
+ *         description: Rango de fechas para las métricas
+ *     responses:
+ *       200:
+ *         description: Métricas del dashboard
+ *       401:
+ *         description: No autenticado
+ *       403:
+ *         description: Sin permisos de admin
+ */
+app.get('/api/control/dashboard/metrics', authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const { range = '7days' } = req.query;
+
+    // Calcular fechas
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    let days = 0;
+    if (range === 'today') days = 1;
+    else if (range === '7days') days = 7;
+    else if (range === '30days') days = 30;
+
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - days);
+
+    const compareStartDate = new Date(startDate);
+    compareStartDate.setDate(compareStartDate.getDate() - days);
+
+    // Queries paralelas
+    const [
+      ordersSnapshot,
+      compareOrdersSnapshot,
+      expensesSnapshot,
+      compareExpensesSnapshot,
+      pendingExpensesSnapshot,
+      allOrdersSnapshot
+    ] = await Promise.all([
+      // Pedidos del periodo actual
+      db.collection('pedidos')
+        .where('orderDate', '>=', startDate)
+        .where('deleted', '==', false)
+        .get(),
+
+      // Pedidos del periodo de comparación
+      db.collection('pedidos')
+        .where('orderDate', '>=', compareStartDate)
+        .where('orderDate', '<', startDate)
+        .where('deleted', '==', false)
+        .get(),
+
+      // Gastos aprobados del periodo actual
+      db.collection('gastos')
+        .where('expenseDate', '>=', startDate)
+        .where('status', '==', 'approved')
+        .where('deleted', '==', false)
+        .get(),
+
+      // Gastos del periodo de comparación
+      db.collection('gastos')
+        .where('expenseDate', '>=', compareStartDate)
+        .where('expenseDate', '<', startDate)
+        .where('status', '==', 'approved')
+        .where('deleted', '==', false)
+        .get(),
+
+      // Gastos pendientes (para alertas)
+      db.collection('gastos')
+        .where('status', '==', 'pending')
+        .where('deleted', '==', false)
+        .get(),
+
+      // Todos los pedidos (para top productos)
+      db.collection('pedidos')
+        .where('deleted', '==', false)
+        .limit(1000) // Limitamos para performance
+        .get()
+    ]);
+
+    // Procesar datos
+    const orders = ordersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const compareOrders = compareOrdersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const expenses = expensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const compareExpenses = compareExpensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const pendingExpenses = pendingExpensesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const allOrders = allOrdersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Calcular KPIs
+    const currentRevenue = orders.reduce((acc, order) => acc + (order.totalAmount || 0), 0);
+    const currentExpenses = expenses.reduce((acc, expense) => acc + (expense.amount || 0), 0);
+    const currentProfit = currentRevenue - currentExpenses;
+    const currentMargin = currentRevenue > 0 ? (currentProfit / currentRevenue) * 100 : 0;
+
+    const prevRevenue = compareOrders.reduce((acc, order) => acc + (order.totalAmount || 0), 0);
+    const prevExpenses = compareExpenses.reduce((acc, expense) => acc + (expense.amount || 0), 0);
+    const prevProfit = prevRevenue - prevExpenses;
+    const prevMargin = prevRevenue > 0 ? (prevProfit / prevRevenue) * 100 : 0;
+
+    const calculateChange = (current, prev) => {
+      if (prev === 0) return current > 0 ? 100 : 0;
+      return ((current - prev) / prev) * 100;
+    };
+
+    const kpis = {
+      revenue: currentRevenue,
+      expenses: currentExpenses,
+      profit: currentProfit,
+      margin: currentMargin,
+      revenueChange: calculateChange(currentRevenue, prevRevenue),
+      expensesChange: calculateChange(currentExpenses, prevExpenses),
+      profitChange: calculateChange(currentProfit, prevProfit),
+      marginChange: currentMargin - prevMargin,
+    };
+
+    // Datos para gráfica diaria
+    const dailyDataMap = new Map();
+    orders.forEach(order => {
+      if (order.orderDate) {
+        const date = order.orderDate.toDate().toLocaleDateString('es-MX', {
+          month: 'short',
+          day: 'numeric'
+        });
+        const existing = dailyDataMap.get(date) || { date, revenue: 0, expenses: 0 };
+        dailyDataMap.set(date, {
+          ...existing,
+          revenue: existing.revenue + (order.totalAmount || 0)
+        });
+      }
+    });
+
+    expenses.forEach(expense => {
+      if (expense.expenseDate) {
+        const date = expense.expenseDate.toDate().toLocaleDateString('es-MX', {
+          month: 'short',
+          day: 'numeric'
+        });
+        const existing = dailyDataMap.get(date) || { date, revenue: 0, expenses: 0 };
+        dailyDataMap.set(date, {
+          ...existing,
+          expenses: existing.expenses + (expense.amount || 0)
+        });
+      }
+    });
+
+    const dailyData = Array.from(dailyDataMap.values())
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Estados de pedidos
+    const statusCount = orders.reduce((acc, order) => {
+      const status = order.orderStatus || 'Desconocido';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+
+    const statusColors = {
+      'Pedido Realizado': '#94a3b8',
+      'Preparando': '#3b82f6',
+      'En Reparto': '#f59e0b',
+      'Entregado': '#10b981',
+    };
+
+    const orderStatusData = Object.entries(statusCount).map(([name, value]) => ({
+      name,
+      value,
+      color: statusColors[name] || '#6b7280',
+    }));
+
+    // Top productos
+    const productCount = new Map();
+    allOrders.forEach(order => {
+      if (order.items) {
+        order.items.forEach(item => {
+          const current = productCount.get(item.name) || 0;
+          productCount.set(item.name, current + (item.quantity || 0));
+        });
+      }
+    });
+
+    const topProducts = Array.from(productCount.entries())
+      .map(([name, quantity]) => ({ name, quantity }))
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 5);
+
+    // Alertas
+    const alerts = [];
+
+    if (pendingExpenses.length > 0) {
+      alerts.push({
+        type: 'expense',
+        message: `${pendingExpenses.length} gasto${pendingExpenses.length > 1 ? 's' : ''} pendiente${pendingExpenses.length > 1 ? 's' : ''} de aprobación`,
+        severity: pendingExpenses.length > 5 ? 'high' : 'medium',
+      });
+    }
+
+    const ordersWithoutDriver = orders.filter(
+      order => !order.driverId && order.orderStatus !== 'Entregado'
+    );
+
+    if (ordersWithoutDriver.length > 0) {
+      alerts.push({
+        type: 'order',
+        message: `${ordersWithoutDriver.length} pedido${ordersWithoutDriver.length > 1 ? 's' : ''} sin repartidor asignado`,
+        severity: ordersWithoutDriver.length > 3 ? 'high' : 'medium',
+      });
+    }
+
+    res.json({
+      kpis,
+      dailyData,
+      orderStatusData,
+      topProducts,
+      alerts,
+      range,
+      startDate: startDate.toISOString(),
+    });
+
+  } catch (error) {
+    console.error('Error getting dashboard metrics:', error);
+    res.status(500).json({
+      message: 'Error getting dashboard metrics',
       error: error.message
     });
   }
