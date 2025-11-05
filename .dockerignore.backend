@@ -1,0 +1,53 @@
+# Backend-specific .dockerignore
+
+# Node modules
+node_modules
+npm-debug.log*
+yarn-debug.log*
+
+# Environment files
+.env
+.env*.local
+
+# Testing
+*.test.js
+__tests__
+coverage
+
+# Logs
+logs
+*.log
+
+# IDE
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# Git
+.git
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Frontend (no incluir en backend)
+src/
+public/
+.next/
+next.config.ts
+tsconfig.json
+tailwind.config.ts
+postcss.config.mjs
+jest.config.js
+playwright.config.ts
+e2e/
+
+# Scripts
+scripts/
+
+# Temporal
+tmp/
+temp/
+*.tmp

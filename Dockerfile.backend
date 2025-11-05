@@ -1,0 +1,59 @@
+# ================================
+# Dockerfile para Backend (Express)
+# Cloud Run Service: alchile-backend
+# ================================
+
+FROM node:20-alpine AS base
+
+# Instalar dependencias del sistema
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# ================================
+# Stage 1: Dependencies
+# ================================
+FROM base AS deps
+
+# Copiar package files
+COPY backend/package*.json ./
+
+# Instalar dependencias de producción
+RUN npm ci --only=production --ignore-scripts && \
+    npm cache clean --force
+
+# ================================
+# Stage 2: Runner (Producción)
+# ================================
+FROM base AS runner
+
+WORKDIR /app
+
+# Crear usuario no-root
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 expressjs
+
+# Copiar dependencias
+COPY --from=deps --chown=expressjs:nodejs /app/node_modules ./node_modules
+
+# Copiar código del backend
+COPY --chown=expressjs:nodejs backend/package*.json ./
+COPY --chown=expressjs:nodejs backend/*.js ./
+COPY --chown=expressjs:nodejs backend/.env.example ./.env.example
+
+# Variables de entorno
+ENV NODE_ENV=production
+ENV PORT=8080
+
+# Exponer puerto (Cloud Run lo asigna dinámicamente)
+EXPOSE 8080
+
+# Cambiar a usuario no-root
+USER expressjs
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+
+# Comando de inicio
+CMD ["node", "index.js"]
