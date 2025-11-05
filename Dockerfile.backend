@@ -36,11 +36,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copiar dependencias
 COPY --from=deps --chown=expressjs:nodejs /app/node_modules ./node_modules
 
-# Copiar código del backend
-COPY --chown=expressjs:nodejs backend/package*.json ./
-COPY --chown=expressjs:nodejs backend/*.js ./
-COPY --chown=expressjs:nodejs backend/utils ./utils
-COPY --chown=expressjs:nodejs backend/.env.example ./.env.example
+# Copiar código del backend (todo excepto node_modules)
+COPY --chown=expressjs:nodejs backend/ ./
 
 # Variables de entorno
 ENV NODE_ENV=production
