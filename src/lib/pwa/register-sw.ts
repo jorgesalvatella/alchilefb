@@ -43,10 +43,19 @@ export async function registerServiceWorker() {
             // Hay una nueva versión del SW disponible
             console.log('[PWA] New Service Worker available');
 
-            // Opcional: mostrar notificación al usuario
-            if (window.confirm('Hay una nueva versión disponible. ¿Deseas actualizar?')) {
-              newWorker.postMessage({ type: 'SKIP_WAITING' });
-              window.location.reload();
+            // Guardar en sessionStorage que el usuario ya aceptó actualizar
+            // Esto evita mostrar el prompt múltiples veces
+            const alreadyPrompted = sessionStorage.getItem('sw-update-prompted');
+
+            if (!alreadyPrompted) {
+              sessionStorage.setItem('sw-update-prompted', 'true');
+
+              if (window.confirm('Hay una nueva versión disponible. ¿Deseas actualizar?')) {
+                // Marcar que vamos a recargar para evitar bucle
+                sessionStorage.setItem('sw-update-accepted', 'true');
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                // El reload lo hará el evento 'controllerchange'
+              }
             }
           }
         });
@@ -56,8 +65,13 @@ export async function registerServiceWorker() {
     // Manejar cuando el SW toma control
     let refreshing = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
+      // Solo recargar si el usuario aceptó la actualización
+      const updateAccepted = sessionStorage.getItem('sw-update-accepted');
+
+      if (!refreshing && updateAccepted) {
         refreshing = true;
+        sessionStorage.removeItem('sw-update-prompted');
+        sessionStorage.removeItem('sw-update-accepted');
         window.location.reload();
       }
     });
