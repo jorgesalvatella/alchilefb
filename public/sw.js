@@ -11,7 +11,7 @@
  * Este SW maneja SOLO cache offline
  */
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `alchile-pwa-${CACHE_VERSION}`;
 
 // Assets estáticos que se cachean en la instalación
