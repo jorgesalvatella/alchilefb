@@ -86,6 +86,8 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:9002', // Desarrollo local
       'http://localhost:3000', // Desarrollo local alternativo
+      'https://alchilemeatballs.com', // Producción (Cloudflare)
+      'http://alchilemeatballs.com', // Producción HTTP
       process.env.FRONTEND_URL, // Production frontend URL
       /\.run\.app$/, // Todos los dominios de Cloud Run
     ].filter(Boolean); // Eliminar undefined
