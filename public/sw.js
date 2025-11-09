@@ -29,6 +29,14 @@ const API_ROUTES = [
   '/api/',
 ];
 
+// Escuchar mensajes para controlar skipWaiting
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[SW] SKIP_WAITING message received, activating new SW');
+    self.skipWaiting();
+  }
+});
+
 // Instalar Service Worker
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing service worker...');
@@ -43,8 +51,9 @@ self.addEventListener('install', (event) => {
     })
   );
 
-  // Activar inmediatamente sin esperar a que se cierren pestañas viejas
-  self.skipWaiting();
+  // NO hacer skipWaiting() automáticamente
+  // Solo se hará cuando el usuario acepte la actualización
+  // via postMessage desde register-sw.ts
 });
 
 // Activar Service Worker
