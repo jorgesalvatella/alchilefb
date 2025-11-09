@@ -1,5 +1,6 @@
 const express = require('express');
 const admin = require('firebase-admin');
+const authMiddleware = require('./authMiddleware');
 
 const router = express.Router();
 const db = admin.firestore();
@@ -312,7 +313,7 @@ async function verifyCartTotals(items) {
   };
 }
 
-router.post('/verify-totals', async (req, res) => {
+router.post('/verify-totals', authMiddleware, async (req, res) => {
   try {
     const result = await verifyCartTotals(req.body.items);
     res.status(200).json(result);
