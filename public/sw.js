@@ -9,6 +9,8 @@
  * IMPORTANTE: Este SW es independiente de firebase-messaging-sw.js
  * firebase-messaging-sw.js maneja SOLO notificaciones push
  * Este SW maneja SOLO cache offline
+ *
+ * Última actualización: 2025-01-09 - Fix Google Maps CSP
  */
 
 const CACHE_VERSION = 'v3';
