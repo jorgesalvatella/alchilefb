@@ -238,7 +238,7 @@ function CheckoutPage({ user }: WithAuthProps) {
             <CardHeader>
               <CardTitle className="text-orange-400">1. Ubicación de Entrega</CardTitle>
               <p className="text-white/70 text-sm mt-2">
-                Busca tu dirección o marca tu ubicación en el mapa
+                Busca tu dirección o selecciona tu ubicación en el mapa
               </p>
             </CardHeader>
             <CardContent>
