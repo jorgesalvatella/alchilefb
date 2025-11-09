@@ -171,23 +171,32 @@ Esto crea automáticamente un registro CNAME en Cloudflare apuntando a tu tunnel
 
 ---
 
-### Paso 7: Crear Proxy Python con Autenticación
+### Paso 7: Crear Proxy Python con Routing Inteligente
 
 Crea el script de proxy:
 ```bash
 nano ~/cloud-run-proxy.py
 ```
 
-Contenido:
+**Contenido (con routing automático Frontend/Backend):**
 ```python
 #!/usr/bin/env python3
+"""
+Cloud Run Proxy con Routing Inteligente
+Rutea dinámicamente entre Frontend y Backend según la URL
+"""
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import urllib.request
 import urllib.error
+import sys
 
-# URL del Cloud Run
-CLOUD_RUN_URL = "https://alchile-frontend-ooexwakkyq-uc.a.run.app"
-METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=" + CLOUD_RUN_URL
+# URLs de Cloud Run
+FRONTEND_URL = "https://alchile-frontend-ooexwakkyq-uc.a.run.app"
+BACKEND_URL = "https://alchile-backend-ooexwakkyq-uc.a.run.app"
+
+# Metadata server para obtener tokens
+FRONTEND_METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=" + FRONTEND_URL
+BACKEND_METADATA_URL = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=" + BACKEND_URL
 
 class ProxyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -196,50 +205,143 @@ class ProxyHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.proxy_request()
 
+    def do_PUT(self):
+        self.proxy_request()
+
+    def do_DELETE(self):
+        self.proxy_request()
+
+    def do_PATCH(self):
+        self.proxy_request()
+
+    def do_OPTIONS(self):
+        # Manejar CORS preflight
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        self.send_header('Access-Control-Max-Age', '86400')
+        self.end_headers()
+
     def proxy_request(self):
-        # Obtener ID token del metadata server
-        req_meta = urllib.request.Request(METADATA_URL)
-        req_meta.add_header('Metadata-Flavor', 'Google')
-        with urllib.request.urlopen(req_meta) as response:
-            token = response.read().decode()
-
-        # Construir URL completa
-        url = CLOUD_RUN_URL + self.path
-
-        # Crear request con token
-        req = urllib.request.Request(url)
-        req.add_header('Authorization', f'Bearer {token}')
-
-        # Copiar headers del cliente
-        for header, value in self.headers.items():
-            if header.lower() not in ['host', 'authorization']:
-                req.add_header(header, value)
-
         try:
-            # Hacer request
-            with urllib.request.urlopen(req) as response:
+            # 🎯 ROUTING INTELIGENTE: /api/* → Backend, todo lo demás → Frontend
+            if self.path.startswith('/api/'):
+                target_url = BACKEND_URL
+                metadata_url = BACKEND_METADATA_URL
+                target_name = "BACKEND"
+            else:
+                target_url = FRONTEND_URL
+                metadata_url = FRONTEND_METADATA_URL
+                target_name = "FRONTEND"
+
+            # Log de routing
+            print(f"[{target_name}] {self.command} {self.path}", file=sys.stderr)
+
+            # Obtener ID token del metadata server
+            req_meta = urllib.request.Request(metadata_url)
+            req_meta.add_header('Metadata-Flavor', 'Google')
+
+            with urllib.request.urlopen(req_meta, timeout=5) as response:
+                token = response.read().decode()
+
+            # Construir URL completa
+            url = target_url + self.path
+
+            # Leer body si existe (para POST/PUT/PATCH)
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length) if content_length > 0 else None
+
+            # Crear request con token
+            req = urllib.request.Request(url, data=body, method=self.command)
+            req.add_header('Authorization', f'Bearer {token}')
+
+            # Copiar headers del cliente (excepto host y authorization)
+            for header, value in self.headers.items():
+                if header.lower() not in ['host', 'authorization', 'connection']:
+                    req.add_header(header, value)
+
+            # Hacer request al servicio correspondiente
+            with urllib.request.urlopen(req, timeout=60) as response:
+                # Enviar respuesta al cliente
                 self.send_response(response.status)
+
+                # Copiar headers de respuesta
                 for header, value in response.headers.items():
-                    self.send_header(header, value)
+                    # Skip headers que pueden causar problemas
+                    if header.lower() not in ['transfer-encoding', 'connection']:
+                        self.send_header(header, value)
+
                 self.end_headers()
+
+                # Enviar body de respuesta
                 self.wfile.write(response.read())
+
         except urllib.error.HTTPError as e:
+            # Error HTTP del servicio
+            print(f"[ERROR] HTTP {e.code} for {self.path}: {e.reason}", file=sys.stderr)
             self.send_response(e.code)
+
+            # Copiar headers del error
+            for header, value in e.headers.items():
+                if header.lower() not in ['transfer-encoding', 'connection']:
+                    self.send_header(header, value)
+
             self.end_headers()
-            self.wfile.write(e.read())
+
+            # Enviar body del error
+            try:
+                error_body = e.read()
+                self.wfile.write(error_body)
+            except:
+                pass
+
+        except urllib.error.URLError as e:
+            # Error de red/timeout
+            print(f"[ERROR] Network error for {self.path}: {e.reason}", file=sys.stderr)
+            self.send_error(502, f"Bad Gateway: {str(e.reason)}")
+
         except Exception as e:
-            self.send_error(500, str(e))
+            # Error inesperado
+            print(f"[ERROR] Unexpected error for {self.path}: {str(e)}", file=sys.stderr)
+            self.send_error(500, f"Internal Server Error: {str(e)}")
+
+    def log_message(self, format, *args):
+        # Enviar logs a stderr para que systemd los capture
+        sys.stderr.write(f"[ACCESS] {format % args}\n")
+        sys.stderr.flush()
+
 
 if __name__ == '__main__':
-    server = HTTPServer(('127.0.0.1', 8080), ProxyHandler)
-    print("Proxy running on port 8080...")
-    server.serve_forever()
+    PORT = 8080
+    server = HTTPServer(('127.0.0.1', PORT), ProxyHandler)
+
+    print(f"🚀 Cloud Run Proxy running on port {PORT}", file=sys.stderr)
+    print(f"   Frontend: {FRONTEND_URL}", file=sys.stderr)
+    print(f"   Backend:  {BACKEND_URL}", file=sys.stderr)
+    print(f"   Routing:  /api/* → Backend, everything else → Frontend", file=sys.stderr)
+    sys.stderr.flush()
+
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("\n👋 Shutting down proxy...", file=sys.stderr)
+        server.shutdown()
 ```
 
 Hazlo ejecutable:
 ```bash
 chmod +x ~/cloud-run-proxy.py
 ```
+
+**💡 Mejoras de esta versión:**
+- ✅ Routing inteligente: `/api/*` → Backend, todo lo demás → Frontend
+- ✅ Soporta todos los métodos HTTP (GET, POST, PUT, DELETE, PATCH, OPTIONS)
+- ✅ Maneja CORS preflight automáticamente
+- ✅ Logs detallados con destino de cada request
+- ✅ Mejor manejo de errores con status codes correctos
+- ✅ Soporte para request bodies (POST/PUT)
+- ✅ Timeouts configurados (5s para tokens, 60s para requests)
 
 ---
 
@@ -564,7 +666,49 @@ echo -e "\n✅ Verificación completa"
 
 ---
 
-**Última actualización**: 2025-11-06
-**Estado**: ✅ Producción (100% Funcional)
+---
+
+## 🔄 ACTUALIZAR PROXY EN PRODUCCIÓN
+
+Si ya tienes el proxy antiguo corriendo y necesitas actualizarlo con el nuevo código de routing inteligente:
+
+```bash
+# 1. Conectarse a la VM
+gcloud compute ssh cloudflare-tunnel --zone=us-central1-a
+
+# 2. Hacer backup del proxy actual
+cp ~/cloud-run-proxy.py ~/cloud-run-proxy.py.backup
+
+# 3. Editar el proxy con el nuevo código
+nano ~/cloud-run-proxy.py
+# (Copiar el código completo del Paso 7)
+
+# 4. Verificar sintaxis
+python3 ~/cloud-run-proxy.py --help 2>&1 | head -5
+
+# 5. Reiniciar el servicio
+sudo systemctl restart cloud-run-proxy
+
+# 6. Verificar que está corriendo
+sudo systemctl status cloud-run-proxy
+
+# 7. Ver logs en tiempo real
+sudo journalctl -u cloud-run-proxy -f
+```
+
+**Verificación inmediata:**
+```bash
+# Desde tu navegador o terminal local:
+curl -I https://alchilemeatballs.com/api/menu
+# Debería retornar 200 OK
+
+curl -I https://alchilemeatballs.com
+# Debería retornar 200 OK (frontend)
+```
+
+---
+
+**Última actualización**: 2025-11-09
+**Estado**: ✅ Producción (Routing Inteligente Implementado)
 **Dominio**: https://alchilemeatballs.com
 **Mantenido por**: Claude Code + Jorge Salvatella
