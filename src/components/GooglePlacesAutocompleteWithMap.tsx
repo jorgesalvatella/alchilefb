@@ -49,10 +49,20 @@ export default function GooglePlacesAutocompleteWithMap({
   const [showMap, setShowMap] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
+    googleMapsApiKey: apiKey,
     libraries,
   });
+
+  // Diagnóstico temporal
+  useEffect(() => {
+    console.log('[GooglePlacesAutocomplete] API Key present:', !!apiKey);
+    console.log('[GooglePlacesAutocomplete] API Key length:', apiKey.length);
+    console.log('[GooglePlacesAutocomplete] isLoaded:', isLoaded);
+    console.log('[GooglePlacesAutocomplete] loadError:', loadError);
+  }, [apiKey, isLoaded, loadError]);
 
   // Auto-centrar en la ubicación del usuario al cargar
   useEffect(() => {
@@ -336,6 +346,10 @@ export default function GooglePlacesAutocompleteWithMap({
   if (!isLoaded) {
     return (
       <div data-testid="loading-state" className="space-y-3">
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+          <p className="font-semibold text-blue-900">Cargando Google Maps...</p>
+          <p className="text-blue-700 mt-1">API Key: {apiKey ? `Sí (${apiKey.length} caracteres)` : 'No configurado'}</p>
+        </div>
         <div className="h-10 bg-gray-200 animate-pulse rounded-md"></div>
         <div className="h-64 bg-gray-100 animate-pulse rounded-lg"></div>
       </div>
