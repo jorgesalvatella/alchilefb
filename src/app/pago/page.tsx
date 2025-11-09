@@ -105,9 +105,13 @@ function CheckoutPage({ user }: WithAuthProps) {
           }
         });
 
+        const token = await user.getIdToken();
         const response = await fetch('/api/cart/verify-totals', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({ items: itemsToVerify }),
         });
 
