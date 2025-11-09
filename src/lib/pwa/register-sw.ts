@@ -33,48 +33,8 @@ export async function registerServiceWorker() {
 
     console.log('[PWA] Service Worker registered successfully:', registration.scope);
 
-    // Manejar actualizaciones del SW
-    registration.addEventListener('updatefound', () => {
-      const newWorker = registration.installing;
-
-      if (newWorker) {
-        newWorker.addEventListener('statechange', () => {
-          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            // Hay una nueva versión del SW disponible
-            console.log('[PWA] New Service Worker available');
-
-            // Guardar en sessionStorage que el usuario ya aceptó actualizar
-            // Esto evita mostrar el prompt múltiples veces
-            const alreadyPrompted = sessionStorage.getItem('sw-update-prompted');
-
-            if (!alreadyPrompted) {
-              sessionStorage.setItem('sw-update-prompted', 'true');
-
-              if (window.confirm('Hay una nueva versión disponible. ¿Deseas actualizar?')) {
-                // Marcar que vamos a recargar para evitar bucle
-                sessionStorage.setItem('sw-update-accepted', 'true');
-                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                // El reload lo hará el evento 'controllerchange'
-              }
-            }
-          }
-        });
-      }
-    });
-
-    // Manejar cuando el SW toma control
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      // Solo recargar si el usuario aceptó la actualización
-      const updateAccepted = sessionStorage.getItem('sw-update-accepted');
-
-      if (!refreshing && updateAccepted) {
-        refreshing = true;
-        sessionStorage.removeItem('sw-update-prompted');
-        sessionStorage.removeItem('sw-update-accepted');
-        window.location.reload();
-      }
-    });
+    // Las actualizaciones las maneja el componente UpdatePrompt
+    // Este código solo registra el SW, la UX de actualización está en UpdatePrompt.tsx
   } catch (error) {
     console.error('[PWA] Service Worker registration failed:', error);
   }

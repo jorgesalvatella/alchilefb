@@ -10,6 +10,7 @@ import { FCMProvider } from '@/components/notifications/FCMProvider';
 import { NotificationPermissionBanner } from '@/components/notifications/NotificationPermissionBanner';
 import { PWAInstaller } from '@/components/pwa/PWAInstaller';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
+import { UpdatePrompt } from '@/components/pwa/UpdatePrompt';
 import type { Metadata, Viewport } from 'next';
 
 const roboto = Roboto({
@@ -70,6 +71,7 @@ export default function RootLayout({
             <FCMProvider />
             <NotificationPermissionBanner />
             <InstallPrompt />
+            <UpdatePrompt />
             <Header />
             <main className="min-h-screen">{children}</main>
             <Footer />
