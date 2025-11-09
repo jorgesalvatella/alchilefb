@@ -68,6 +68,17 @@ export function UpdatePrompt() {
   }, []);
 
   const handleUpdateAvailable = () => {
+    // NO mostrar si la app no está instalada (standalone mode)
+    // En ese caso, InstallPrompt debe mostrarse en su lugar
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true;
+
+    if (!isStandalone) {
+      console.log('[UpdatePrompt] Not in standalone mode, skipping update prompt');
+      return;
+    }
+
     // Verificar si ya se mostró recientemente
     const snoozedUntil = localStorage.getItem('pwa-update-snoozed');
     if (snoozedUntil) {
