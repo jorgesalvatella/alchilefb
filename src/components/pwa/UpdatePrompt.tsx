@@ -79,6 +79,10 @@ export function UpdatePrompt() {
       return;
     }
 
+    // Limpiar flag de instalación si estamos en standalone
+    // (significa que el usuario reinstalo la app)
+    localStorage.removeItem('pwa-install-dismissed');
+
     // Verificar si ya se mostró recientemente
     const snoozedUntil = localStorage.getItem('pwa-update-snoozed');
     if (snoozedUntil) {

@@ -27,12 +27,35 @@ export function InstallPrompt() {
                        (window.navigator as any).standalone === true;
     setIsStandalone(standalone);
 
-    // Verificar si ya se mostró antes
-    const dismissed = localStorage.getItem('pwa-install-dismissed');
+    // Si NO está en standalone (navegador), limpiar flag de instalación
+    // Esto permite que el banner se vuelva a mostrar si desinstalan la app
+    if (!standalone) {
+      localStorage.removeItem('pwa-installed');
+    }
+
+    // Verificar si el banner fue descartado recientemente (con expiración)
+    const dismissedUntil = localStorage.getItem('pwa-install-dismissed');
+    if (dismissedUntil) {
+      // Manejar migración de versiones antiguas (dismissedUntil === 'true')
+      if (dismissedUntil === 'true') {
+        localStorage.removeItem('pwa-install-dismissed');
+      } else {
+        const dismissedDate = new Date(dismissedUntil);
+        // Verificar que sea una fecha válida
+        if (!isNaN(dismissedDate.getTime()) && dismissedDate > new Date()) {
+          console.log('[InstallPrompt] Install prompt dismissed until', dismissedDate);
+          return;
+        } else {
+          // Si ya expiró o es inválida, limpiar el flag
+          localStorage.removeItem('pwa-install-dismissed');
+        }
+      }
+    }
+
     const installed = localStorage.getItem('pwa-installed');
 
-    if (dismissed || installed || standalone) {
-      return; // No mostrar si ya se descartó, instaló, o está en standalone
+    if (installed || standalone) {
+      return; // No mostrar si ya se instaló o está en standalone
     }
 
     // Android: Capturar el evento beforeinstallprompt
@@ -82,7 +105,11 @@ export function InstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    localStorage.setItem('pwa-install-dismissed', 'true');
+    // No molestar por 7 días si el usuario cierra el banner
+    const dismissUntil = new Date();
+    dismissUntil.setDate(dismissUntil.getDate() + 7);
+    localStorage.setItem('pwa-install-dismissed', dismissUntil.toISOString());
+    console.log('[InstallPrompt] Install prompt dismissed until', dismissUntil);
   };
 
   // No mostrar si ya está instalado o si no debe mostrarse
