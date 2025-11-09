@@ -1,8 +1,10 @@
 # 🚀 Al Chile FB - Deployment Status
 
 **Fecha de preparación**: 2025-11-04
-**Estado**: ✅ 100% LISTO PARA PRODUCCIÓN
+**Última actualización**: 2025-01-09
+**Estado**: ✅ DESPLEGADO EN PRODUCCIÓN
 **Score**: 100/100
+**URL Producción**: https://alchilemeatballs.com
 
 ---
 
@@ -30,6 +32,14 @@
 - ✅ Iconos con `purpose: "any maskable"`
 - ✅ Shortcuts en manifest (Ver Menú, Mis Pedidos)
 - ✅ Theme color configurado (#C11B17)
+- ✅ Update prompt profesional (banner de actualización)
+- ✅ Detección automática de Service Worker updates
+
+**Fixes Recientes (2025-01-09):**
+- ✅ Google Maps CSP fix - Agregado `https://maps.googleapis.com` a Content Security Policy
+- ✅ PWA Update detection - Detecta Service Workers esperando al cargar
+- ✅ Dockerfile ENV vars - Variables NEXT_PUBLIC_* ahora disponibles en runtime
+- ✅ Service Worker v3 - Incrementada versión de cache para forzar updates
 
 ---
 
@@ -382,7 +392,62 @@ Todo el sistema está listo para deployment profesional en Google Cloud Run:
 
 ---
 
+## 📋 Tareas Pendientes
+
+### 🔒 Seguridad - reCAPTCHA v3
+
+**Prioridad**: Media
+**Estimación**: 1-2 horas
+
+**Pasos requeridos:**
+
+1. **Crear reCAPTCHA v3 Site Key**
+   ```bash
+   # En Google Cloud Console
+   # Navigation > Security > reCAPTCHA Enterprise
+   # Create Key > reCAPTCHA v3 > alchilemeatballs.com
+   ```
+
+2. **Agregar secrets a Secret Manager**
+   ```bash
+   # Crear secret para enable flag
+   echo -n "true" | gcloud secrets create recaptcha-enable-app-check \
+     --data-file=- \
+     --replication-policy="automatic"
+
+   # Crear secret para site key
+   echo -n "SITE_KEY_AQUI" | gcloud secrets create recaptcha-site-key \
+     --data-file=- \
+     --replication-policy="automatic"
+   ```
+
+3. **Actualizar workflow de deploy**
+   - Archivo: `.github/workflows/deploy-frontend.yml`
+   - Agregar fetch de secrets en step "Get secrets from Secret Manager"
+   - Agregar build args en Docker build
+
+4. **Actualizar CSP en next.config.ts**
+   ```typescript
+   "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com https://maps.googleapis.com https://www.google.com/recaptcha/ https://www.gstatic.com",
+   "frame-src 'self' https://*.google.com https://*.firebaseapp.com https://www.google.com/recaptcha/",
+   ```
+
+5. **Verificar en Firebase Console**
+   - Navigation > Build > App Check
+   - Registrar reCAPTCHA v3 provider
+   - Habilitar enforcement para Firestore
+
+**Estado actual:**
+- ✅ Código implementado en `src/firebase/index.ts`
+- ❌ Variables de entorno no configuradas
+- ❌ Secrets no creados en Secret Manager
+- ❌ Workflow no actualizado
+
+---
+
 **Preparado por**: Aire (DevOps Agent)
-**Fecha**: 2025-11-04
-**Versión**: 1.0.0
+**Actualizado por**: Claude Code
+**Fecha inicial**: 2025-11-04
+**Última actualización**: 2025-01-09
+**Versión**: 1.1.0
 **Status**: ✅ PRODUCTION READY
