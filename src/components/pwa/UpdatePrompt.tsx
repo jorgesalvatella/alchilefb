@@ -41,6 +41,12 @@ export function UpdatePrompt() {
         // Guardar la registration para usarla después
         setRegistration(reg);
 
+        // Si ya hay un SW esperando, mostrar el prompt inmediatamente
+        if (reg.waiting) {
+          handleUpdateAvailable();
+          return;
+        }
+
         // Detectar cuando hay una actualización disponible
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
