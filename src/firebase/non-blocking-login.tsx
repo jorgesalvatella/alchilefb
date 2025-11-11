@@ -4,9 +4,11 @@ import {
   signInAnonymously,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
   UserCredential,
 } from 'firebase/auth';
-import { doc, Firestore, setDoc } from 'firebase/firestore';
+import { doc, Firestore, setDoc, getDoc } from 'firebase/firestore';
 import { UserProfile } from '@/lib/data';
 import { errorEmitter } from './error-emitter';
 import { FirestorePermissionError } from './errors';
@@ -108,4 +110,75 @@ export function initiateEmailSignIn(authInstance: Auth, email: string, password:
         });
         console.error("Sign in error:", error);
     });
+}
+
+/** Initiate Google Sign-In (non-blocking). */
+export async function initiateGoogleSignIn(
+  authInstance: Auth,
+  firestoreInstance: Firestore
+): Promise<void> {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({
+    prompt: 'select_account'
+  });
+
+  try {
+    const result = await signInWithPopup(authInstance, provider);
+    const user = result.user;
+
+    // Check if user profile exists
+    const userProfileRef = doc(firestoreInstance, 'users', user.uid);
+    const userProfileSnap = await getDoc(userProfileRef);
+
+    if (!userProfileSnap.exists()) {
+      // Create new user profile with Google data
+      const names = (user.displayName || '').split(' ');
+      const firstName = names[0] || '';
+      const lastName = names.slice(1).join(' ') || '';
+
+      const userProfile: Omit<UserProfile, 'id'> & { id: string } = {
+        id: user.uid,
+        email: user.email || '',
+        firstName: firstName,
+        lastName: lastName,
+        role: 'customer',
+        phoneNumber: '', // Will be filled in /completar-perfil
+        photoURL: user.photoURL || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        deleted: false,
+      };
+
+      await setDoc(userProfileRef, userProfile);
+
+      toast({
+        title: 'Cuenta creada',
+        description: '¡Bienvenido a Al Chile! Por favor completa tu perfil.',
+      });
+    } else {
+      toast({
+        title: 'Bienvenido de vuelta',
+        description: 'Has iniciado sesión con Google exitosamente.',
+      });
+    }
+  } catch (error: any) {
+    if (error.code === 'auth/popup-closed-by-user') {
+      // User closed popup, no need to show error
+      return;
+    }
+
+    let description = 'No se pudo iniciar sesión con Google.';
+    if (error.code === 'auth/account-exists-with-different-credential') {
+      description = 'Ya existe una cuenta con este correo usando otro método de inicio de sesión.';
+    } else if (error.code === 'auth/popup-blocked') {
+      description = 'El navegador bloqueó la ventana emergente. Por favor, permite ventanas emergentes para este sitio.';
+    }
+
+    toast({
+      variant: 'destructive',
+      title: 'Error al iniciar sesión con Google',
+      description: description,
+    });
+    console.error("Google Sign-In error:", error);
+  }
 }

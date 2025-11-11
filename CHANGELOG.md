@@ -1,3 +1,42 @@
+## [2025-01-11] - Google Sign-In Implementado
+
+### ✨ Agregado
+- **Google Sign-In** - Autenticación con cuentas de Gmail activada
+- Botón de Google en `/ingresar` (Login)
+- Botón de Google en `/registro` (Sign Up)
+- Función `initiateGoogleSignIn()` en `non-blocking-login.tsx`
+- Creación automática de perfil con datos de Google (email, nombre, foto)
+- Flujo de completar perfil para usuarios de Google (captura de teléfono)
+- Tests completos para Google Sign-In (8 test cases)
+- Documentación completa en `docs/09-google-signin/SETUP-GUIDE.md`
+
+### 🔄 Modificado
+- `src/firebase/non-blocking-login.tsx` - Agregada función `initiateGoogleSignIn()`
+- `src/app/ingresar/page.tsx` - Activado botón de Google con handler
+- `src/app/registro/page.tsx` - Activado botón de Google con handler
+
+### 📝 Archivos Nuevos
+- `src/firebase/__tests__/non-blocking-login.test.tsx` - Tests para Google Sign-In
+- `docs/09-google-signin/SETUP-GUIDE.md` - Guía de configuración en Firebase Console
+
+### 🎁 Beneficios
+- Usuarios pueden registrarse/iniciar sesión con un solo clic
+- No necesitan recordar contraseñas
+- Registro más rápido (menos campos que llenar)
+- Foto de perfil automática desde Google
+- El flujo de verificación de teléfono se mantiene intacto
+
+### 🔧 Configuración Requerida
+- [ ] Habilitar Google como proveedor en Firebase Console
+- [ ] Agregar `alchilemeatballs.com` a dominios autorizados
+- [ ] Ver guía completa en `docs/09-google-signin/SETUP-GUIDE.md`
+
+### ✅ Tests
+- 8/8 tests pasando para `initiateGoogleSignIn()`
+- Cubiertos casos: nuevo usuario, usuario existente, errores de popup, errores de cuenta
+
+---
+
 ## [2025-01-09] - Fixes de Google Maps y PWA Updates
 
 ### 🐛 Corregido
