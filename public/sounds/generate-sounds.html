@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generador de Sonidos para Notificaciones</title>
+  <style>
+    body { font-family: Arial; padding: 20px; max-width: 800px; margin: 0 auto; }
+    button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+    .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; }
+    audio { width: 100%; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Generador de Sonidos para Notificaciones</h1>
+
+  <div class="section">
+    <h2>1. Sonido de Caja Registradora (Admins)</h2>
+    <button onclick="playCashRegister()">🔊 Reproducir</button>
+    <button onclick="downloadCashRegister()">⬇️ Descargar MP3</button>
+    <audio id="cashRegisterAudio" controls></audio>
+  </div>
+
+  <div class="section">
+    <h2>2. Sonido Suave (Clientes)</h2>
+    <button onclick="playGentle()">🔊 Reproducir</button>
+    <button onclick="downloadGentle()">⬇️ Descargar MP3</button>
+    <audio id="gentleAudio" controls></audio>
+  </div>
+
+  <div class="section">
+    <h2>3. Sonido de Alerta</h2>
+    <button onclick="playAlert()">🔊 Reproducir</button>
+    <button onclick="downloadAlert()">⬇️ Descargar MP3</button>
+    <audio id="alertAudio" controls></audio>
+  </div>
+
+  <script>
+    // Web Audio API context
+    let audioContext = null;
+
+    function getAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioContext;
+    }
+
+    // Genera sonido de caja registradora (cha-ching)
+    function generateCashRegisterSound() {
+      const ctx = getAudioContext();
+      const duration = 0.6;
+      const sampleRate = ctx.sampleRate;
+      const buffer = ctx.createBuffer(1, sampleRate * duration, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / sampleRate;
+
+        // Primer tono: "Cha" (1200Hz -> 800Hz)
+        const tone1 = Math.sin(2 * Math.PI * (1200 - 400 * t / 0.15) * t) *
+                     Math.exp(-t / 0.05) * 0.5;
+
+        // Segundo tono: "Ching" (2000Hz -> 1500Hz)
+        const tone2 = t > 0.08 ?
+                     Math.sin(2 * Math.PI * (2000 - 500 * (t - 0.08) / 0.3) * t) *
+                     Math.exp(-(t - 0.08) / 0.15) * 0.4 : 0;
+
+        // Tercer tono: Resonancia (3000Hz)
+        const tone3 = t > 0.1 ?
+                     Math.sin(2 * Math.PI * 3000 * t) *
+                     Math.exp(-(t - 0.1) / 0.1) * 0.2 : 0;
+
+        data[i] = (tone1 + tone2 + tone3) * 0.3;
+      }
+
+      return buffer;
+    }
+
+    // Genera sonido suave (campana suave)
+    function generateGentleSound() {
+      const ctx = getAudioContext();
+      const duration = 0.4;
+      const sampleRate = ctx.sampleRate;
+      const buffer = ctx.createBuffer(1, sampleRate * duration, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / sampleRate;
+        const tone = Math.sin(2 * Math.PI * 800 * t) * Math.exp(-t / 0.15) * 0.25;
+        data[i] = tone;
+      }
+
+      return buffer;
+    }
+
+    // Genera sonido de alerta (dos beeps)
+    function generateAlertSound() {
+      const ctx = getAudioContext();
+      const duration = 0.4;
+      const sampleRate = ctx.sampleRate;
+      const buffer = ctx.createBuffer(1, sampleRate * duration, sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < buffer.length; i++) {
+        const t = i / sampleRate;
+
+        // Primer beep (0-0.1s)
+        const beep1 = t < 0.1 ? Math.sin(2 * Math.PI * 600 * t) * 0.3 : 0;
+
+        // Segundo beep (0.15-0.25s)
+        const beep2 = (t >= 0.15 && t < 0.25) ?
+                     Math.sin(2 * Math.PI * 600 * t) * 0.3 : 0;
+
+        data[i] = beep1 + beep2;
+      }
+
+      return buffer;
+    }
+
+    // Reproduce buffer de audio
+    function playBuffer(buffer) {
+      const ctx = getAudioContext();
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start();
+    }
+
+    // Convierte AudioBuffer a WAV blob
+    function bufferToWav(buffer) {
+      const length = buffer.length * buffer.numberOfChannels * 2 + 44;
+      const arrayBuffer = new ArrayBuffer(length);
+      const view = new DataView(arrayBuffer);
+      const channels = [];
+      let offset = 0;
+      let pos = 0;
+
+      // WAV header
+      setUint32(0x46464952); // "RIFF"
+      setUint32(length - 8); // file length - 8
+      setUint32(0x45564157); // "WAVE"
+
+      setUint32(0x20746d66); // "fmt " chunk
+      setUint32(16); // length = 16
+      setUint16(1); // PCM (uncompressed)
+      setUint16(buffer.numberOfChannels);
+      setUint32(buffer.sampleRate);
+      setUint32(buffer.sampleRate * 2 * buffer.numberOfChannels); // avg. bytes/sec
+      setUint16(buffer.numberOfChannels * 2); // block-align
+      setUint16(16); // 16-bit
+
+      setUint32(0x61746164); // "data" - chunk
+      setUint32(length - pos - 4); // chunk length
+
+      // Write interleaved data
+      for (let i = 0; i < buffer.numberOfChannels; i++) {
+        channels.push(buffer.getChannelData(i));
+      }
+
+      while (pos < length) {
+        for (let i = 0; i < buffer.numberOfChannels; i++) {
+          let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
+          view.setInt16(pos, sample, true);
+          pos += 2;
+        }
+        offset++;
+      }
+
+      function setUint16(data) {
+        view.setUint16(pos, data, true);
+        pos += 2;
+      }
+
+      function setUint32(data) {
+        view.setUint32(pos, data, true);
+        pos += 4;
+      }
+
+      return new Blob([arrayBuffer], { type: 'audio/wav' });
+    }
+
+    // Descarga archivo
+    function download(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Funciones públicas
+    function playCashRegister() {
+      const buffer = generateCashRegisterSound();
+      playBuffer(buffer);
+      const blob = bufferToWav(buffer);
+      document.getElementById('cashRegisterAudio').src = URL.createObjectURL(blob);
+    }
+
+    function downloadCashRegister() {
+      const buffer = generateCashRegisterSound();
+      const blob = bufferToWav(buffer);
+      download(blob, 'cash-register.wav');
+      alert('Descargado! Convierte el WAV a MP3 con una herramienta online si lo necesitas.');
+    }
+
+    function playGentle() {
+      const buffer = generateGentleSound();
+      playBuffer(buffer);
+      const blob = bufferToWav(buffer);
+      document.getElementById('gentleAudio').src = URL.createObjectURL(blob);
+    }
+
+    function downloadGentle() {
+      const buffer = generateGentleSound();
+      const blob = bufferToWav(buffer);
+      download(blob, 'gentle-notification.wav');
+      alert('Descargado! Convierte el WAV a MP3 con una herramienta online si lo necesitas.');
+    }
+
+    function playAlert() {
+      const buffer = generateAlertSound();
+      playBuffer(buffer);
+      const blob = bufferToWav(buffer);
+      document.getElementById('alertAudio').src = URL.createObjectURL(blob);
+    }
+
+    function downloadAlert() {
+      const buffer = generateAlertSound();
+      const blob = bufferToWav(buffer);
+      download(blob, 'alert.wav');
+      alert('Descargado! Convierte el WAV a MP3 con una herramienta online si lo necesitas.');
+    }
+  </script>
+
+  <div class="section">
+    <h2>Instrucciones</h2>
+    <ol>
+      <li>Haz click en "Reproducir" para escuchar cada sonido</li>
+      <li>Si te gusta, haz click en "Descargar" para guardar el archivo WAV</li>
+      <li>Convierte los archivos WAV a MP3 usando <a href="https://cloudconvert.com/wav-to-mp3" target="_blank">CloudConvert</a> o similar</li>
+      <li>Guarda los MP3 en la carpeta <code>public/sounds/</code>:
+        <ul>
+          <li><code>cash-register.mp3</code></li>
+          <li><code>gentle-notification.mp3</code></li>
+          <li><code>alert.mp3</code></li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+</body>
+</html>

@@ -56,23 +56,44 @@ messaging.onBackgroundMessage((payload) => {
 
   // Extraer datos del payload
   const notificationTitle = payload.notification?.title || 'Al Chile FB';
+  const notificationType = payload.data?.type || '';
+
+  // Configurar opciones base de la notificación
   const notificationOptions = {
     body: payload.notification?.body || 'Tienes una nueva notificación',
     icon: payload.notification?.icon || '/icons/icon-192x192.svg',
     badge: '/icons/icon-192x192.svg',
-    vibrate: [200, 100, 200], // Patrón de vibración (Android)
-    tag: payload.data?.type || 'notification', // Agrupa notificaciones del mismo tipo
+    tag: notificationType || 'notification', // Agrupa notificaciones del mismo tipo
     requireInteraction: false, // No requiere interacción para cerrarse
-    silent: false, // ⚠️ IMPORTANTE: false = reproduce sonido del sistema
-    sound: 'default', // Sonido por defecto del sistema
+    silent: false, // Reproduce sonido
     data: {
       // Guardar datos custom para usar en el click
       click_action: payload.data?.click_action || '/',
       orderId: payload.data?.orderId,
-      type: payload.data?.type,
+      type: notificationType,
       timestamp: Date.now()
     }
   };
+
+  // Configurar patrón de vibración según tipo (Solo Android)
+  // Patrones más distintivos para diferentes tipos de notificaciones
+  if (notificationType === 'admin.new_order') {
+    // Patrón fuerte y repetitivo para admins (nuevo pedido = importante)
+    notificationOptions.vibrate = [200, 100, 200, 100, 200];
+    notificationOptions.requireInteraction = true; // Requiere que el admin lo vea
+  } else if (notificationType.startsWith('admin.')) {
+    // Patrones de alerta para otros eventos de admin
+    notificationOptions.vibrate = [100, 50, 100, 50, 100, 50, 100];
+  } else if (notificationType === 'order.delivered') {
+    // Vibración suave para entregas (cliente)
+    notificationOptions.vibrate = [100, 50, 100];
+  } else if (notificationType === 'order.cancelled') {
+    // Vibración de alerta para cancelaciones
+    notificationOptions.vibrate = [300, 100, 300];
+  } else {
+    // Vibración genérica suave
+    notificationOptions.vibrate = [200, 100, 200];
+  }
 
   // Mostrar la notificación
   return self.registration.showNotification(notificationTitle, notificationOptions);
