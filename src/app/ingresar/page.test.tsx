@@ -1,14 +1,15 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import LoginPage from './page';
-import { useAuth } from '@/firebase/provider';
+import { useAuth, useFirestore } from '@/firebase/provider';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
+import { initiateEmailSignIn, initiateGoogleSignIn } from '@/firebase/non-blocking-login';
 
 // Mocks
 jest.mock('@/firebase/provider', () => ({
   useAuth: jest.fn(),
+  useFirestore: jest.fn(),
 }));
 jest.mock('@/firebase', () => ({
   useUser: jest.fn(),
@@ -21,21 +22,28 @@ jest.mock('next/navigation', () => ({
 }));
 jest.mock('@/firebase/non-blocking-login', () => ({
   initiateEmailSignIn: jest.fn(),
+  initiateGoogleSignIn: jest.fn(),
 }));
 
+const mockUseAuth = useAuth as jest.Mock;
+const mockUseFirestore = useFirestore as jest.Mock;
 const mockUseUser = useUser as jest.Mock;
 const mockUseToast = useToast as jest.Mock;
 const mockUseRouter = useRouter as jest.Mock;
 const mockInitiateEmailSignIn = initiateEmailSignIn as jest.Mock;
+const mockInitiateGoogleSignIn = initiateGoogleSignIn as jest.Mock;
 const mockToast = jest.fn();
 const mockRouterPush = jest.fn();
 
 describe('LoginPage', () => {
   beforeEach(() => {
+    mockUseAuth.mockReturnValue({});
+    mockUseFirestore.mockReturnValue({});
     mockUseUser.mockReturnValue({ user: null, isUserLoading: false });
     mockUseToast.mockReturnValue({ toast: mockToast });
     mockUseRouter.mockReturnValue({ push: mockRouterPush });
     mockInitiateEmailSignIn.mockClear();
+    mockInitiateGoogleSignIn.mockClear();
     mockToast.mockClear();
     mockRouterPush.mockClear();
   });
@@ -81,7 +89,7 @@ describe('LoginPage', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(mockInitiateEmailSignIn).toHaveBeenCalledWith(undefined, 'test@example.com', 'password123');
+      expect(mockInitiateEmailSignIn).toHaveBeenCalledWith({}, 'test@example.com', 'password123');
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Iniciando sesión...',
         description: 'Serás redirigido en un momento si tus credenciales son correctas.',

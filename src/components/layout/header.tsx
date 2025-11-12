@@ -59,7 +59,7 @@ function RepartidorMenu({ userRole }: { userRole: string }) {
 
 function UserNav() {
   const auth = useAuth();
-  const { user, isUserLoading } = useUser();
+  const { user, userData, isUserLoading } = useUser();
 
   if (isUserLoading) {
     return <div className="h-10 w-10 rounded-full bg-white/10 animate-pulse" />;
@@ -76,12 +76,22 @@ function UserNav() {
     );
   }
 
+  // Use photoURL from userData (Firestore) first, fallback to user.photoURL (Firebase Auth)
+  const photoURL = userData?.photoURL || user.photoURL;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="rounded-full text-white hover:bg-fresh-green hover:text-black">
-          {user.photoURL ? (
-            <Image src={user.photoURL} alt="User avatar" width={32} height={32} className="rounded-full" />
+          {photoURL ? (
+            <Image
+              src={photoURL}
+              alt="User avatar"
+              width={32}
+              height={32}
+              className="rounded-full object-cover"
+              unoptimized // Importante para imágenes externas de Google
+            />
           ) : (
             <User />
           )}

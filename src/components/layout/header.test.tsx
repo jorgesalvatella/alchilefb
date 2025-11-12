@@ -84,7 +84,7 @@ describe('Header', () => {
 
   describe('Usuario no autenticado', () => {
     beforeEach(() => {
-      mockUseUser.mockReturnValue({ user: null, isUserLoading: false });
+      mockUseUser.mockReturnValue({ user: null, userData: null, isUserLoading: false });
     });
 
     it('debería renderizar los enlaces de navegación base', () => {
@@ -109,7 +109,11 @@ describe('Header', () => {
       mockUser.getIdTokenResult.mockResolvedValue({
         claims: { admin: false, super_admin: false },
       } as any);
-      mockUseUser.mockReturnValue({ user: mockUser, isUserLoading: false });
+      mockUseUser.mockReturnValue({
+        user: mockUser,
+        userData: { photoURL: 'https://example.com/avatar.png', email: 'test@example.com' },
+        isUserLoading: false
+      });
     });
 
     it('debería mostrar el menú de usuario con su avatar', async () => {
@@ -135,7 +139,11 @@ describe('Header', () => {
       mockUser.getIdTokenResult.mockResolvedValue({
         claims: { admin: false, super_admin: true },
       } as any);
-      mockUseUser.mockReturnValue({ user: mockUser, isUserLoading: false });
+      mockUseUser.mockReturnValue({
+        user: mockUser,
+        userData: { photoURL: 'https://example.com/avatar.png', email: 'test@example.com' },
+        isUserLoading: false
+      });
     });
 
     it('debería mostrar el menú de Control', async () => {
@@ -160,14 +168,14 @@ describe('Header', () => {
 
   describe('Carrito de Compras', () => {
     it('no debería mostrar el contador si el carrito está vacío', () => {
-      mockUseUser.mockReturnValue({ user: null, isUserLoading: false });
+      mockUseUser.mockReturnValue({ user: null, userData: null, isUserLoading: false });
       mockUseCart.mockReturnValue({ itemCount: 0 });
       render(<Header />);
       expect(screen.queryByText('0')).not.toBeInTheDocument();
     });
 
     it('debería mostrar el contador con el número correcto de artículos', () => {
-      mockUseUser.mockReturnValue({ user: null, isUserLoading: false });
+      mockUseUser.mockReturnValue({ user: null, userData: null, isUserLoading: false });
       mockUseCart.mockReturnValue({ itemCount: 5 });
       render(<Header />);
       expect(screen.getByText('5')).toBeInTheDocument();
@@ -177,7 +185,7 @@ describe('Header', () => {
   describe('Vista Móvil', () => {
     beforeEach(() => {
       mockUseIsMobile.mockReturnValue(true);
-      mockUseUser.mockReturnValue({ user: null, isUserLoading: false });
+      mockUseUser.mockReturnValue({ user: null, userData: null, isUserLoading: false });
     });
 
     it('debería renderizar el contenido del menú móvil', () => {
