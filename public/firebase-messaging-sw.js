@@ -63,6 +63,8 @@ messaging.onBackgroundMessage((payload) => {
     vibrate: [200, 100, 200], // Patrón de vibración (Android)
     tag: payload.data?.type || 'notification', // Agrupa notificaciones del mismo tipo
     requireInteraction: false, // No requiere interacción para cerrarse
+    silent: false, // ⚠️ IMPORTANTE: false = reproduce sonido del sistema
+    sound: 'default', // Sonido por defecto del sistema
     data: {
       // Guardar datos custom para usar en el click
       click_action: payload.data?.click_action || '/',
