@@ -1,3 +1,80 @@
+## [2025-11-12] - Firebase Phone Authentication + Notificaciones FCM Mejoradas
+
+### ✨ Agregado
+- **Firebase Phone Authentication** - Verificación de teléfono con SMS real
+- **reCAPTCHA Enterprise** - Protección contra bots (v2 invisible)
+- **Rate Limiting** - 3 intentos de verificación cada 6 horas
+- **Sonidos en notificaciones** - Sistema operativo + Web Audio API
+- **Vibraciones diferenciadas** - Patrones según tipo de notificación
+- Nuevo componente `country-phone-input.tsx` - Input de teléfono con código de país
+- Script `reset-rate-limit.js` - Resetear límites de verificación
+- Script `list-rate-limits.js` - Listar usuarios con rate limit activo
+- Script `diagnose-firebase-config.js` - Diagnóstico de configuración Firebase
+- Script `invalidate-old-phone-verifications.js` - Migración de datos antiguos
+
+### 🔄 Modificado
+- `backend/app.js` - Configuración de Application Default Credentials
+- `backend/verification/phone-verification-routes.js` - Endpoints de verificación
+- `src/app/verificar-telefono/page.tsx` - Implementación de reCAPTCHA v2 + SMS
+- `src/app/completar-perfil/page.tsx` - Validación de número de teléfono
+- `src/app/pago/page.tsx` - Verificación de teléfono antes de pago
+- `src/firebase/config.ts` - Agregado `storageBucket`
+- `next.config.ts` - CSP actualizado para reCAPTCHA
+- `public/firebase-messaging-sw.js` - Sonido y vibraciones habilitados
+
+### 🐛 Corregido
+- **Phone Auth `auth/internal-error`** - Faltaba `storageBucket` en config
+- **CSP bloqueaba reCAPTCHA** - Agregados dominios de Google a CSP
+- **Notificaciones sin sonido** - Habilitado `silent: false` en Service Worker
+- **Rate limiting sin gestión** - Agregados scripts de administración
+
+### 📝 Archivos Nuevos
+- `docs/DEPLOYMENT-2025-11-12.md` - Resumen completo de deployment
+- `docs/03-modules/phone-verification/FIREBASE-PHONE-AUTH-IMPLEMENTATION.md` - Guía de Phone Auth
+- `docs/03-modules/fcm-notifications/CUSTOM-SOUNDS.md` - Sistema de sonidos
+- `public/sounds/generate-sounds.html` - Generador de sonidos
+- `public/sounds/README.md` - Instrucciones de audio
+- `src/components/ui/country-phone-input.tsx` - Input de teléfono
+- `backend/scripts/reset-rate-limit.js` - Gestión de rate limiting
+- `backend/scripts/list-rate-limits.js` - Listar límites
+- `backend/scripts/diagnose-firebase-config.js` - Diagnóstico
+- `backend/scripts/invalidate-old-phone-verifications.js` - Migración
+
+### 🎁 Beneficios
+- Verificación real de números de teléfono con SMS
+- Protección contra bots y abuso con reCAPTCHA + Rate Limiting
+- Notificaciones siempre suenan (background + foreground)
+- Sonido de caja registradora para admins en nuevos pedidos
+- Vibraciones diferenciadas por tipo de notificación (Android)
+- Mejor experiencia de usuario en verificación telefónica
+
+### 🔧 Configuración Firebase Console
+- ✅ Phone Authentication habilitado
+- ✅ Región SMS: México (MX)
+- ✅ Dominios autorizados: localhost, alchilemeatballs.com
+- ✅ reCAPTCHA Enterprise Site Keys configuradas (Web, iOS, Android)
+
+### 📊 Seguridad
+- reCAPTCHA v2 Invisible previene bots
+- Rate Limiting: 3 intentos cada 6 horas
+- Códigos SMS expiran en 10 minutos
+- Máximo 3 intentos de verificación por código
+- Formato E.164 validado (+52XXXXXXXXXX)
+- Región SMS limitada a México
+
+### 💰 Costos
+- Firebase Phone Auth: Gratis (< 10k SMS/mes)
+- reCAPTCHA Enterprise: $0 USD
+- **Total**: $0 USD/mes
+
+### ✅ Estado
+- **Producción**: ✅ FUNCIONANDO
+- **Phone Auth**: ✅ SMS llegando a números reales
+- **Notificaciones**: ✅ Sonando en background y foreground
+- **Vibraciones**: ✅ Patrones diferenciados
+
+---
+
 ## [2025-01-11] - Google Sign-In Implementado
 
 ### ✨ Agregado

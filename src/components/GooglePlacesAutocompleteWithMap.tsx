@@ -397,6 +397,19 @@ export default function GooglePlacesAutocompleteWithMap({
         </Button>
       </div>
 
+      {/* Mensaje de carga de ubicación */}
+      {isLocating && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg animate-pulse">
+          <p className="text-sm text-blue-800 font-medium flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            No desesperes, estamos obteniendo tu ubicación...
+          </p>
+          <p className="text-xs text-blue-600 mt-1">
+            Google Maps puede tardar unos segundos en determinar tu posición exacta
+          </p>
+        </div>
+      )}
+
       {/* Modo: Búsqueda */}
       {mode === 'search' && (
         <>

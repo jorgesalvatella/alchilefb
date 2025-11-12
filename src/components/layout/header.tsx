@@ -222,9 +222,9 @@ export function Header() {
           <span className="sr-only">Abrir menú</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-full max-w-xs bg-black border-r border-r-white/10 pt-20 text-white">
+      <SheetContent side="left" className="w-full max-w-xs bg-black border-r border-r-white/10 pt-20 text-white flex flex-col">
         <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-        <nav className="flex flex-col gap-8 text-center text-lg font-medium">
+        <nav className="flex flex-col gap-8 text-center text-lg font-medium overflow-y-auto flex-1 pb-6">
           {baseNavigation.map((link) => (
             <Link key={link.href} href={link.href} onClick={closeSheet} className="hover:text-yellow-400">{link.label}</Link>
           ))}
