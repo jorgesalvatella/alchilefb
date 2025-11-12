@@ -42,6 +42,23 @@ function CheckoutPage({ user }: WithAuthProps) {
   const [isVerifyingTotal, setIsVerifyingTotal] = useState(false);
   const [userDataRefreshed, setUserDataRefreshed] = useState(false);
 
+  // Validar que el usuario tenga phoneNumber, si no redirigir a completar-perfil
+  useEffect(() => {
+    if (user && !isUserLoading && userData) {
+      // Si no tiene phoneNumber, redirigir a completar-perfil
+      if (!userData.phoneNumber) {
+        toast({
+          title: 'Teléfono requerido',
+          description: 'Primero debes registrar tu número de teléfono para hacer pedidos',
+          variant: 'destructive',
+        });
+        router.push('/completar-perfil?returnTo=/pago');
+        return;
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isUserLoading, userData]);
+
   // Forzar refresh de userData al montar (importante después de verificar teléfono)
   useEffect(() => {
     const shouldRefresh = sessionStorage.getItem('phoneJustVerified');
@@ -70,7 +87,8 @@ function CheckoutPage({ user }: WithAuthProps) {
 
       doRefresh();
     }
-  }, [user, isUserLoading, refreshUserData, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isUserLoading, refreshUserData]);
 
   // Verificar el total del carrito con el backend
   useEffect(() => {

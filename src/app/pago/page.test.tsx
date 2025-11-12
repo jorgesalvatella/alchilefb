@@ -48,6 +48,7 @@ jest.mock('@/firebase/provider', () => ({
       getIdTokenResult: jest.fn(() => Promise.resolve({ claims: {} })),
     },
     userData: {
+      phoneNumber: '+529981234567', // Usuario con teléfono
       phoneVerified: true, // Usuario ya verificado
     },
     isUserLoading: false,

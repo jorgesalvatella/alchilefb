@@ -1,31 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { useUser } from '@/firebase/provider';
 import { toast } from 'sonner';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
-
-// Helper para formatear teléfono con espacios visuales
-const formatPhoneNumber = (value: string): string => {
-  const cleaned = value.replace(/\D/g, '');
-  const limited = cleaned.slice(0, 10);
-  if (limited.length <= 3) return limited;
-  if (limited.length <= 6) return `${limited.slice(0, 3)} ${limited.slice(3)}`;
-  return `${limited.slice(0, 3)} ${limited.slice(3, 6)} ${limited.slice(6)}`;
-};
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { CountryPhoneInput, COUNTRIES, type Country } from '@/components/ui/country-phone-input';
 
 export default function CompletarPerfilPage() {
   const { user, userData } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/menu';
+
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRIES[0]); // México por defecto
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
 
   useEffect(() => {
     // Si el usuario ya tiene teléfono, redirigir
@@ -38,10 +41,10 @@ export default function CompletarPerfilPage() {
     e.preventDefault();
     setError('');
 
-    // Validar formato
+    // Validar formato según el país seleccionado
     const cleaned = phoneNumber.replace(/\D/g, '');
-    if (cleaned.length !== 10) {
-      setError('El teléfono debe tener exactamente 10 dígitos');
+    if (cleaned.length !== selectedCountry.digits) {
+      setError(`El teléfono debe tener exactamente ${selectedCountry.digits} dígitos para ${selectedCountry.name}`);
       return;
     }
 
@@ -54,7 +57,7 @@ export default function CompletarPerfilPage() {
 
     try {
       // Formatear a E.164
-      const formattedPhone = `+52${cleaned}`;
+      const formattedPhone = `${selectedCountry.dialCode}${cleaned}`;
 
       // Actualizar Firestore
       const userRef = doc(firestore, 'users', user.uid);
@@ -73,6 +76,8 @@ export default function CompletarPerfilPage() {
         },
         body: JSON.stringify({
           phoneNumber: cleaned,
+          countryCode: selectedCountry.code,
+          dialCode: selectedCountry.dialCode,
         }),
       });
 
@@ -83,8 +88,8 @@ export default function CompletarPerfilPage() {
 
       toast.success('Teléfono actualizado exitosamente');
 
-      // Redirigir a la página principal
-      router.push('/');
+      // Mostrar modal de verificación
+      setShowVerificationDialog(true);
 
     } catch (error) {
       console.error('Error updating phone:', error);
@@ -93,6 +98,14 @@ export default function CompletarPerfilPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleVerifyNow = () => {
+    router.push(`/verificar-telefono?returnTo=${encodeURIComponent(returnTo)}`);
+  };
+
+  const handleVerifyLater = () => {
+    router.push(returnTo);
   };
 
   if (!user) {
@@ -129,34 +142,21 @@ export default function CompletarPerfilPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="text-white">
-                Número de Teléfono <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="998 123 4567"
-                value={formatPhoneNumber(phoneNumber)}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/\D/g, '');
-                  setPhoneNumber(cleaned);
-                  setError('');
-                }}
-                className="bg-white/5 border-white/20 text-white placeholder:text-white/40 focus:ring-orange-500 focus:border-orange-500"
-                required
-              />
-              <p className="text-xs text-white/50">
-                10 dígitos sin espacios ni guiones
-              </p>
-              {error && (
-                <p className="text-sm text-red-400">{error}</p>
-              )}
-            </div>
+            <CountryPhoneInput
+              value={phoneNumber}
+              onChange={(value) => {
+                setPhoneNumber(value);
+                setError('');
+              }}
+              selectedCountry={selectedCountry}
+              onCountryChange={setSelectedCountry}
+              disabled={isLoading}
+              error={error}
+            />
 
             <Button
               type="submit"
-              disabled={isLoading || phoneNumber.replace(/\D/g, '').length !== 10}
+              disabled={isLoading || phoneNumber.replace(/\D/g, '').length !== selectedCountry.digits}
               className="w-full font-headline text-lg py-6 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white hover:scale-105 transition-transform duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
               {isLoading ? 'Guardando...' : 'Continuar'}
@@ -164,6 +164,48 @@ export default function CompletarPerfilPage() {
           </form>
         </div>
       </div>
+
+      {/* Modal de Verificación */}
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent className="bg-gray-900 border border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 bg-clip-text text-transparent">
+              ✅ Teléfono Guardado
+            </DialogTitle>
+            <DialogDescription className="text-white/70 text-base">
+              Tu número de teléfono ha sido registrado exitosamente.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="bg-blue-500/20 border border-blue-500/50 rounded-lg p-4 mb-4">
+              <p className="text-white font-semibold mb-2">🔒 Verificación de Seguridad</p>
+              <p className="text-white/80 text-sm">
+                Para mayor seguridad y poder realizar pedidos, te recomendamos verificar tu teléfono ahora.
+              </p>
+            </div>
+            <p className="text-white/60 text-sm">
+              Recibirás un código de verificación en tu dispositivo. El proceso toma menos de 1 minuto.
+            </p>
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Button
+              onClick={handleVerifyLater}
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              Verificar Después
+            </Button>
+            <Button
+              onClick={handleVerifyNow}
+              className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-600 text-white hover:scale-105 transition-transform"
+            >
+              Verificar Ahora
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

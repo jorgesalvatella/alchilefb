@@ -4710,22 +4710,36 @@ app.get('/api/control/usuarios', authMiddleware, requireAdmin, async (req, res) 
 app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (req, res) => {
   try {
     const { userId } = req.params;
-    const { role, active, sucursalIds, area, displayName, phoneNumber } = req.body;
+    const { role, active, sucursalIds, area, displayName, phoneNumber, countryCode, dialCode } = req.body;
 
     // Validación de phoneNumber si se proporciona
     if (phoneNumber !== undefined) {
       // Limpiar el teléfono de caracteres no numéricos
       const cleaned = phoneNumber.replace(/\D/g, '');
 
-      // Validar formato: exactamente 10 dígitos
-      if (cleaned.length !== 10) {
+      // Si se proporciona countryCode y dialCode, usarlos; si no, usar México por defecto
+      const finalDialCode = dialCode || '+52';
+      const finalCountryCode = countryCode || 'MX';
+
+      // Mapa de dígitos esperados por país
+      const expectedDigits = {
+        'MX': 10, 'US': 10, 'CO': 10, 'VE': 10, 'AR': 10,
+        'GT': 8, 'SV': 8, 'HN': 8, 'NI': 8, 'CR': 8, 'PA': 8, 'BO': 8, 'UY': 8,
+        'EC': 9, 'PE': 9, 'CL': 9, 'PY': 9, 'ES': 9,
+        'BR': 11
+      };
+
+      const expectedLength = expectedDigits[finalCountryCode] || 10;
+
+      // Validar formato según el país
+      if (cleaned.length !== expectedLength) {
         return res.status(400).json({
-          message: 'El teléfono debe tener exactamente 10 dígitos'
+          message: `El teléfono debe tener exactamente ${expectedLength} dígitos para ${finalCountryCode}`
         });
       }
 
       // Validar unicidad: verificar que no exista otro usuario con este teléfono
-      const formattedPhone = `+52${cleaned}`;
+      const formattedPhone = `${finalDialCode}${cleaned}`;
 
       // Buscar en Firebase Auth
       try {
@@ -4813,7 +4827,8 @@ app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (
     }
     if (phoneNumber !== undefined) {
       const cleaned = phoneNumber.replace(/\D/g, '');
-      authUpdateData.phoneNumber = `+52${cleaned}`;
+      const finalDialCode = dialCode || '+52';
+      authUpdateData.phoneNumber = `${finalDialCode}${cleaned}`;
     }
     if (Object.keys(authUpdateData).length > 0) {
       await admin.auth().updateUser(userId, authUpdateData);
@@ -4832,7 +4847,11 @@ app.patch('/api/control/usuarios/:userId', authMiddleware, requireAdmin, async (
     if (displayName !== undefined) updateData.displayName = displayName;
     if (phoneNumber !== undefined) {
       const cleaned = phoneNumber.replace(/\D/g, '');
-      updateData.phoneNumber = `+52${cleaned}`;
+      const finalDialCode = dialCode || '+52';
+      const finalCountryCode = countryCode || 'MX';
+      updateData.phoneNumber = `${finalDialCode}${cleaned}`;
+      updateData.countryCode = finalCountryCode;
+      updateData.dialCode = finalDialCode;
     }
 
     // Verificar si el documento existe, si no, crearlo

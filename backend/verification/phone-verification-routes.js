@@ -237,4 +237,259 @@ router.post('/verify-code', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/verification/check-rate-limit:
+ *   post:
+ *     summary: Verifica si el usuario puede generar un nuevo código (rate limiting)
+ *     tags: [Verification]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Rate limit status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 allowed:
+ *                   type: boolean
+ *                 remaining:
+ *                   type: number
+ *                 message:
+ *                   type: string
+ *       '401':
+ *         description: No autorizado
+ */
+router.post('/check-rate-limit', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.uid;
+
+    // Obtener o crear documento de rate limiting
+    const attemptDocRef = db.collection('phoneVerificationAttempts').doc(userId);
+    const attemptDoc = await attemptDocRef.get();
+
+    const now = new Date();
+    const resetTime = 6 * 60 * 60 * 1000; // 6 horas en milisegundos
+    const maxAttempts = 3;
+
+    if (!attemptDoc.exists) {
+      // Primera vez - crear documento
+      await attemptDocRef.set({
+        attempts: 0,
+        lastAttempt: admin.firestore.FieldValue.serverTimestamp(),
+        resetAt: admin.firestore.Timestamp.fromDate(new Date(now.getTime() + resetTime)),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return res.status(200).json({
+        allowed: true,
+        remaining: maxAttempts,
+        message: 'Puedes generar un código'
+      });
+    }
+
+    const data = attemptDoc.data();
+    const resetAt = data.resetAt.toDate();
+
+    // Si ya pasaron 6 horas, resetear contador
+    if (now > resetAt) {
+      await attemptDocRef.update({
+        attempts: 0,
+        resetAt: admin.firestore.Timestamp.fromDate(new Date(now.getTime() + resetTime)),
+        lastAttempt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return res.status(200).json({
+        allowed: true,
+        remaining: maxAttempts,
+        message: 'Contador reseteado. Puedes generar un código'
+      });
+    }
+
+    // Verificar si ha excedido el límite
+    if (data.attempts >= maxAttempts) {
+      const minutesLeft = Math.ceil((resetAt - now) / (60 * 1000));
+      const hoursLeft = Math.floor(minutesLeft / 60);
+      const minsLeft = minutesLeft % 60;
+
+      let timeMessage = '';
+      if (hoursLeft > 0) {
+        timeMessage = `${hoursLeft}h ${minsLeft}m`;
+      } else {
+        timeMessage = `${minsLeft} minutos`;
+      }
+
+      return res.status(429).json({
+        allowed: false,
+        remaining: 0,
+        message: `Demasiados intentos. Intenta de nuevo en ${timeMessage}`
+      });
+    }
+
+    // Incrementar contador de intentos
+    await attemptDocRef.update({
+      attempts: admin.firestore.FieldValue.increment(1),
+      lastAttempt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return res.status(200).json({
+      allowed: true,
+      remaining: maxAttempts - (data.attempts + 1),
+      message: 'Puedes generar un código'
+    });
+
+  } catch (error) {
+    console.error('Error checking rate limit:', error);
+    res.status(500).json({
+      allowed: false,
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/verification/mark-verified:
+ *   post:
+ *     summary: Marca el teléfono del usuario como verificado (después de Firebase Phone Auth)
+ *     tags: [Verification]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Teléfono marcado como verificado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       '401':
+ *         description: No autorizado
+ */
+router.post('/mark-verified', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.uid;
+
+    // Actualizar usuario en Firestore
+    await db.collection('users').doc(userId).update({
+      phoneVerified: true,
+      phoneVerifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+      requiresReVerification: false, // Limpiar flag si existía
+    });
+
+    console.log(`[Phone Verification] Usuario ${userId} marcado como verificado`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Teléfono verificado exitosamente'
+    });
+
+  } catch (error) {
+    console.error('Error marking as verified:', error);
+    res.status(500).json({
+      success: false,
+      error: 'internal_error',
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/verification/send-fcm-notification:
+ *   post:
+ *     summary: Envía notificación FCM con el código de verificación (complemento a SMS)
+ *     tags: [Verification]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: Notificación enviada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       '401':
+ *         description: No autorizado
+ */
+router.post('/send-fcm-notification', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.uid;
+
+    // Buscar tokens FCM SOLO de dispositivos móviles (android, ios)
+    const mobileTokensSnapshot = await db.collection('deviceTokens')
+      .where('userId', '==', userId)
+      .where('isActive', '==', true)
+      .where('platform', 'in', ['android', 'ios'])
+      .get();
+
+    if (mobileTokensSnapshot.empty) {
+      console.log(`[FCM Notification] Usuario ${userId} no tiene dispositivos móviles registrados`);
+      return res.status(200).json({
+        success: true,
+        message: 'Usuario no tiene dispositivos móviles'
+      });
+    }
+
+    // Extraer tokens
+    const tokens = mobileTokensSnapshot.docs.map(doc => doc.data().token);
+
+    console.log(`[FCM Notification] Enviando notificación a ${tokens.length} dispositivo(s) móvil(es) del usuario ${userId}`);
+
+    // Construir notificación genérica (el código real está en el SMS)
+    const notification = {
+      title: '📱 Código de Verificación',
+      body: 'Revisa tu SMS para el código de verificación de tu teléfono'
+    };
+
+    const data = {
+      type: 'phone_verification',
+      timestamp: Date.now().toString(),
+    };
+
+    // Enviar notificación
+    try {
+      await sendMulticast({
+        tokens,
+        notification,
+        data
+      });
+
+      console.log('[FCM Notification] Notificación enviada exitosamente');
+
+      return res.status(200).json({
+        success: true,
+        message: 'Notificación FCM enviada'
+      });
+
+    } catch (fcmError) {
+      console.error('[FCM Notification] Error enviando:', fcmError);
+      return res.status(500).json({
+        success: false,
+        error: 'fcm_error',
+        message: 'Error enviando notificación FCM'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error sending FCM notification:', error);
+    res.status(500).json({
+      success: false,
+      error: 'internal_error',
+      message: 'Error interno del servidor'
+    });
+  }
+});
+
 module.exports = router;

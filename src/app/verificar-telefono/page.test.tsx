@@ -88,6 +88,11 @@ describe('VerificarTelefonoPage', () => {
         getIdToken: mockGetIdToken,
         getIdTokenResult: mockGetIdTokenResult,
       },
+      userData: {
+        id: 'test-user-id',
+        phoneNumber: '+529981234567',
+        phoneVerified: false,
+      },
       isUserLoading: false,
     });
 
@@ -466,5 +471,36 @@ describe('VerificarTelefonoPage', () => {
 
     // No debe llamar a verify-code
     expect(mockFetch).toHaveBeenCalledTimes(1); // Solo generate-code
+  });
+
+  it('redirige a completar-perfil si el usuario no tiene phoneNumber', async () => {
+    // Mockear useUser sin phoneNumber
+    (useUser as jest.Mock).mockReturnValue({
+      user: {
+        uid: 'test-user-id',
+        getIdToken: mockGetIdToken,
+        getIdTokenResult: mockGetIdTokenResult,
+      },
+      userData: {
+        id: 'test-user-id',
+        phoneNumber: '', // Sin phoneNumber
+        phoneVerified: false,
+      },
+      isUserLoading: false,
+    });
+
+    render(<VerificarTelefonoPage />);
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Teléfono requerido',
+        description: 'Primero debes registrar tu número de teléfono',
+        variant: 'destructive',
+      });
+    });
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/completar-perfil?returnTo=%2Fmenu');
+    });
   });
 });
