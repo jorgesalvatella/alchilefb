@@ -10,10 +10,10 @@
  * firebase-messaging-sw.js maneja SOLO notificaciones push
  * Este SW maneja SOLO cache offline
  *
- * Última actualización: 2025-01-09 - Fix Google Maps CSP
+ * Última actualización: 2025-11-12 - Fix POST requests caching error
  */
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `alchile-pwa-${CACHE_VERSION}`;
 
 // Assets estáticos que se cachean en la instalación
@@ -123,8 +123,13 @@ async function cacheFirst(request) {
     console.log('[SW] Fetching from network:', request.url);
     const networkResponse = await fetch(request);
 
-    // Cachear la respuesta si fue exitosa
-    if (networkResponse && networkResponse.status === 200) {
+    // Cachear la respuesta si fue exitosa Y es un request GET
+    // Cache API solo soporta requests GET
+    if (
+      request.method === 'GET' &&
+      networkResponse &&
+      networkResponse.status === 200
+    ) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, networkResponse.clone());
     }
